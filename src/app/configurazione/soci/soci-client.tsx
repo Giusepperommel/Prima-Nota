@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, UserX, AlertTriangle, KeyRound } from "lucide-react";
+import { Loader2, Plus, Pencil, UserX, AlertTriangle, KeyRound, UserPlus, Search } from "lucide-react";
 
 type SocioData = {
   id: number;
@@ -76,14 +76,33 @@ type Props = {
   currentSocioId: number;
 };
 
+type InviteFormData = {
+  email: string;
+  ruolo: string;
+  quotaPercentuale: string;
+  codiceFiscale: string;
+  dataIngresso: string;
+};
+
+const emptyInviteForm: InviteFormData = {
+  email: "",
+  ruolo: "STANDARD",
+  quotaPercentuale: "",
+  codiceFiscale: "",
+  dataIngresso: "",
+};
+
 export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: Props) {
   const [soci, setSoci] = useState<SocioData[]>(initialSoci);
   const [sommaQuote, setSommaQuote] = useState(initialSommaQuote);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedSocio, setSelectedSocio] = useState<SocioData | null>(null);
   const [formData, setFormData] = useState<SocioFormData>(emptyForm);
+  const [inviteFormData, setInviteFormData] = useState<InviteFormData>(emptyInviteForm);
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const ricalcolaSommaQuote = useCallback((lista: SocioData[]) => {
@@ -314,6 +333,80 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
     }
   };
 
+  // --- INVITO SOCIO ESISTENTE ---
+  const openInviteDialog = () => {
+    setInviteFormData(emptyInviteForm);
+    setInviteDialogOpen(true);
+  };
+
+  const handleInviteFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setInviteFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleInviteRuoloChange = (value: string) => {
+    setInviteFormData((prev) => ({ ...prev, ruolo: value }));
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteLoading(true);
+
+    try {
+      const res = await fetch("/api/soci/invita", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteFormData.email,
+          ruolo: inviteFormData.ruolo,
+          quotaPercentuale: parseFloat(inviteFormData.quotaPercentuale),
+          codiceFiscale: inviteFormData.codiceFiscale || undefined,
+          dataIngresso: inviteFormData.dataIngresso || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Errore durante l'invito");
+        return;
+      }
+
+      const nuovoSocio: SocioData = {
+        id: data.id,
+        societaId: data.societaId,
+        nome: data.nome,
+        cognome: data.cognome,
+        codiceFiscale: data.codiceFiscale,
+        email: data.email,
+        quotaPercentuale: data.quotaPercentuale,
+        ruolo: data.ruolo,
+        dataIngresso: data.dataIngresso,
+        attivo: data.attivo,
+        hasAccount: true,
+        ultimoAccesso: null,
+      };
+
+      const nuovaLista = [...soci, nuovoSocio].sort((a, b) => {
+        if (a.attivo !== b.attivo) return a.attivo ? -1 : 1;
+        return a.cognome.localeCompare(b.cognome) || a.nome.localeCompare(b.nome);
+      });
+
+      setSoci(nuovaLista);
+      ricalcolaSommaQuote(nuovaLista);
+      setInviteDialogOpen(false);
+      toast.success(`${data.nome} ${data.cognome} aggiunto alla societa`);
+
+      if (data.warningQuote) {
+        toast.warning(data.warningQuote);
+      }
+    } catch {
+      toast.error("Errore di connessione al server");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const quoteOk = Math.abs(sommaQuote - 100) < 0.01;
 
   return (
@@ -340,13 +433,18 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
               </span>
             </CardDescription>
           </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuovo Socio
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={openInviteDialog}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Invita Socio
+            </Button>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuovo Socio
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Aggiungi Nuovo Socio</DialogTitle>
@@ -365,6 +463,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
               />
             </DialogContent>
           </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           {soci.length === 0 ? (
@@ -522,6 +621,100 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
               Disattiva
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Invita Socio Esistente */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Invita Socio Esistente</DialogTitle>
+            <DialogDescription>
+              Aggiungi un utente gia registrato su Prima Nota alla tua societa.
+              L&apos;utente deve essersi registrato e aver verificato la sua email.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleInvite} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2 space-y-2">
+                <Label htmlFor="invite-email">Email dell&apos;utente *</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="invite-email"
+                    name="email"
+                    type="email"
+                    value={inviteFormData.email}
+                    onChange={handleInviteFormChange}
+                    required
+                    placeholder="email@utente.com"
+                    className="pl-9"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Inserisci l&apos;email con cui l&apos;utente si e registrato.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-codiceFiscale">Codice Fiscale</Label>
+                <Input
+                  id="invite-codiceFiscale"
+                  name="codiceFiscale"
+                  value={inviteFormData.codiceFiscale}
+                  onChange={handleInviteFormChange}
+                  maxLength={16}
+                  placeholder="RSSMRA80A01H501U"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-quotaPercentuale">Quota (%) *</Label>
+                <Input
+                  id="invite-quotaPercentuale"
+                  name="quotaPercentuale"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="100"
+                  value={inviteFormData.quotaPercentuale}
+                  onChange={handleInviteFormChange}
+                  required
+                  placeholder="20.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-ruolo">Ruolo *</Label>
+                <Select value={inviteFormData.ruolo} onValueChange={handleInviteRuoloChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleziona ruolo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="ADMIN">Amministratore</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-dataIngresso">Data Ingresso</Label>
+                <Input
+                  id="invite-dataIngresso"
+                  name="dataIngresso"
+                  type="date"
+                  value={inviteFormData.dataIngresso}
+                  onChange={handleInviteFormChange}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={inviteLoading}>
+                {inviteLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                Invita Socio
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

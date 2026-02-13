@@ -14,7 +14,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Building2, User, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  Building2,
+  User,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  RefreshCw,
+  LogOut,
+} from "lucide-react";
+import { signOut } from "next-auth/react";
 
 type SocietaData = {
   ragioneSociale: string;
@@ -31,6 +42,10 @@ type SocioData = {
   quotaPercentuale: string;
   dataIngresso: string;
 };
+
+type ViewMode = "choice" | "wizard" | "waiting";
+
+// ---- Step Indicator ----
 
 function StepIndicator({ currentStep }: { currentStep: number }) {
   const steps = [
@@ -80,7 +95,138 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
   );
 }
 
-function CreaSocietaWizard() {
+// ---- Waiting View ----
+
+function WaitingView({ onBack }: { onBack: () => void }) {
+  const router = useRouter();
+  const { data: session, update } = useSession();
+  const [checking, setChecking] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const email = session?.user?.email || "";
+
+  async function handleCheck() {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/auth/stato-utente");
+      const data = await res.json();
+
+      if (data.societaId) {
+        await update({ societaId: data.societaId, ruolo: data.ruolo });
+        router.push("/dashboard");
+      } else {
+        setChecking(false);
+      }
+    } catch {
+      setChecking(false);
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    await signOut({ callbackUrl: "/login" });
+  }
+
+  return (
+    <div className="space-y-6 text-center">
+      <div className="flex justify-center">
+        <div className="rounded-full bg-muted p-4">
+          <Clock className="h-8 w-8 text-muted-foreground" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">In attesa di invito</h3>
+        <p className="text-sm text-muted-foreground">
+          Sei registrato con l&apos;email
+        </p>
+        <p className="font-medium">{email}</p>
+        <p className="text-sm text-muted-foreground">
+          Comunica la tua email all&apos;amministratore della societa a cui vuoi
+          unirti. Quando ti avra aggiunto, potrai accedere.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleCheck} disabled={checking}>
+          {checking ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          {checking ? "Controllo in corso..." : "Verifica stato"}
+        </Button>
+
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Torna alla scelta
+        </Button>
+
+        <Button
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Esci
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---- Choice View ----
+
+function ChoiceView({ onCreateNew, onWait }: { onCreateNew: () => void; onWait: () => void }) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground text-center">
+        Scegli come vuoi procedere:
+      </p>
+
+      <div
+        className="rounded-lg border-2 p-5 cursor-pointer transition-colors hover:border-primary hover:bg-muted/50"
+        onClick={onCreateNew}
+      >
+        <div className="flex items-start gap-4">
+          <div className="rounded-full bg-primary/10 p-2.5 shrink-0">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-medium">Crea una nuova societa</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configura la tua societa da zero. Verranno create automaticamente
+              le categorie di spesa standard. Diventerai l&apos;amministratore.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="rounded-lg border-2 p-5 cursor-pointer transition-colors hover:border-primary hover:bg-muted/50"
+        onClick={onWait}
+      >
+        <div className="flex items-start gap-4">
+          <div className="rounded-full bg-primary/10 p-2.5 shrink-0">
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-medium">Sono stato invitato</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Un amministratore ti aggiungera alla sua societa. Attendi che
+              completi l&apos;invito, oppure comunicagli la tua email.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Wizard ----
+
+function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const { update } = useSession();
   const [step, setStep] = useState(1);
@@ -148,16 +294,12 @@ function CreaSocietaWizard() {
 
   function goToStep2() {
     setError("");
-    if (validateStep1()) {
-      setStep(2);
-    }
+    if (validateStep1()) setStep(2);
   }
 
   function goToStep3() {
     setError("");
-    if (validateStep2()) {
-      setStep(3);
-    }
+    if (validateStep2()) setStep(3);
   }
 
   async function handleSubmit() {
@@ -296,7 +438,11 @@ function CreaSocietaWizard() {
             <p className="text-sm text-destructive text-center">{error}</p>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Indietro
+            </Button>
             <Button type="button" onClick={goToStep2}>
               Avanti
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -361,10 +507,7 @@ function CreaSocietaWizard() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setError("");
-                setStep(1);
-              }}
+              onClick={() => { setError(""); setStep(1); }}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Indietro
@@ -479,10 +622,7 @@ function CreaSocietaWizard() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setError("");
-                setStep(2);
-              }}
+              onClick={() => { setError(""); setStep(2); }}
               disabled={loading}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -503,25 +643,58 @@ function CreaSocietaWizard() {
   );
 }
 
+// ---- Main Page ----
+
+function CreaSocietaContent() {
+  const [view, setView] = useState<ViewMode>("choice");
+
+  const titles: Record<ViewMode, { title: string; desc: string }> = {
+    choice: {
+      title: "Benvenuto su Prima Nota",
+      desc: "Il tuo account e' pronto. Come vuoi procedere?",
+    },
+    wizard: {
+      title: "Configura la tua Societa",
+      desc: "Completa la configurazione iniziale per iniziare a usare Prima Nota.",
+    },
+    waiting: {
+      title: "Account in attesa",
+      desc: "Il tuo account e' attivo e in attesa di essere associato a una societa.",
+    },
+  };
+
+  const current = titles[view];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-8">
+      <Card className="w-full max-w-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">{current.title}</CardTitle>
+          <CardDescription>{current.desc}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {view === "choice" && (
+            <ChoiceView
+              onCreateNew={() => setView("wizard")}
+              onWait={() => setView("waiting")}
+            />
+          )}
+          {view === "wizard" && (
+            <CreaSocietaWizard onBack={() => setView("choice")} />
+          )}
+          {view === "waiting" && (
+            <WaitingView onBack={() => setView("choice")} />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function CreaSocietaPage() {
   return (
     <SessionProvider>
-      <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-8">
-        <Card className="w-full max-w-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">
-              Configura la tua Societa
-            </CardTitle>
-            <CardDescription>
-              Completa la configurazione iniziale per iniziare a usare Prima Nota.
-              Diventerai automaticamente l&apos;amministratore.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CreaSocietaWizard />
-          </CardContent>
-        </Card>
-      </div>
+      <CreaSocietaContent />
     </SessionProvider>
   );
 }
