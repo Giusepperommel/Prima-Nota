@@ -49,7 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = Number(user.id);
         token.nome = (user as any).nome;
@@ -59,6 +59,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.societaId = (user as any).societaId;
         token.quotaPercentuale = (user as any).quotaPercentuale;
         token.emailVerificata = (user as any).emailVerificata;
+      }
+      // Aggiorna il token quando il client chiama update()
+      if (trigger === "update" && session) {
+        if (session.societaId !== undefined) token.societaId = session.societaId;
+        if (session.ruolo !== undefined) token.ruolo = session.ruolo;
       }
       return token;
     },

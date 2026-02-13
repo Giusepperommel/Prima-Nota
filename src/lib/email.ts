@@ -9,6 +9,13 @@ export async function inviaOtpEmail(
   nome: string,
   codice: string
 ) {
+  // In dev senza API key valida, logga il codice in console
+  if (!process.env.RESEND_API_KEY || process.env.NODE_ENV === "development") {
+    console.log(`\n========================================`);
+    console.log(`  OTP per ${email}: ${codice}`);
+    console.log(`========================================\n`);
+  }
+
   const { error } = await resend.emails.send({
     from: `Prima Nota <${fromEmail}>`,
     to: email,
@@ -28,7 +35,10 @@ export async function inviaOtpEmail(
   });
 
   if (error) {
-    console.error("Errore invio email:", error);
-    throw new Error("Impossibile inviare l'email di verifica");
+    console.warn("Invio email fallito (ignorato in dev):", error.message);
+    // In dev non bloccare il flusso se l'email fallisce
+    if (process.env.NODE_ENV !== "development") {
+      throw new Error("Impossibile inviare l'email di verifica");
+    }
   }
 }
