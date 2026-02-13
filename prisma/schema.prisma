@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Societa {
+  id               Int      @id @default(autoincrement())
+  ragioneSociale   String   @map("ragione_sociale") @db.VarChar(255)
+  partitaIva       String   @unique @map("partita_iva") @db.VarChar(11)
+  codiceFiscale    String   @map("codice_fiscale") @db.VarChar(16)
+  indirizzo        String?  @db.Text
+  regimeFiscale    String?  @map("regime_fiscale") @db.VarChar(100)
+  capitaleSociale  Decimal? @map("capitale_sociale") @db.Decimal(12, 2)
+  dataCostituzione DateTime? @map("data_costituzione") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  soci           Socio[]
+  categorieSpesa CategoriaSpesa[]
+  operazioni     Operazione[]
+
+  @@map("societa")
+}
+
+model Socio {
+  id                Int      @id @default(autoincrement())
+  societaId         Int?     @map("societa_id")
+  nome              String   @db.VarChar(100)
+  cognome           String   @db.VarChar(100)
+  codiceFiscale     String   @map("codice_fiscale") @db.VarChar(16)
+  email             String   @unique @db.VarChar(255)
+  quotaPercentuale  Decimal  @map("quota_percentuale") @db.Decimal(5, 2)
+  ruolo             RuoloUtente @default(STANDARD)
+  dataIngresso      DateTime? @map("data_ingresso") @db.Date
+  attivo            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  societa              Societa? @relation(fields: [societaId], references: [id])
+  utente               Utente?
+  ripartizioniOperazione RipartizioneOperazione[]
+
+  @@map("soci")
+}
+
+model Utente {
+  id            Int       @id @default(autoincrement())
+  socioId       Int       @unique @map("socio_id")
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  emailVerificata Boolean @default(false) @map("email_verificata")
+  ultimoAccesso DateTime? @map("ultimo_accesso")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  socio         Socio @relation(fields: [socioId], references: [id])
+  operazioniCreate Operazione[]
+  logAttivita   LogAttivita[]
+
+  @@map("utenti")
+}
+
+model CategoriaSpesa {
+  id                      Int      @id @default(autoincrement())
+  societaId               Int      @map("societa_id")
+  nome                    String   @db.VarChar(100)
+  percentualeDeducibilita Decimal  @map("percentuale_deducibilita") @db.Decimal(5, 2)
+  descrizione             String?  @db.Text
+  tipoCategoria           String?  @map("tipo_categoria") @db.VarChar(50)
+  attiva                  Boolean  @default(true)
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  societa    Societa      @relation(fields: [societaId], references: [id])
+  operazioni Operazione[]
+
+  @@map("categorie_spesa")
+}
+
+model Operazione {
+  id                      Int              @id @default(autoincrement())
+  societaId               Int              @map("societa_id")
+  tipoOperazione          TipoOperazione   @map("tipo_operazione")
+  dataOperazione          DateTime         @map("data_operazione") @db.Date
+  numeroDocumento         String?          @map("numero_documento") @db.VarChar(50)
+  descrizione             String           @db.Text
+  importoTotale           Decimal          @map("importo_totale") @db.Decimal(10, 2)
+  categoriaId             Int              @map("categoria_id")
+  importoDeducibile       Decimal          @map("importo_deducibile") @db.Decimal(10, 2)
+  percentualeDeducibilita Decimal          @map("percentuale_deducibilita") @db.Decimal(5, 2)
+  deducibilitaCustom      Boolean          @default(false) @map("deducibilita_custom")
+  tipoRipartizione        TipoRipartizione @map("tipo_ripartizione")
+  note                    String?          @db.Text
+  fileAllegato            String?          @map("file_allegato") @db.VarChar(255)
+  fileXml                 String?          @map("file_xml") @db.LongText
+  eliminato               Boolean          @default(false)
+  createdByUserId         Int              @map("created_by_user_id")
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+
+  societa      Societa                  @relation(fields: [societaId], references: [id])
+  categoria    CategoriaSpesa           @relation(fields: [categoriaId], references: [id])
+  createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
+  ripartizioni RipartizioneOperazione[]
+
+  @@index([societaId, dataOperazione])
+  @@index([categoriaId])
+  @@index([createdByUserId])
+  @@map("operazioni")
+}
+
+model RipartizioneOperazione {
+  id               Int     @id @default(autoincrement())
+  operazioneId     Int     @map("operazione_id")
+  socioId          Int     @map("socio_id")
+  percentuale      Decimal @db.Decimal(5, 2)
+  importoCalcolato Decimal @map("importo_calcolato") @db.Decimal(10, 2)
+
+  operazione Operazione @relation(fields: [operazioneId], references: [id], onDelete: Cascade)
+  socio      Socio      @relation(fields: [socioId], references: [id])
+
+  @@index([operazioneId])
+  @@index([socioId])
+  @@map("ripartizioni_operazione")
+}
+
+model LogAttivita {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  azione      AzioneLog
+  tabella     String        @db.VarChar(50)
+  recordId    Int           @map("record_id")
+  valoriPrima Json?         @map("valori_prima")
+  valoriDopo  Json?         @map("valori_dopo")
+  ipAddress   String?       @map("ip_address") @db.VarChar(45)
+  timestamp   DateTime      @default(now())
+
+  utente Utente @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tabella, recordId])
+  @@index([timestamp])
+  @@map("log_attivita")
+}
+
+model VerificaEmail {
+  id         Int      @id @default(autoincrement())
+  email      String   @db.VarChar(255)
+  codice     String   @db.VarChar(5)
+  scadenza   DateTime
+  verificato Boolean  @default(false)
+  tentativi  Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([email, verificato, scadenza])
+  @@map("verifica_email")
+}
+
+enum RuoloUtente {
+  ADMIN
+  STANDARD
+  SUPER_ADMIN
+
+  @@map("ruolo_utente")
+}
+
+enum TipoOperazione {
+  FATTURA_ATTIVA
+  COSTO
+  SPESA
+  CESPITE
+
+  @@map("tipo_operazione")
+}
+
+enum TipoRipartizione {
+  COMUNE
+  SINGOLO
+  CUSTOM
+
+  @@map("tipo_ripartizione")
+}
+
+enum AzioneLog {
+  INSERT
+  UPDATE
+  DELETE
+
+  @@map("azione_log")
+}
