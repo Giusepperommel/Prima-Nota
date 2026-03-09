@@ -6,6 +6,11 @@ const noSocietaRequiredPaths = ["/crea-societa", "/api/societa"];
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
+  // Consenti accesso alla landing page
+  if (pathname === "/") {
+    return;
+  }
+
   // Consenti accesso alle rotte pubbliche
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return;

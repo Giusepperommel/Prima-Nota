@@ -84,20 +84,20 @@ function getDeducibilitaBadge(percentuale: number) {
   const label = `${percentuale}%`;
   if (percentuale === 100) {
     return (
-      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200">
+      <Badge className="bg-green-500/15 text-green-400 hover:bg-green-500/20">
         {label}
       </Badge>
     );
   }
   if (percentuale === 0) {
     return (
-      <Badge className="bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900 dark:text-red-200">
+      <Badge className="bg-red-500/15 text-red-400 hover:bg-red-500/20">
         {label}
       </Badge>
     );
   }
   return (
-    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200">
+    <Badge className="bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/20">
       {label}
     </Badge>
   );

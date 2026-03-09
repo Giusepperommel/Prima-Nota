@@ -165,7 +165,7 @@ function VerificaForm() {
         <p className="text-sm text-destructive text-center">{error}</p>
       )}
       {success && (
-        <p className="text-sm text-green-600 text-center">{success}</p>
+        <p className="text-sm text-green-400 text-center">{success}</p>
       )}
 
       <div className="text-center">
@@ -186,8 +186,11 @@ function VerificaForm() {
 
 export default function VerificaEmailPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-32 left-1/2 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
+      </div>
+      <Card className="relative w-full max-w-md border-white/[0.06]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Verifica la tua email</CardTitle>
           <CardDescription>Inserisci il codice che ti abbiamo inviato</CardDescription>

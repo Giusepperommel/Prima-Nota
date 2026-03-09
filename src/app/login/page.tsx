@@ -44,7 +44,7 @@ function LoginForm() {
   return (
     <>
       {verified && (
-        <p className="text-sm text-green-600 text-center mb-4">
+        <p className="text-sm text-green-400 text-center mb-4">
           Email verificata con successo! Ora puoi accedere.
         </p>
       )}
@@ -89,10 +89,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-32 left-1/2 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
+      </div>
+      <Card className="relative w-full max-w-md border-white/[0.06]">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Prima Nota</CardTitle>
+          <CardTitle className="text-2xl font-bold">Prima<span className="text-primary">Nota</span></CardTitle>
           <CardDescription>Gestionale Contabile SRL</CardDescription>
         </CardHeader>
         <CardContent>

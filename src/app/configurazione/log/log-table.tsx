@@ -104,19 +104,19 @@ function getAzioneBadge(azione: "INSERT" | "UPDATE" | "DELETE") {
   switch (azione) {
     case "INSERT":
       return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200">
+        <Badge className="bg-green-500/15 text-green-400 hover:bg-green-500/20">
           INSERT
         </Badge>
       );
     case "UPDATE":
       return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-200">
+        <Badge className="bg-blue-500/15 text-blue-400 hover:bg-blue-500/20">
           UPDATE
         </Badge>
       );
     case "DELETE":
       return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900 dark:text-red-200">
+        <Badge className="bg-red-500/15 text-red-400 hover:bg-red-500/20">
           DELETE
         </Badge>
       );
@@ -144,8 +144,8 @@ function JsonDiffView({
 
   const bgClass =
     highlightColor === "red"
-      ? "bg-red-100 dark:bg-red-900/30"
-      : "bg-green-100 dark:bg-green-900/30";
+      ? "bg-red-500/15"
+      : "bg-green-500/15";
 
   const entries = Object.entries(data);
 

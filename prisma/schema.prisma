@@ -14,6 +14,7 @@ model Societa {
   codiceFiscale    String   @map("codice_fiscale") @db.VarChar(16)
   indirizzo        String?  @db.Text
   regimeFiscale    String?  @map("regime_fiscale") @db.VarChar(100)
+  aliquotaIrap     Decimal  @default(3.90) @map("aliquota_irap") @db.Decimal(5, 2)
   capitaleSociale  Decimal? @map("capitale_sociale") @db.Decimal(12, 2)
   dataCostituzione DateTime? @map("data_costituzione") @db.Date
   createdAt        DateTime @default(now()) @map("created_at")
@@ -22,6 +23,7 @@ model Societa {
   soci           Socio[]
   categorieSpesa CategoriaSpesa[]
   operazioni     Operazione[]
+  cespiti        Cespite[]
 
   @@map("societa")
 }
@@ -37,6 +39,7 @@ model Socio {
   ruolo             RuoloUtente @default(STANDARD)
   dataIngresso      DateTime? @map("data_ingresso") @db.Date
   attivo            Boolean  @default(true)
+  socioLavoratore   Boolean  @default(false) @map("socio_lavoratore")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -105,6 +108,7 @@ model Operazione {
   categoria    CategoriaSpesa           @relation(fields: [categoriaId], references: [id])
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
   ripartizioni RipartizioneOperazione[]
+  cespite      Cespite?
 
   @@index([societaId, dataOperazione])
   @@index([categoriaId])
@@ -190,4 +194,49 @@ enum AzioneLog {
   DELETE
 
   @@map("azione_log")
+}
+
+model Cespite {
+  id                    Int           @id @default(autoincrement())
+  operazioneId          Int           @unique @map("operazione_id")
+  societaId             Int           @map("societa_id")
+  descrizione           String        @db.Text
+  valoreIniziale        Decimal       @map("valore_iniziale") @db.Decimal(10, 2)
+  aliquotaAmmortamento  Decimal       @map("aliquota_ammortamento") @db.Decimal(5, 2)
+  dataAcquisto          DateTime      @map("data_acquisto") @db.Date
+  annoInizio            Int           @map("anno_inizio")
+  stato                 StatoCespite  @default(IN_AMMORTAMENTO)
+  fondoAmmortamento     Decimal       @default(0) @map("fondo_ammortamento") @db.Decimal(10, 2)
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  operazione        Operazione          @relation(fields: [operazioneId], references: [id])
+  societa           Societa             @relation(fields: [societaId], references: [id])
+  quoteAmmortamento QuotaAmmortamento[]
+
+  @@index([societaId])
+  @@map("cespiti")
+}
+
+model QuotaAmmortamento {
+  id                Int      @id @default(autoincrement())
+  cespiteId         Int      @map("cespite_id")
+  anno              Int
+  aliquotaApplicata Decimal  @map("aliquota_applicata") @db.Decimal(5, 2)
+  importoQuota      Decimal  @map("importo_quota") @db.Decimal(10, 2)
+  fondoProgressivo  Decimal  @map("fondo_progressivo") @db.Decimal(10, 2)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  cespite Cespite @relation(fields: [cespiteId], references: [id], onDelete: Cascade)
+
+  @@unique([cespiteId, anno])
+  @@index([cespiteId])
+  @@index([anno])
+  @@map("quote_ammortamento")
+}
+
+enum StatoCespite {
+  IN_AMMORTAMENTO
+  COMPLETATO
+  CEDUTO
 }

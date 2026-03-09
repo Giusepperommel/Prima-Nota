@@ -666,8 +666,11 @@ function CreaSocietaContent() {
   const current = titles[view];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-8">
-      <Card className="w-full max-w-lg">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4 py-8">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-32 left-1/2 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
+      </div>
+      <Card className="relative w-full max-w-lg border-white/[0.06]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">{current.title}</CardTitle>
           <CardDescription>{current.desc}</CardDescription>

@@ -29,6 +29,7 @@ export default async function SociPage() {
       ? s.dataIngresso.toISOString().split("T")[0]
       : null,
     attivo: s.attivo,
+    socioLavoratore: s.socioLavoratore,
     hasAccount: !!s.utente,
     ultimoAccesso: s.utente?.ultimoAccesso?.toISOString() ?? null,
   }));

@@ -105,6 +105,16 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     percentualeDeducibilita: Number(c.percentualeDeducibilita),
   }));
 
+  // Load cespite data if this is a CESPITE operation
+  const cespite = operazione.tipoOperazione === "CESPITE"
+    ? await prisma.cespite.findUnique({
+        where: { operazioneId: operazione.id },
+        include: {
+          quoteAmmortamento: { orderBy: { anno: "asc" } },
+        },
+      })
+    : null;
+
   // Serialize the operazione for the client
   const serializedOperazione = {
     id: operazione.id,
@@ -139,6 +149,16 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         quotaPercentuale: Number(rip.socio.quotaPercentuale),
       },
     })),
+    cespite: cespite
+      ? {
+          id: cespite.id,
+          aliquotaAmmortamento: Number(cespite.aliquotaAmmortamento),
+          valoreIniziale: Number(cespite.valoreIniziale),
+          stato: cespite.stato,
+          fondoAmmortamento: Number(cespite.fondoAmmortamento),
+          annoInizio: cespite.annoInizio,
+        }
+      : null,
   };
 
   const pageTitle = canEdit

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   calcolaDeducibilita,
+  calcolaPianoAmmortamento,
   formatCurrency,
   formatPercentuale,
 } from "@/lib/business-utils";
@@ -85,6 +86,14 @@ type OperazioneData = {
     nome: string;
     percentualeDeducibilita: number;
   };
+  cespite?: {
+    id: number;
+    aliquotaAmmortamento: number;
+    valoreIniziale: number;
+    stato: string;
+    fondoAmmortamento: number;
+    annoInizio: number;
+  } | null;
 };
 
 type Props = {
@@ -164,6 +173,11 @@ export function OperazioneForm({
     return map;
   });
   const [note, setNote] = useState(operazione?.note || "");
+  const [aliquotaAmmortamento, setAliquotaAmmortamento] = useState(
+    operazione?.cespite?.aliquotaAmmortamento
+      ? String(operazione.cespite.aliquotaAmmortamento)
+      : "20"
+  );
 
   // Selected category
   const selectedCategoria = useMemo(() => {
@@ -211,6 +225,18 @@ export function OperazioneForm({
     });
   }, [soci, customPercentuali, importoTotale]);
 
+  // Depreciation schedule preview
+  const pianoAmmortamento = useMemo(() => {
+    if (tipoOperazione !== "CESPITE") return [];
+    const importo = parseFloat(importoTotale) || 0;
+    const aliquota = parseFloat(aliquotaAmmortamento) || 0;
+    if (importo <= 0 || aliquota <= 0) return [];
+    const annoInizio = dataOperazione
+      ? new Date(dataOperazione).getFullYear()
+      : new Date().getFullYear();
+    return calcolaPianoAmmortamento(importo, aliquota, annoInizio);
+  }, [tipoOperazione, importoTotale, aliquotaAmmortamento, dataOperazione]);
+
   const sommaPercentualiCustom = useMemo(() => {
     return customRipartizioniCalcolate.reduce(
       (sum, r) => sum + r.percentuale,
@@ -256,6 +282,14 @@ export function OperazioneForm({
       }
     }
 
+    if (tipoOperazione === "CESPITE") {
+      const aliquota = parseFloat(aliquotaAmmortamento);
+      if (isNaN(aliquota) || aliquota <= 0 || aliquota > 100) {
+        toast.error("L'aliquota di ammortamento deve essere tra 1% e 100%");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload: any = {
@@ -281,6 +315,10 @@ export function OperazioneForm({
           socioId: s.id,
           percentuale: parseFloat(customPercentuali[s.id] || "0") || 0,
         }));
+      }
+
+      if (tipoOperazione === "CESPITE") {
+        payload.aliquotaAmmortamento = parseFloat(aliquotaAmmortamento);
       }
 
       const url = isEditing
@@ -530,6 +568,83 @@ export function OperazioneForm({
         </CardContent>
       </Card>
 
+      {/* Section 2b: Dati Cespite (only when CESPITE) */}
+      {tipoOperazione === "CESPITE" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Dati Cespite</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="aliquotaAmmortamento">
+                  Aliquota Ammortamento (%) *
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="aliquotaAmmortamento"
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max="100"
+                    value={aliquotaAmmortamento}
+                    onChange={(e) => setAliquotaAmmortamento(e.target.value)}
+                    disabled={readOnly}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Il primo anno l&apos;aliquota sara dimezzata (
+                  {formatPercentuale((parseFloat(aliquotaAmmortamento) || 0) / 2)}
+                  )
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Anteprima Piano Ammortamento</Label>
+                {pianoAmmortamento.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Inserisci importo e aliquota
+                  </p>
+                ) : (
+                  <div className="rounded-lg border max-h-48 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Anno</TableHead>
+                          <TableHead className="text-right">Aliq.</TableHead>
+                          <TableHead className="text-right">Quota</TableHead>
+                          <TableHead className="text-right">Fondo</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pianoAmmortamento.map((q) => (
+                          <TableRow key={q.anno}>
+                            <TableCell className="font-mono text-sm">
+                              {q.anno}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              {formatPercentuale(q.aliquotaApplicata)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              {formatCurrency(q.importoQuota)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              {formatCurrency(q.fondoProgressivo)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Section 3: Ripartizione */}
       <Card>
         <CardHeader>
@@ -701,8 +816,8 @@ export function OperazioneForm({
                           variant="outline"
                           className={
                             Math.abs(sommaPercentualiCustom - 100) > 0.01
-                              ? "bg-red-100 text-red-800 border-red-200"
-                              : "bg-green-100 text-green-800 border-green-200"
+                              ? "bg-red-500/15 text-red-400 border-red-500/25"
+                              : "bg-green-500/15 text-green-400 border-green-500/25"
                           }
                         >
                           {formatPercentuale(sommaPercentualiCustom)}

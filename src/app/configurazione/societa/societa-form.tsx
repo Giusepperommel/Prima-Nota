@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
@@ -16,6 +23,7 @@ type SocietaData = {
   codiceFiscale: string;
   indirizzo: string;
   regimeFiscale: string;
+  aliquotaIrap: string;
   capitaleSociale: string;
   dataCostituzione: string;
 };
@@ -45,6 +53,7 @@ export function SocietaForm({ societa }: { societa: SocietaData }) {
           codiceFiscale: formData.codiceFiscale,
           indirizzo: formData.indirizzo || null,
           regimeFiscale: formData.regimeFiscale || null,
+          aliquotaIrap: formData.aliquotaIrap ? parseFloat(formData.aliquotaIrap) : 3.9,
           capitaleSociale: formData.capitaleSociale ? parseFloat(formData.capitaleSociale) : null,
           dataCostituzione: formData.dataCostituzione || null,
         }),
@@ -127,12 +136,36 @@ export function SocietaForm({ societa }: { societa: SocietaData }) {
 
             <div className="space-y-2">
               <Label htmlFor="regimeFiscale">Regime Fiscale</Label>
+              <Select
+                value={formData.regimeFiscale || ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, regimeFiscale: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona regime" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ORDINARIO">Ordinario (IRES)</SelectItem>
+                  <SelectItem value="TRASPARENZA">
+                    Trasparenza fiscale (Art. 116 TUIR)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="aliquotaIrap">Aliquota IRAP (%)</Label>
               <Input
-                id="regimeFiscale"
-                name="regimeFiscale"
-                value={formData.regimeFiscale}
+                id="aliquotaIrap"
+                name="aliquotaIrap"
+                type="number"
+                step="0.01"
+                min="0"
+                max="10"
+                value={formData.aliquotaIrap}
                 onChange={handleChange}
-                placeholder="Es. Ordinario, Forfettario"
+                placeholder="3.90"
               />
             </div>
 

@@ -101,10 +101,10 @@ function formatDate(isoString: string): string {
 
 function TipoBadge({ tipo }: { tipo: string }) {
   const colorMap: Record<string, string> = {
-    FATTURA_ATTIVA: "bg-green-100 text-green-800 border-green-200",
-    COSTO: "bg-red-100 text-red-800 border-red-200",
-    SPESA: "bg-orange-100 text-orange-800 border-orange-200",
-    CESPITE: "bg-violet-100 text-violet-800 border-violet-200",
+    FATTURA_ATTIVA: "bg-green-500/15 text-green-400 border-green-500/25",
+    COSTO: "bg-red-500/15 text-red-400 border-red-500/25",
+    SPESA: "bg-orange-500/15 text-orange-400 border-orange-500/25",
+    CESPITE: "bg-violet-500/15 text-violet-400 border-violet-500/25",
   };
   return (
     <Badge variant="outline" className={colorMap[tipo] || ""}>
@@ -115,9 +115,9 @@ function TipoBadge({ tipo }: { tipo: string }) {
 
 function RipartizioneBadge({ tipo }: { tipo: string }) {
   const colorMap: Record<string, string> = {
-    COMUNE: "bg-blue-100 text-blue-800 border-blue-200",
-    SINGOLO: "bg-purple-100 text-purple-800 border-purple-200",
-    CUSTOM: "bg-orange-100 text-orange-800 border-orange-200",
+    COMUNE: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+    SINGOLO: "bg-purple-500/15 text-purple-400 border-purple-500/25",
+    CUSTOM: "bg-orange-500/15 text-orange-400 border-orange-500/25",
   };
   return (
     <Badge variant="outline" className={colorMap[tipo] || ""}>

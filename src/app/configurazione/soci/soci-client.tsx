@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, UserX, AlertTriangle, KeyRound, UserPlus, Search } from "lucide-react";
 
@@ -44,6 +45,7 @@ type SocioData = {
   ruolo: string;
   dataIngresso: string | null;
   attivo: boolean;
+  socioLavoratore: boolean;
   hasAccount: boolean;
   ultimoAccesso: string | null;
 };
@@ -57,6 +59,7 @@ type SocioFormData = {
   ruolo: string;
   dataIngresso: string;
   password: string;
+  socioLavoratore: boolean;
 };
 
 const emptyForm: SocioFormData = {
@@ -68,6 +71,7 @@ const emptyForm: SocioFormData = {
   ruolo: "STANDARD",
   dataIngresso: "",
   password: "",
+  socioLavoratore: false,
 };
 
 type Props = {
@@ -124,6 +128,10 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
     setFormData((prev) => ({ ...prev, ruolo: value }));
   };
 
+  const handleSocioLavoratoreChange = (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, socioLavoratore: checked }));
+  };
+
   // --- CREAZIONE ---
   const openCreateDialog = () => {
     setFormData(emptyForm);
@@ -147,6 +155,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
           ruolo: formData.ruolo,
           dataIngresso: formData.dataIngresso || null,
           password: formData.password,
+          socioLavoratore: formData.socioLavoratore,
         }),
       });
 
@@ -170,6 +179,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
           ? new Date(data.dataIngresso).toISOString().split("T")[0]
           : null,
         attivo: data.attivo,
+        socioLavoratore: data.socioLavoratore ?? false,
         hasAccount: true,
         ultimoAccesso: null,
       };
@@ -206,6 +216,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
       ruolo: socio.ruolo,
       dataIngresso: socio.dataIngresso ?? "",
       password: "",
+      socioLavoratore: socio.socioLavoratore,
     });
     setEditDialogOpen(true);
   };
@@ -224,6 +235,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
         quotaPercentuale: parseFloat(formData.quotaPercentuale),
         ruolo: formData.ruolo,
         dataIngresso: formData.dataIngresso || null,
+        socioLavoratore: formData.socioLavoratore,
       };
       if (formData.password) {
         payload.password = formData.password;
@@ -256,6 +268,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
           ? new Date(data.dataIngresso).toISOString().split("T")[0]
           : null,
         attivo: data.attivo,
+        socioLavoratore: data.socioLavoratore ?? false,
         hasAccount: existingSocio?.hasAccount ?? true,
         ultimoAccesso: existingSocio?.ultimoAccesso ?? null,
       };
@@ -383,6 +396,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
         ruolo: data.ruolo,
         dataIngresso: data.dataIngresso,
         attivo: data.attivo,
+        socioLavoratore: data.socioLavoratore ?? false,
         hasAccount: true,
         ultimoAccesso: null,
       };
@@ -428,7 +442,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
             <CardTitle>Elenco Soci</CardTitle>
             <CardDescription>
               Gestisci i soci della societa. Somma quote attive:{" "}
-              <span className={quoteOk ? "text-green-600 font-semibold" : "text-yellow-600 font-semibold"}>
+              <span className={quoteOk ? "text-green-400 font-semibold" : "text-yellow-400 font-semibold"}>
                 {sommaQuote.toFixed(2)}%
               </span>
             </CardDescription>
@@ -457,6 +471,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
                 formData={formData}
                 onChange={handleFormChange}
                 onRuoloChange={handleRuoloChange}
+                onSocioLavoratoreChange={handleSocioLavoratoreChange}
                 onSubmit={handleCreate}
                 loading={loading}
                 isEdit={false}
@@ -479,6 +494,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
                   <TableHead>Email</TableHead>
                   <TableHead className="text-center">Quota %</TableHead>
                   <TableHead className="text-center">Ruolo</TableHead>
+                  <TableHead className="text-center">Lavoratore</TableHead>
                   <TableHead className="text-center">Account</TableHead>
                   <TableHead className="text-center">Stato</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -506,6 +522,18 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
+                      <Badge
+                        variant="outline"
+                        className={
+                          socio.socioLavoratore
+                            ? "bg-violet-500/15 text-violet-400 border-violet-500/25"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {socio.socioLavoratore ? "Si" : "No"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
                       {socio.hasAccount ? (
                         <div className="text-xs">
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300">
@@ -528,7 +556,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
                         variant={socio.attivo ? "default" : "destructive"}
                         className={
                           socio.attivo
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            ? "bg-green-500/15 text-green-400"
                             : ""
                         }
                       >
@@ -579,6 +607,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
             formData={formData}
             onChange={handleFormChange}
             onRuoloChange={handleRuoloChange}
+            onSocioLavoratoreChange={handleSocioLavoratoreChange}
             onSubmit={handleEdit}
             loading={loading}
             isEdit={true}
@@ -727,6 +756,7 @@ function SocioForm({
   formData,
   onChange,
   onRuoloChange,
+  onSocioLavoratoreChange,
   onSubmit,
   loading,
   isEdit,
@@ -734,6 +764,7 @@ function SocioForm({
   formData: SocioFormData;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRuoloChange: (value: string) => void;
+  onSocioLavoratoreChange: (checked: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   loading: boolean;
   isEdit: boolean;
@@ -851,6 +882,19 @@ function SocioForm({
               Compila solo se vuoi cambiare la password dell&apos;utente.
             </p>
           )}
+        </div>
+        <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="socioLavoratore">Socio Lavoratore</Label>
+            <p className="text-xs text-muted-foreground">
+              Attiva se il socio presta opera nella societa (per calcolo INPS).
+            </p>
+          </div>
+          <Switch
+            id="socioLavoratore"
+            checked={formData.socioLavoratore}
+            onCheckedChange={onSocioLavoratoreChange}
+          />
         </div>
       </div>
       <DialogFooter>

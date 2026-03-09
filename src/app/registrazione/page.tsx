@@ -61,11 +61,14 @@ export default function RegistrazionePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-32 left-1/2 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
+      </div>
+      <Card className="relative w-full max-w-md border-white/[0.06]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Crea il tuo account</CardTitle>
-          <CardDescription>Registrati per iniziare a usare Prima Nota</CardDescription>
+          <CardDescription>Registrati per iniziare a usare Prima<span className="text-primary">Nota</span></CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

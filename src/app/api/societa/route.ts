@@ -222,6 +222,7 @@ export async function PUT(request: Request) {
       codiceFiscale,
       indirizzo,
       regimeFiscale,
+      aliquotaIrap,
       capitaleSociale,
       dataCostituzione,
     } = body;
@@ -273,6 +274,7 @@ export async function PUT(request: Request) {
         codiceFiscale,
         indirizzo: indirizzo || null,
         regimeFiscale: regimeFiscale || null,
+        aliquotaIrap: aliquotaIrap != null ? aliquotaIrap : 3.9,
         capitaleSociale: capitaleSociale != null ? capitaleSociale : null,
         dataCostituzione: dataCostituzione
           ? new Date(dataCostituzione)

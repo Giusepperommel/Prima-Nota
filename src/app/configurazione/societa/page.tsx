@@ -26,6 +26,7 @@ export default async function SocietaPage() {
     codiceFiscale: societa.codiceFiscale,
     indirizzo: societa.indirizzo ?? "",
     regimeFiscale: societa.regimeFiscale ?? "",
+    aliquotaIrap: String(Number(societa.aliquotaIrap)),
     capitaleSociale: societa.capitaleSociale ? String(Number(societa.capitaleSociale)) : "",
     dataCostituzione: societa.dataCostituzione
       ? societa.dataCostituzione.toISOString().split("T")[0]
