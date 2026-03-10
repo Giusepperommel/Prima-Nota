@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -32,13 +39,12 @@ type SocietaData = {
   partitaIva: string;
   codiceFiscaleSocieta: string;
   indirizzo: string;
-  regimeFiscale: string;
   capitaleSociale: string;
   dataCostituzione: string;
 };
 
 type SocioData = {
-  codiceFiscale: string;
+  nomeSocio: string;
   quotaPercentuale: string;
   dataIngresso: string;
 };
@@ -232,19 +238,20 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tipoAttivita, setTipoAttivita] = useState("SRL");
+  const [regimeFiscale, setRegimeFiscale] = useState("ORDINARIO");
 
   const [societaData, setSocietaData] = useState<SocietaData>({
     ragioneSociale: "",
     partitaIva: "",
     codiceFiscaleSocieta: "",
     indirizzo: "",
-    regimeFiscale: "",
     capitaleSociale: "",
     dataCostituzione: "",
   });
 
   const [socioData, setSocioData] = useState<SocioData>({
-    codiceFiscale: "",
+    nomeSocio: "",
     quotaPercentuale: "100",
     dataIngresso: new Date().toISOString().split("T")[0],
   });
@@ -276,8 +283,8 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
   }
 
   function validateStep2(): boolean {
-    if (!/^[A-Z0-9]{16}$/i.test(socioData.codiceFiscale)) {
-      setError("Il codice fiscale deve essere di 16 caratteri alfanumerici");
+    if (!socioData.nomeSocio.trim()) {
+      setError("Il nome del socio e' obbligatorio");
       return false;
     }
     const quota = parseFloat(socioData.quotaPercentuale);
@@ -315,13 +322,14 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
           partitaIva: societaData.partitaIva,
           codiceFiscaleSocieta: societaData.codiceFiscaleSocieta,
           indirizzo: societaData.indirizzo || null,
-          regimeFiscale: societaData.regimeFiscale || null,
+          tipoAttivita,
+          regimeFiscale,
           capitaleSociale: societaData.capitaleSociale
             ? parseFloat(societaData.capitaleSociale)
             : null,
           dataCostituzione: societaData.dataCostituzione || null,
           socio: {
-            codiceFiscale: socioData.codiceFiscale,
+            nomeSocio: socioData.nomeSocio,
             quotaPercentuale: parseFloat(socioData.quotaPercentuale),
             dataIngresso: socioData.dataIngresso,
           },
@@ -400,15 +408,37 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="regimeFiscale">Regime Fiscale</Label>
-              <Input
-                id="regimeFiscale"
-                name="regimeFiscale"
-                value={societaData.regimeFiscale}
-                onChange={handleSocietaChange}
-                placeholder="Es. Ordinario, Forfettario"
-              />
+              <Label htmlFor="tipoAttivita">Tipo attivit&agrave;</Label>
+              <Select value={tipoAttivita} onValueChange={(val) => {
+                setTipoAttivita(val);
+                if (["SRL", "SRLS", "SNC", "SAS", "STP"].includes(val)) {
+                  setRegimeFiscale("ORDINARIO");
+                }
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SRL">SRL / SRLS</SelectItem>
+                  <SelectItem value="SNC">SNC</SelectItem>
+                  <SelectItem value="SAS">SAS</SelectItem>
+                  <SelectItem value="STP">STP (Societa tra professionisti)</SelectItem>
+                  <SelectItem value="DITTA_INDIVIDUALE">Ditta individuale</SelectItem>
+                  <SelectItem value="LIBERO_PROFESSIONISTA">Libero professionista</SelectItem>
+                  <SelectItem value="AGENTE_COMMERCIO">Agente di commercio</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {["DITTA_INDIVIDUALE", "LIBERO_PROFESSIONISTA", "AGENTE_COMMERCIO"].includes(tipoAttivita) && (
+              <div className="space-y-2">
+                <Label htmlFor="regimeFiscale">Regime fiscale</Label>
+                <Select value={regimeFiscale} onValueChange={setRegimeFiscale}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                    <SelectItem value="FORFETTARIO">Forfettario</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="capitaleSociale">Capitale Sociale</Label>
               <Input
@@ -460,14 +490,13 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-2">
-              <Label htmlFor="codiceFiscale">Codice Fiscale Personale *</Label>
+              <Label htmlFor="nomeSocio">Nome Socio *</Label>
               <Input
-                id="codiceFiscale"
-                name="codiceFiscale"
-                value={socioData.codiceFiscale}
+                id="nomeSocio"
+                name="nomeSocio"
+                value={socioData.nomeSocio}
                 onChange={handleSocioChange}
-                maxLength={16}
-                placeholder="RSSMRA80A01H501U"
+                placeholder="Es. Mario Rossi"
               />
             </div>
             <div className="space-y-2">
@@ -550,12 +579,14 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
                     </span>
                   </div>
                 )}
-                {societaData.regimeFiscale && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Regime Fiscale</span>
-                    <span className="font-medium">{societaData.regimeFiscale}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tipo Attivit&agrave;</span>
+                  <span className="font-medium">{tipoAttivita}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Regime Fiscale</span>
+                  <span className="font-medium">{regimeFiscale}</span>
+                </div>
                 {societaData.capitaleSociale && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Capitale Sociale</span>
@@ -585,8 +616,8 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
               </h3>
               <div className="grid gap-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Codice Fiscale</span>
-                  <span className="font-medium">{socioData.codiceFiscale}</span>
+                  <span className="text-muted-foreground">Nome Socio</span>
+                  <span className="font-medium">{socioData.nomeSocio}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Quota</span>
