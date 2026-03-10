@@ -48,6 +48,9 @@ type CategoriaSpesa = {
   percentualeDeducibilita: number;
   descrizione: string | null;
   tipoCategoria: string | null;
+  aliquotaIvaDefault: number;
+  percentualeDetraibilitaIva: number;
+  haOpzioniUso: boolean;
   attiva: boolean;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +61,8 @@ type FormData = {
   percentualeDeducibilita: string;
   descrizione: string;
   tipoCategoria: string;
+  aliquotaIvaDefault: string;
+  percentualeDetraibilitaIva: string;
 };
 
 const TIPI_CATEGORIA = [
@@ -73,11 +78,21 @@ const TIPI_CATEGORIA = [
   "Altro",
 ] as const;
 
+const ALIQUOTE_IVA = [
+  { value: "22", label: "22%" },
+  { value: "10", label: "10%" },
+  { value: "5", label: "5%" },
+  { value: "4", label: "4%" },
+  { value: "0", label: "0% (esente)" },
+] as const;
+
 const emptyFormData: FormData = {
   nome: "",
   percentualeDeducibilita: "100",
   descrizione: "",
   tipoCategoria: "",
+  aliquotaIvaDefault: "22",
+  percentualeDetraibilitaIva: "100",
 };
 
 function getDeducibilitaBadge(percentuale: number) {
@@ -129,6 +144,8 @@ export function CategorieTable({
       percentualeDeducibilita: String(categoria.percentualeDeducibilita),
       descrizione: categoria.descrizione || "",
       tipoCategoria: categoria.tipoCategoria || "",
+      aliquotaIvaDefault: String(categoria.aliquotaIvaDefault ?? 22),
+      percentualeDetraibilitaIva: String(categoria.percentualeDetraibilitaIva ?? 100),
     });
     setDialogOpen(true);
   }
@@ -143,6 +160,8 @@ export function CategorieTable({
         percentualeDeducibilita: Number(formData.percentualeDeducibilita),
         descrizione: formData.descrizione.trim() || null,
         tipoCategoria: formData.tipoCategoria || null,
+        aliquotaIvaDefault: Number(formData.aliquotaIvaDefault),
+        percentualeDetraibilitaIva: Number(formData.percentualeDetraibilitaIva),
       };
 
       if (!payload.nome) {
@@ -268,7 +287,10 @@ export function CategorieTable({
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Deducibilita</TableHead>
+                  <TableHead>Aliquota IVA</TableHead>
+                  <TableHead>% Detr. IVA</TableHead>
                   <TableHead>Tipo Categoria</TableHead>
+                  <TableHead>Opz. Uso</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
@@ -295,10 +317,27 @@ export function CategorieTable({
                       {getDeducibilitaBadge(cat.percentualeDeducibilita)}
                     </TableCell>
                     <TableCell>
+                      <Badge className="bg-blue-500/15 text-blue-400 hover:bg-blue-500/20">
+                        {cat.aliquotaIvaDefault}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {getDeducibilitaBadge(cat.percentualeDetraibilitaIva)}
+                    </TableCell>
+                    <TableCell>
                       {cat.tipoCategoria ? (
                         <Badge variant="outline">{cat.tipoCategoria}</Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {cat.haOpzioniUso ? (
+                        <Badge className="bg-purple-500/15 text-purple-400 hover:bg-purple-500/20">
+                          Si
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">No</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -403,6 +442,51 @@ export function CategorieTable({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="aliquotaIvaDefault">Aliquota IVA Default</Label>
+                <Select
+                  value={formData.aliquotaIvaDefault}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      aliquotaIvaDefault: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleziona aliquota IVA..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALIQUOTE_IVA.map((aliquota) => (
+                      <SelectItem key={aliquota.value} value={aliquota.value}>
+                        {aliquota.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="percentualeDetraibilitaIva">
+                  % Detraibilita IVA
+                </Label>
+                <Input
+                  id="percentualeDetraibilitaIva"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.percentualeDetraibilitaIva}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      percentualeDetraibilitaIva: e.target.value,
+                    }))
+                  }
+                  placeholder="Es. 100, 50, 0..."
+                />
               </div>
 
               <div className="grid gap-2">

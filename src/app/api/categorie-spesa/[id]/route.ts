@@ -37,7 +37,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { nome, percentualeDeducibilita, descrizione, tipoCategoria } = body;
+    const { nome, percentualeDeducibilita, descrizione, tipoCategoria, aliquotaIvaDefault, percentualeDetraibilitaIva } = body;
 
     if (!nome || percentualeDeducibilita === undefined || percentualeDeducibilita === null) {
       return NextResponse.json(
@@ -72,12 +72,18 @@ export async function PUT(
         percentualeDeducibilita: percentuale,
         descrizione: descrizione || null,
         tipoCategoria: tipoCategoria || null,
+        aliquotaIvaDefault: aliquotaIvaDefault !== undefined ? Number(aliquotaIvaDefault) : undefined,
+        percentualeDetraibilitaIva: percentualeDetraibilitaIva !== undefined ? Number(percentualeDetraibilitaIva) : undefined,
       },
     });
 
     return NextResponse.json({
       ...updated,
       percentualeDeducibilita: Number(updated.percentualeDeducibilita),
+      aliquotaIvaDefault: Number(updated.aliquotaIvaDefault),
+      percentualeDetraibilitaIva: Number(updated.percentualeDetraibilitaIva),
+      haOpzioniUso: Boolean(updated.haOpzioniUso),
+      opzioniUso: updated.opzioniUso ?? null,
     });
   } catch (error) {
     console.error("Errore nell'aggiornamento della categoria:", error);
@@ -130,6 +136,10 @@ export async function PATCH(
     return NextResponse.json({
       ...updated,
       percentualeDeducibilita: Number(updated.percentualeDeducibilita),
+      aliquotaIvaDefault: Number(updated.aliquotaIvaDefault),
+      percentualeDetraibilitaIva: Number(updated.percentualeDetraibilitaIva),
+      haOpzioniUso: Boolean(updated.haOpzioniUso),
+      opzioniUso: updated.opzioniUso ?? null,
     });
   } catch (error) {
     console.error("Errore nel toggle della categoria:", error);

@@ -15,6 +15,9 @@ export default async function CategorieSpesaPage() {
   const serializedCategorie = categorie.map((cat) => ({
     ...cat,
     percentualeDeducibilita: Number(cat.percentualeDeducibilita),
+    aliquotaIvaDefault: Number(cat.aliquotaIvaDefault),
+    percentualeDetraibilitaIva: Number(cat.percentualeDetraibilitaIva),
+    haOpzioniUso: Boolean(cat.haOpzioniUso),
     createdAt: cat.createdAt.toISOString(),
     updatedAt: cat.updatedAt.toISOString(),
   }));

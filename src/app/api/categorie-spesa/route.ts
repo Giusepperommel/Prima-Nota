@@ -29,6 +29,10 @@ export async function GET(request: NextRequest) {
     const serialized = categorie.map((cat) => ({
       ...cat,
       percentualeDeducibilita: Number(cat.percentualeDeducibilita),
+      aliquotaIvaDefault: Number(cat.aliquotaIvaDefault),
+      percentualeDetraibilitaIva: Number(cat.percentualeDetraibilitaIva),
+      haOpzioniUso: Boolean(cat.haOpzioniUso),
+      opzioniUso: cat.opzioniUso ?? null,
     }));
 
     return NextResponse.json(serialized);
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
     const societaId = user.societaId as number;
     const body = await request.json();
 
-    const { nome, percentualeDeducibilita, descrizione, tipoCategoria } = body;
+    const { nome, percentualeDeducibilita, descrizione, tipoCategoria, aliquotaIvaDefault, percentualeDetraibilitaIva } = body;
 
     if (!nome || percentualeDeducibilita === undefined || percentualeDeducibilita === null) {
       return NextResponse.json(
@@ -91,6 +95,8 @@ export async function POST(request: NextRequest) {
         percentualeDeducibilita: percentuale,
         descrizione: descrizione || null,
         tipoCategoria: tipoCategoria || null,
+        aliquotaIvaDefault: aliquotaIvaDefault !== undefined ? Number(aliquotaIvaDefault) : 22,
+        percentualeDetraibilitaIva: percentualeDetraibilitaIva !== undefined ? Number(percentualeDetraibilitaIva) : 100,
       },
     });
 
@@ -98,6 +104,10 @@ export async function POST(request: NextRequest) {
       {
         ...categoria,
         percentualeDeducibilita: Number(categoria.percentualeDeducibilita),
+        aliquotaIvaDefault: Number(categoria.aliquotaIvaDefault),
+        percentualeDetraibilitaIva: Number(categoria.percentualeDetraibilitaIva),
+        haOpzioniUso: Boolean(categoria.haOpzioniUso),
+        opzioniUso: categoria.opzioniUso ?? null,
       },
       { status: 201 }
     );
