@@ -1,4 +1,4 @@
-import { PrismaClient, RuoloUtente } from "@prisma/client";
+import { PrismaClient, Prisma, RuoloUtente } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { getCategorieDefault } from "../src/lib/categorie-default";
 
@@ -94,7 +94,7 @@ async function main() {
       aliquotaIvaDefault: c.aliquotaIvaDefault,
       percentualeDetraibilitaIva: c.percentualeDetraibilitaIva,
       haOpzioniUso: c.haOpzioniUso,
-      opzioniUso: c.opzioniUso,
+      opzioniUso: c.opzioniUso ?? Prisma.JsonNull,
     })),
   });
 

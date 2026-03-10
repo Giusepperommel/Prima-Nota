@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -35,7 +35,7 @@ async function migrate() {
             aliquotaIvaDefault: catDefault.aliquotaIvaDefault,
             percentualeDetraibilitaIva: catDefault.percentualeDetraibilitaIva,
             haOpzioniUso: catDefault.haOpzioniUso,
-            opzioniUso: catDefault.opzioniUso,
+            opzioniUso: catDefault.opzioniUso ?? Prisma.JsonNull,
           },
         });
         console.log(`  Updated category: ${catDefault.nome}`);
@@ -51,7 +51,7 @@ async function migrate() {
             aliquotaIvaDefault: catDefault.aliquotaIvaDefault,
             percentualeDetraibilitaIva: catDefault.percentualeDetraibilitaIva,
             haOpzioniUso: catDefault.haOpzioniUso,
-            opzioniUso: catDefault.opzioniUso,
+            opzioniUso: catDefault.opzioniUso ?? Prisma.JsonNull,
           },
         });
         console.log(`  Created new category: ${catDefault.nome}`);

@@ -63,9 +63,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Socio non trovato" }, { status: 404 });
     }
 
-    const regimeFiscale = societa.regimeFiscale === "TRASPARENZA"
-      ? "TRASPARENZA" as const
-      : "ORDINARIO" as const;
+    // RegimeFiscale enum only has ORDINARIO and FORFETTARIO
+    // TRASPARENZA is handled as a tax calculation mode, not a DB regime
+    const regimeFiscale = "ORDINARIO" as const;
 
     const aliquotaIrap = Number(societa.aliquotaIrap);
 
@@ -97,10 +97,7 @@ export async function GET(request: NextRequest) {
       const importoSocio = Number(rip.importoCalcolato);
       if (rip.operazione.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importoSocio;
-      } else if (
-        rip.operazione.tipoOperazione === "COSTO" ||
-        rip.operazione.tipoOperazione === "SPESA"
-      ) {
+      } else if (rip.operazione.tipoOperazione === "COSTO") {
         costiDiretti += importoSocio;
       }
     }

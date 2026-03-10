@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCategorieDefault } from "@/lib/categorie-default";
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
           aliquotaIvaDefault: c.aliquotaIvaDefault,
           percentualeDetraibilitaIva: c.percentualeDetraibilitaIva,
           haOpzioniUso: c.haOpzioniUso,
-          opzioniUso: c.opzioniUso,
+          opzioniUso: c.opzioniUso ?? Prisma.JsonNull,
         })),
       });
 

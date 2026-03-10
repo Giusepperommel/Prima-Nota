@@ -53,7 +53,7 @@ export default async function NuovaOperazionePage() {
     aliquotaIvaDefault: Number(c.aliquotaIvaDefault),
     percentualeDetraibilitaIva: Number(c.percentualeDetraibilitaIva),
     haOpzioniUso: c.haOpzioniUso,
-    opzioniUso: c.opzioniUso,
+    opzioniUso: c.opzioniUso as any,
   }));
 
   return (

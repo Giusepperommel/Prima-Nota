@@ -49,10 +49,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Determine regime: default to ORDINARIO if not set
-    const regimeFiscale = societa.regimeFiscale === "TRASPARENZA"
-      ? "TRASPARENZA" as const
-      : "ORDINARIO" as const;
+    // RegimeFiscale enum only has ORDINARIO and FORFETTARIO
+    // TRASPARENZA is handled as a tax calculation mode, not a DB regime
+    const regimeFiscale = "ORDINARIO" as const;
 
     const aliquotaIrap = Number(societa.aliquotaIrap);
 
@@ -83,7 +82,7 @@ export async function GET(request: NextRequest) {
       const importo = Number(op.importoTotale);
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importo;
-      } else if (op.tipoOperazione === "COSTO" || op.tipoOperazione === "SPESA") {
+      } else if (op.tipoOperazione === "COSTO") {
         costiDiretti += importo;
       }
     }

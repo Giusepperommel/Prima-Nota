@@ -117,7 +117,7 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     aliquotaIvaDefault: Number(c.aliquotaIvaDefault),
     percentualeDetraibilitaIva: Number(c.percentualeDetraibilitaIva),
     haOpzioniUso: c.haOpzioniUso,
-    opzioniUso: c.opzioniUso,
+    opzioniUso: c.opzioniUso as any,
   }));
 
   // Load cespite data if this is a CESPITE operation
@@ -138,6 +138,13 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     numeroDocumento: operazione.numeroDocumento,
     descrizione: operazione.descrizione,
     importoTotale: Number(operazione.importoTotale),
+    aliquotaIva: operazione.aliquotaIva ? Number(operazione.aliquotaIva) : null,
+    importoImponibile: operazione.importoImponibile ? Number(operazione.importoImponibile) : null,
+    importoIva: operazione.importoIva ? Number(operazione.importoIva) : null,
+    percentualeDetraibilitaIva: operazione.percentualeDetraibilitaIva ? Number(operazione.percentualeDetraibilitaIva) : null,
+    ivaDetraibile: operazione.ivaDetraibile ? Number(operazione.ivaDetraibile) : null,
+    ivaIndetraibile: operazione.ivaIndetraibile ? Number(operazione.ivaIndetraibile) : null,
+    opzioneUso: operazione.opzioneUso ?? null,
     categoriaId: operazione.categoriaId,
     importoDeducibile: Number(operazione.importoDeducibile),
     percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
