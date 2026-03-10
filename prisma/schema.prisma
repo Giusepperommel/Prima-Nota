@@ -25,6 +25,7 @@ model Societa {
   categorieSpesa CategoriaSpesa[]
   operazioni     Operazione[]
   cespiti        Cespite[]
+  operazioniRicorrenti OperazioneRicorrente[]
 
   @@map("societa")
 }
@@ -64,6 +65,7 @@ model Utente {
   operazioniCreate Operazione[]
   logAttivita   LogAttivita[]
   preferenzeUso PreferenzaUsoCategoria[]
+  operazioniRicorrenti OperazioneRicorrente[]
 
   @@map("utenti")
 }
@@ -86,6 +88,7 @@ model CategoriaSpesa {
   societa       Societa      @relation(fields: [societaId], references: [id])
   operazioni    Operazione[]
   preferenzeUso PreferenzaUsoCategoria[]
+  operazioniRicorrenti OperazioneRicorrente[]
 
   @@map("categorie_spesa")
 }
@@ -114,6 +117,8 @@ model Operazione {
   fileAllegato            String?          @map("file_allegato") @db.VarChar(255)
   fileXml                 String?          @map("file_xml") @db.LongText
   eliminato               Boolean          @default(false)
+  bozza                  Boolean  @default(false)
+  operazioneRicorrenteId Int?     @map("operazione_ricorrente_id")
   createdByUserId         Int              @map("created_by_user_id")
   createdAt               DateTime         @default(now()) @map("created_at")
   updatedAt               DateTime         @updatedAt @map("updated_at")
@@ -123,10 +128,12 @@ model Operazione {
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
   ripartizioni RipartizioneOperazione[]
   cespite      Cespite?
+  operazioneRicorrente OperazioneRicorrente? @relation(fields: [operazioneRicorrenteId], references: [id])
 
   @@index([societaId, dataOperazione])
   @@index([categoriaId])
   @@index([createdByUserId])
+  @@index([operazioneRicorrenteId])
   @@map("operazioni")
 }
 
@@ -274,6 +281,13 @@ enum RegimeFiscale {
   @@map("regime_fiscale")
 }
 
+enum TipoContratto {
+  LEASING
+  NOLEGGIO_LUNGO_TERMINE
+
+  @@map("tipo_contratto")
+}
+
 model PreferenzaUsoCategoria {
   id          Int      @id @default(autoincrement())
   userId      Int      @map("user_id")
@@ -286,4 +300,56 @@ model PreferenzaUsoCategoria {
 
   @@unique([userId, categoriaId])
   @@map("preferenze_uso_categoria")
+}
+
+model OperazioneRicorrente {
+  id                Int       @id @default(autoincrement())
+  societaId         Int       @map("societa_id")
+  createdByUserId   Int       @map("created_by_user_id")
+  attiva            Boolean   @default(true)
+
+  // Template dati operazione
+  tipoOperazione    TipoOperazione @map("tipo_operazione")
+  categoriaId       Int            @map("categoria_id")
+  descrizione       String         @db.Text
+  importoTotale     Decimal        @map("importo_totale") @db.Decimal(10, 2)
+  aliquotaIva       Decimal?       @map("aliquota_iva") @db.Decimal(5, 2)
+  importoImponibile Decimal?       @map("importo_imponibile") @db.Decimal(10, 2)
+  importoIva        Decimal?       @map("importo_iva") @db.Decimal(10, 2)
+  percentualeDetraibilitaIva Decimal? @map("percentuale_detraibilita_iva") @db.Decimal(5, 2)
+  ivaDetraibile     Decimal?       @map("iva_detraibile") @db.Decimal(10, 2)
+  ivaIndetraibile   Decimal?       @map("iva_indetraibile") @db.Decimal(10, 2)
+  opzioneUso        String?        @map("opzione_uso") @db.VarChar(50)
+  percentualeDeducibilita Decimal  @map("percentuale_deducibilita") @db.Decimal(5, 2)
+  importoDeducibile Decimal        @map("importo_deducibile") @db.Decimal(10, 2)
+  deducibilitaCustom Boolean       @default(false) @map("deducibilita_custom")
+  tipoRipartizione  TipoRipartizione @map("tipo_ripartizione")
+  socioSingoloId    Int?           @map("socio_singolo_id")
+  note              String?        @db.Text
+
+  // Ricorrenza
+  giornoDelMese        Int       @map("giorno_del_mese")
+  dataInizio           DateTime  @map("data_inizio") @db.Date
+  dataFine             DateTime? @map("data_fine") @db.Date
+  prossimaGenerazione  DateTime  @map("prossima_generazione") @db.Date
+
+  // Dati fiscali leasing/NLT (opzionali)
+  tipoContratto     TipoContratto? @map("tipo_contratto")
+  valoreBene        Decimal?       @map("valore_bene") @db.Decimal(10, 2)
+  maxicanone        Decimal?       @map("maxicanone") @db.Decimal(10, 2)
+  durataContratto   Int?           @map("durata_contratto")
+  quotaServizi      Decimal?       @map("quota_servizi") @db.Decimal(10, 2)
+  rateRimanenti     Int?           @map("rate_rimanenti")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  societa            Societa        @relation(fields: [societaId], references: [id])
+  categoria          CategoriaSpesa @relation(fields: [categoriaId], references: [id])
+  createdBy          Utente         @relation(fields: [createdByUserId], references: [id])
+  operazioniGenerate Operazione[]
+
+  @@index([societaId, attiva])
+  @@index([prossimaGenerazione])
+  @@map("operazioni_ricorrenti")
 }
