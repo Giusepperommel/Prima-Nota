@@ -1,30 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-// Categorie spesa standard italiane create automaticamente per ogni nuova societa
-const CATEGORIE_DEFAULT = [
-  { nome: "Carburante auto", perc: 20.0, desc: "Art. 164 comma 1 TUIR - Uso promiscuo", tipo: "Auto" },
-  { nome: "Telefonia mobile", perc: 80.0, desc: "Uso promiscuo professionale/personale", tipo: "Telecomunicazioni" },
-  { nome: "Telefonia fissa ufficio", perc: 100.0, desc: "Uso esclusivo professionale", tipo: "Telecomunicazioni" },
-  { nome: "Formazione e aggiornamento professionale", perc: 100.0, desc: "Corsi, seminari, libri tecnici", tipo: "Formazione" },
-  { nome: "Cancelleria e materiale ufficio", perc: 100.0, desc: "", tipo: "Ufficio" },
-  { nome: "Software e licenze", perc: 100.0, desc: "Abbonamenti cloud, licenze software", tipo: "IT" },
-  { nome: "Hardware e computer", perc: 100.0, desc: "Beni ammortizzabili", tipo: "IT" },
-  { nome: "Affitto ufficio", perc: 100.0, desc: "", tipo: "Immobili" },
-  { nome: "Utenze ufficio (luce, gas, acqua)", perc: 100.0, desc: "", tipo: "Immobili" },
-  { nome: "Pulizie ufficio", perc: 100.0, desc: "", tipo: "Immobili" },
-  { nome: "Consulenze professionali", perc: 100.0, desc: "Commercialista, legale, tecnici", tipo: "Servizi" },
-  { nome: "Spese bancarie e commissioni", perc: 100.0, desc: "", tipo: "Banca" },
-  { nome: "Assicurazioni professionali", perc: 100.0, desc: "", tipo: "Assicurazioni" },
-  { nome: "Marketing e pubblicita", perc: 100.0, desc: "", tipo: "Marketing" },
-  { nome: "Rappresentanza", perc: 75.0, desc: "Limiti art. 108 TUIR - percentuale indicativa", tipo: "Rappresentanza" },
-  { nome: "Manutenzione auto", perc: 20.0, desc: "Coerente con uso promiscuo carburante", tipo: "Auto" },
-  { nome: "Assicurazione auto", perc: 20.0, desc: "Coerente con uso promiscuo", tipo: "Auto" },
-  { nome: "Mobili e arredi", perc: 100.0, desc: "Beni ammortizzabili", tipo: "Ufficio" },
-  { nome: "Viaggi e trasferte", perc: 100.0, desc: "Se documentati e inerenti attivita", tipo: "Trasferte" },
-  { nome: "Vitto e alloggio trasferte", perc: 75.0, desc: "Limiti fiscali secondo normativa", tipo: "Trasferte" },
-];
+import { getCategorieDefault } from "@/lib/categorie-default";
 
 export async function POST(request: Request) {
   try {
@@ -50,6 +27,7 @@ export async function POST(request: Request) {
       codiceFiscaleSocieta,
       indirizzo,
       regimeFiscale,
+      tipoAttivita,
       capitaleSociale,
       dataCostituzione,
       socio,
@@ -80,16 +58,9 @@ export async function POST(request: Request) {
     }
 
     // Validazione dati socio
-    if (!socio?.codiceFiscale || !socio?.quotaPercentuale || !socio?.dataIngresso) {
+    if (!socio?.nomeSocio?.trim() || !socio?.quotaPercentuale || !socio?.dataIngresso) {
       return NextResponse.json(
-        { error: "Codice fiscale, quota percentuale e data ingresso del socio sono obbligatori" },
-        { status: 400 }
-      );
-    }
-
-    if (!/^[A-Z0-9]{16}$/i.test(socio.codiceFiscale)) {
-      return NextResponse.json(
-        { error: "Il codice fiscale personale deve essere di 16 caratteri" },
+        { error: "Nome socio, quota percentuale e data ingresso sono obbligatori" },
         { status: 400 }
       );
     }
@@ -122,7 +93,8 @@ export async function POST(request: Request) {
           partitaIva,
           codiceFiscale: codiceFiscaleSocieta,
           indirizzo: indirizzo || null,
-          regimeFiscale: regimeFiscale || null,
+          tipoAttivita: tipoAttivita || "SRL",
+          regimeFiscale: regimeFiscale || "ORDINARIO",
           capitaleSociale: capitaleSociale != null ? capitaleSociale : null,
           dataCostituzione: dataCostituzione
             ? new Date(dataCostituzione)
@@ -131,35 +103,52 @@ export async function POST(request: Request) {
       });
 
       // 2. Aggiorna il socio: associa alla societa, ruolo ADMIN, dati personali
+      const [nome, ...cognomeParts] = socio.nomeSocio.trim().split(" ");
+      const cognome = cognomeParts.join(" ") || nome;
       await tx.socio.update({
         where: { id: user.socioId },
         data: {
           societaId: nuovaSocieta.id,
           ruolo: "ADMIN",
-          codiceFiscale: socio.codiceFiscale,
+          nome,
+          cognome,
           quotaPercentuale: socio.quotaPercentuale,
           dataIngresso: new Date(socio.dataIngresso),
         },
       });
 
       // 3. Crea le categorie di spesa standard
+      const categorieDefault = getCategorieDefault(
+        tipoAttivita || "SRL",
+        regimeFiscale || "ORDINARIO"
+      );
+
       await tx.categoriaSpesa.createMany({
-        data: CATEGORIE_DEFAULT.map((c) => ({
+        data: categorieDefault.map((c) => ({
           societaId: nuovaSocieta.id,
           nome: c.nome,
-          percentualeDeducibilita: c.perc,
-          descrizione: c.desc || null,
-          tipoCategoria: c.tipo,
+          percentualeDeducibilita: c.percentualeDeducibilita,
+          descrizione: c.descrizione || null,
+          tipoCategoria: c.tipoCategoria,
+          aliquotaIvaDefault: c.aliquotaIvaDefault,
+          percentualeDetraibilitaIva: c.percentualeDetraibilitaIva,
+          haOpzioniUso: c.haOpzioniUso,
+          opzioniUso: c.opzioniUso,
         })),
       });
 
       return nuovaSocieta;
     });
 
+    const categorieCount = getCategorieDefault(
+      tipoAttivita || "SRL",
+      regimeFiscale || "ORDINARIO"
+    ).length;
+
     return NextResponse.json({
       societaId: result.id,
       ragioneSociale: result.ragioneSociale,
-      categorieCreate: CATEGORIE_DEFAULT.length,
+      categorieCreate: categorieCount,
     });
   } catch (error) {
     console.error("Errore nella creazione della societa:", error);
