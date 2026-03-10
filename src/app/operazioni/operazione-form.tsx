@@ -38,7 +38,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Save, X, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  calcolaCoeffLeasing,
+  calcolaCapNltMensile,
+  LIMITI_LEASING_AUTO,
+  LIMITI_NLT_ANNUO,
+} from "@/lib/calcoli-ricorrenze";
+import { Save, X, Loader2, AlertTriangle, RepeatIcon } from "lucide-react";
 
 type Socio = {
   id: number;
@@ -126,6 +133,7 @@ type Props = {
   readOnly?: boolean;
   preferenzeUso?: PreferenzaUso[];
   regimeFiscale?: string;
+  tipoAttivita?: string;
 };
 
 export function OperazioneForm({
@@ -135,6 +143,7 @@ export function OperazioneForm({
   readOnly = false,
   preferenzeUso = [],
   regimeFiscale = "ORDINARIO",
+  tipoAttivita = "SRL",
 }: Props) {
   const router = useRouter();
   const isEditing = !!operazione;
@@ -219,6 +228,22 @@ export function OperazioneForm({
       : "100"
   );
   const [ivaCustom, setIvaCustom] = useState(false);
+
+  // Ricorrenza
+  const [isRicorrente, setIsRicorrente] = useState(false);
+  const [giornoDelMese, setGiornoDelMese] = useState(() => {
+    const d = operazione?.dataOperazione ? new Date(operazione.dataOperazione) : new Date();
+    return d.getDate();
+  });
+  const [dataFineRicorrenza, setDataFineRicorrenza] = useState("");
+
+  // Leasing/NLT
+  const [tipoContratto, setTipoContratto] = useState<string>("");
+  const [valoreBene, setValoreBene] = useState("");
+  const [maxicanoneImporto, setMaxicanoneImporto] = useState("");
+  const [durataContrattoMesi, setDurataContrattoMesi] = useState("");
+  const [quotaServiziImporto, setQuotaServiziImporto] = useState("");
+
   const isForfettario = regimeFiscale === "FORFETTARIO";
 
   // IVA calculation (only for COSTO and CESPITE, not for forfettario)
@@ -282,6 +307,52 @@ export function OperazioneForm({
       }
     }
   }, [selectedCategoria, ivaCustom, ivaApplicabile]);
+
+  // Sync giorno del mese when dataOperazione changes
+  useEffect(() => {
+    if (dataOperazione && isRicorrente) {
+      const giorno = new Date(dataOperazione).getDate();
+      setGiornoDelMese(giorno);
+    }
+  }, [dataOperazione, isRicorrente]);
+
+  // Determine if category is leasing/NLT auto
+  const isLeasingNltCategory = useMemo(() => {
+    if (!selectedCategoria) return false;
+    const nome = selectedCategoria.nome.toLowerCase();
+    return nome.includes("leasing") || nome.includes("noleggio");
+  }, [selectedCategoria]);
+
+  // Leasing warning calculations
+  const leasingWarning = useMemo(() => {
+    if (tipoContratto !== "LEASING" || !valoreBene) return null;
+    const valore = parseFloat(valoreBene) || 0;
+    const isAgente = tipoAttivita === "AGENTE_COMMERCIO";
+    const limite = isAgente ? LIMITI_LEASING_AUTO.AGENTE : LIMITI_LEASING_AUTO.STANDARD;
+    if (valore <= limite) return null;
+    const coeff = calcolaCoeffLeasing(valore, tipoAttivita as any);
+    return {
+      limite,
+      coefficiente: Math.round(coeff * 10000) / 100,
+    };
+  }, [tipoContratto, valoreBene, tipoAttivita]);
+
+  // NLT warning calculations
+  const nltWarning = useMemo(() => {
+    if (tipoContratto !== "NOLEGGIO_LUNGO_TERMINE") return null;
+    const canone = parseFloat(importoTotale) || 0;
+    const servizi = parseFloat(quotaServiziImporto) || 0;
+    const quotaLocazione = canone - servizi;
+    const capMensile = calcolaCapNltMensile(tipoAttivita as any);
+    if (quotaLocazione <= capMensile) return null;
+    const isAgente = tipoAttivita === "AGENTE_COMMERCIO";
+    const limiteAnnuo = isAgente ? LIMITI_NLT_ANNUO.AGENTE : LIMITI_NLT_ANNUO.STANDARD;
+    return {
+      quotaLocazione: Math.round(quotaLocazione * 100) / 100,
+      capMensile,
+      limiteAnnuo,
+    };
+  }, [tipoContratto, importoTotale, quotaServiziImporto, tipoAttivita]);
 
   // Handler for usage option change
   const handleOpzioneUsoChange = (codice: string) => {
@@ -468,10 +539,58 @@ export function OperazioneForm({
         throw new Error(err.error || "Errore nel salvataggio");
       }
 
+      const result = await res.json();
+
+      // If recurring, also create the recurring template
+      if (isRicorrente && !isEditing) {
+        const ricorrenzaPayload: any = {
+          tipoOperazione,
+          categoriaId: parseInt(categoriaId, 10),
+          descrizione: descrizione.trim(),
+          importoTotale: importo,
+          aliquotaIva: ivaApplicabile ? parseFloat(aliquotaIva) || 0 : null,
+          importoImponibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.imponibile : null,
+          importoIva: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaTotale : null,
+          percentualeDetraibilitaIva: ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
+          ivaDetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
+          ivaIndetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
+          opzioneUso: opzioneUso || null,
+          percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
+          importoDeducibile: parseFloat(importoDeducibile) || 0,
+          deducibilitaCustom,
+          tipoRipartizione,
+          socioSingoloId: tipoRipartizione === "SINGOLO" ? parseInt(socioSingoloId, 10) : null,
+          note: note.trim() || null,
+          giornoDelMese,
+          dataInizio: dataOperazione,
+          dataFine: dataFineRicorrenza || null,
+        };
+
+        // Add leasing/NLT fields if applicable
+        if (tipoContratto) {
+          ricorrenzaPayload.tipoContratto = tipoContratto;
+          ricorrenzaPayload.valoreBene = valoreBene ? parseFloat(valoreBene) : null;
+          ricorrenzaPayload.maxicanone = maxicanoneImporto ? parseFloat(maxicanoneImporto) : null;
+          ricorrenzaPayload.durataContratto = durataContrattoMesi ? parseInt(durataContrattoMesi) : null;
+          ricorrenzaPayload.quotaServizi = quotaServiziImporto ? parseFloat(quotaServiziImporto) : null;
+          if (durataContrattoMesi) {
+            ricorrenzaPayload.rateRimanenti = parseInt(durataContrattoMesi) - 1;
+          }
+        }
+
+        await fetch("/api/operazioni-ricorrenti", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ricorrenzaPayload),
+        });
+      }
+
       toast.success(
         isEditing
           ? "Operazione aggiornata con successo"
-          : "Operazione creata con successo"
+          : isRicorrente
+            ? "Operazione creata e ricorrenza impostata"
+            : "Operazione creata con successo"
       );
       router.push("/operazioni");
       router.refresh();
@@ -1104,6 +1223,210 @@ export function OperazioneForm({
           />
         </CardContent>
       </Card>
+
+      {/* Section 5: Ricorrenza (solo per nuova operazione, non per editing) */}
+      {!isEditing && !readOnly && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <RepeatIcon className="h-5 w-5" />
+              Spesa Ricorrente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="ricorrente">Rendi ricorrente</Label>
+                <p className="text-xs text-muted-foreground">
+                  La spesa verra generata automaticamente ogni mese
+                </p>
+              </div>
+              <Switch
+                id="ricorrente"
+                checked={isRicorrente}
+                onCheckedChange={setIsRicorrente}
+              />
+            </div>
+
+            {isRicorrente && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="giornoDelMese">Giorno del mese (1-31)</Label>
+                    <Input
+                      id="giornoDelMese"
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={giornoDelMese}
+                      onChange={(e) => setGiornoDelMese(parseInt(e.target.value) || 1)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se il mese ha meno giorni, verra usato l&apos;ultimo giorno
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dataFineRicorrenza">Data fine (opzionale)</Label>
+                    <Input
+                      id="dataFineRicorrenza"
+                      type="date"
+                      value={dataFineRicorrenza}
+                      onChange={(e) => setDataFineRicorrenza(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se vuota, si rinnova fino a cancellazione manuale
+                    </p>
+                  </div>
+                </div>
+
+                {/* Leasing/NLT fields - only if category matches */}
+                {isLeasingNltCategory && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <Label>Tipo di contratto</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={tipoContratto === "LEASING" ? "default" : "outline"}
+                          onClick={() => setTipoContratto("LEASING")}
+                          className="flex-1"
+                        >
+                          Leasing
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={tipoContratto === "NOLEGGIO_LUNGO_TERMINE" ? "default" : "outline"}
+                          onClick={() => setTipoContratto("NOLEGGIO_LUNGO_TERMINE")}
+                          className="flex-1"
+                        >
+                          Noleggio Lungo Termine
+                        </Button>
+                      </div>
+
+                      {tipoContratto === "LEASING" && (
+                        <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
+                          <h4 className="font-medium text-sm">Dettagli Leasing</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Valore del veicolo</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">&euro;</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={valoreBene}
+                                  onChange={(e) => setValoreBene(e.target.value)}
+                                  className="pl-8"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Anticipo / Maxicanone</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">&euro;</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={maxicanoneImporto}
+                                  onChange={(e) => setMaxicanoneImporto(e.target.value)}
+                                  className="pl-8"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Durata contratto (mesi)</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={durataContrattoMesi}
+                                onChange={(e) => setDurataContrattoMesi(e.target.value)}
+                                placeholder="48"
+                              />
+                            </div>
+                          </div>
+                          {leasingWarning && (
+                            <div className="flex items-start gap-2 text-amber-600 text-sm bg-amber-500/10 rounded-lg p-3">
+                              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="font-medium">Valore veicolo supera il limite di {formatCurrency(leasingWarning.limite)}</p>
+                                <p>La deducibilita del canone sara ridotta proporzionalmente al {leasingWarning.coefficiente}%</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {tipoContratto === "NOLEGGIO_LUNGO_TERMINE" && (
+                        <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
+                          <h4 className="font-medium text-sm">Dettagli Noleggio Lungo Termine</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Di cui quota servizi</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">&euro;</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={quotaServiziImporto}
+                                  onChange={(e) => setQuotaServiziImporto(e.target.value)}
+                                  className="pl-8"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Manutenzione, assicurazione, bollo, ecc.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Anticipo (opzionale)</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">&euro;</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={maxicanoneImporto}
+                                  onChange={(e) => setMaxicanoneImporto(e.target.value)}
+                                  className="pl-8"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Durata contratto (mesi, opz.)</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={durataContrattoMesi}
+                                onChange={(e) => setDurataContrattoMesi(e.target.value)}
+                                placeholder="Opzionale"
+                              />
+                            </div>
+                          </div>
+                          {nltWarning && (
+                            <div className="flex items-start gap-2 text-amber-600 text-sm bg-amber-500/10 rounded-lg p-3">
+                              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="font-medium">Quota locazione ({formatCurrency(nltWarning.quotaLocazione)}/mese) supera il limite</p>
+                                <p>Limite annuo: {formatCurrency(nltWarning.limiteAnnuo)} ({formatCurrency(nltWarning.capMensile)}/mese). La deducibilita sara limitata.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Buttons */}
       {!readOnly && (

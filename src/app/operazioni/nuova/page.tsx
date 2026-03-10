@@ -63,6 +63,7 @@ export default async function NuovaOperazionePage() {
         categorie={serializedCategorie}
         preferenzeUso={preferenzeUso}
         regimeFiscale={societa?.regimeFiscale || "ORDINARIO"}
+        tipoAttivita={societa?.tipoAttivita || "SRL"}
       />
     </AuthenticatedLayout>
   );

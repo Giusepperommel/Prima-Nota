@@ -196,6 +196,7 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         readOnly={!canEdit}
         preferenzeUso={preferenzeUso}
         regimeFiscale={societa?.regimeFiscale || "ORDINARIO"}
+        tipoAttivita={societa?.tipoAttivita || "SRL"}
       />
     </AuthenticatedLayout>
   );
