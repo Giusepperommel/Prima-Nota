@@ -70,7 +70,7 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     user.ruolo === "ADMIN" || operazione.createdByUserId === user.id;
 
   // Load soci and categorie for the form
-  const [soci, categorie] = await Promise.all([
+  const [soci, categorie, preferenzeUso, societa] = await Promise.all([
     prisma.socio.findMany({
       where: { societaId: user.societaId!, attivo: true },
       orderBy: [{ cognome: "asc" }, { nome: "asc" }],
@@ -88,7 +88,18 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         id: true,
         nome: true,
         percentualeDeducibilita: true,
+        aliquotaIvaDefault: true,
+        percentualeDetraibilitaIva: true,
+        haOpzioniUso: true,
+        opzioniUso: true,
       },
+    }),
+    prisma.preferenzaUsoCategoria.findMany({
+      where: { userId: user.id as number },
+    }),
+    prisma.societa.findFirst({
+      where: { id: user.societaId! },
+      select: { regimeFiscale: true, tipoAttivita: true },
     }),
   ]);
 
@@ -103,6 +114,10 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     id: c.id,
     nome: c.nome,
     percentualeDeducibilita: Number(c.percentualeDeducibilita),
+    aliquotaIvaDefault: Number(c.aliquotaIvaDefault),
+    percentualeDetraibilitaIva: Number(c.percentualeDetraibilitaIva),
+    haOpzioniUso: c.haOpzioniUso,
+    opzioniUso: c.opzioniUso,
   }));
 
   // Load cespite data if this is a CESPITE operation
@@ -172,6 +187,8 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         categorie={serializedCategorie}
         operazione={serializedOperazione}
         readOnly={!canEdit}
+        preferenzeUso={preferenzeUso}
+        regimeFiscale={societa?.regimeFiscale || "ORDINARIO"}
       />
     </AuthenticatedLayout>
   );
