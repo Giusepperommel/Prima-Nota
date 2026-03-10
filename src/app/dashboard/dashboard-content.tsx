@@ -64,6 +64,16 @@ type Operazione = {
   numeroDocumento?: string;
 };
 
+type Bozza = {
+  id: number;
+  dataOperazione: string;
+  descrizione: string;
+  importoTotale: number;
+  categoria: { id: number; nome: string };
+  tipoOperazione: string;
+  tipoContratto: string | null;
+};
+
 type PeriodoPreset = "mese" | "anno" | "custom";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -76,7 +86,6 @@ const MESI_LABEL = [
 const TIPO_LABELS: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
-  SPESA: "Spesa",
   CESPITE: "Cespite",
 };
 
@@ -158,6 +167,13 @@ export function DashboardContent({ ruolo, nome }: Props) {
   const [breakdown, setBreakdown] = useState<BreakdownItem[]>([]);
   const [recentOps, setRecentOps] = useState<Operazione[]>([]);
 
+  // Bozze state
+  const [bozze, setBozze] = useState<Bozza[]>([]);
+  const [loadingBozze, setLoadingBozze] = useState(true);
+  const [editingBozza, setEditingBozza] = useState<number | null>(null);
+  const [editImporto, setEditImporto] = useState("");
+  const [confermando, setConfermando] = useState<number | null>(null);
+
   // Loading state
   const [loadingKpi, setLoadingKpi] = useState(true);
   const [loadingTrend, setLoadingTrend] = useState(true);
@@ -237,6 +253,58 @@ export function DashboardContent({ ruolo, nome }: Props) {
     }
   }, []);
 
+  const fetchBozze = useCallback(async () => {
+    setLoadingBozze(true);
+    try {
+      // First generate any pending drafts
+      await fetch("/api/operazioni-ricorrenti/genera", { method: "POST" });
+      // Then fetch drafts
+      const res = await fetch("/api/bozze");
+      if (res.ok) {
+        const data = await res.json();
+        setBozze(data);
+      }
+    } catch (err) {
+      console.error("Errore bozze:", err);
+    } finally {
+      setLoadingBozze(false);
+    }
+  }, []);
+
+  async function confermaBozza(id: number, importo?: number) {
+    setConfermando(id);
+    try {
+      const body = importo !== undefined ? { importoTotale: importo } : {};
+      const res = await fetch(`/api/bozze/${id}/conferma`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setBozze((prev) => prev.filter((b) => b.id !== id));
+        setEditingBozza(null);
+        fetchKpi(dates.da, dates.a);
+        fetchRecentOps();
+      }
+    } finally {
+      setConfermando(null);
+    }
+  }
+
+  async function confermaTutte() {
+    setConfermando(-1);
+    try {
+      const res = await fetch("/api/bozze/conferma-tutte", { method: "POST" });
+      if (res.ok) {
+        setBozze([]);
+        fetchKpi(dates.da, dates.a);
+        fetchRecentOps();
+      }
+    } finally {
+      setConfermando(null);
+    }
+  }
+
   // ── Effects ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -252,6 +320,10 @@ export function DashboardContent({ ruolo, nome }: Props) {
   useEffect(() => {
     fetchRecentOps();
   }, [fetchRecentOps]);
+
+  useEffect(() => {
+    fetchBozze();
+  }, [fetchBozze]);
 
   // ── Period handlers ─────────────────────────────────────────────────────
 
@@ -282,6 +354,95 @@ export function DashboardContent({ ruolo, nome }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* ── Banner Bozze Ricorrenti ──────────────────────────────────── */}
+      {!loadingBozze && bozze.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Hai {bozze.length} {bozze.length === 1 ? "spesa ricorrente" : "spese ricorrenti"} da confermare
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {bozze.map((bozza) => (
+                <div key={bozza.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {formatDataItaliana(bozza.dataOperazione)}
+                    </span>
+                    <span className="text-sm font-medium truncate">{bozza.descrizione}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">{bozza.categoria.nome}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    {editingBozza === bozza.id ? (
+                      <>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editImporto}
+                          onChange={(e) => setEditImporto(e.target.value)}
+                          className="h-8 w-28"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => confermaBozza(bozza.id, parseFloat(editImporto))}
+                          disabled={confermando === bozza.id}
+                        >
+                          Salva
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingBozza(null)}
+                        >
+                          Annulla
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium w-24 text-right">
+                          {formatCurrency(bozza.importoTotale)}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => confermaBozza(bozza.id)}
+                          disabled={confermando !== null}
+                        >
+                          Conferma
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingBozza(bozza.id);
+                            setEditImporto(String(bozza.importoTotale));
+                          }}
+                        >
+                          Modifica
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {bozze.length > 1 && (
+              <div className="flex justify-end mt-3">
+                <Button
+                  size="sm"
+                  onClick={confermaTutte}
+                  disabled={confermando !== null}
+                >
+                  Conferma tutte
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Period Selector ──────────────────────────────────────────── */}
       <Card>
         <CardContent className="pt-6">
