@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     const baseWhere = {
       societaId,
       eliminato: false,
+      bozza: false,
       ...dateFilter,
     };
 
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
           socioId,
           operazione: {
             ...baseWhere,
-            tipoOperazione: { in: ["COSTO", "SPESA"] },
+            tipoOperazione: "COSTO",
           },
         },
       });
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
       _sum: { importoTotale: true },
       where: {
         ...baseWhere,
-        tipoOperazione: { in: ["COSTO", "SPESA"] },
+        tipoOperazione: "COSTO",
       },
     });
 

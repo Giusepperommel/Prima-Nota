@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
         operazione: {
           societaId,
           eliminato: false,
+          bozza: false,
           dataOperazione: { gte: dataInizio, lte: dataFine },
         },
       },

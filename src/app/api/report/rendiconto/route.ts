@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       where: {
         societaId,
         eliminato: false,
+        bozza: false,
         dataOperazione: {
           gte: dataInizio,
           lte: dataFine,
@@ -85,10 +86,7 @@ export async function GET(request: NextRequest) {
       const importo = Number(op.importoTotale);
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importo;
-      } else if (
-        op.tipoOperazione === "COSTO" ||
-        op.tipoOperazione === "SPESA"
-      ) {
+      } else if (op.tipoOperazione === "COSTO") {
         costi += importo;
       }
     }
@@ -104,7 +102,7 @@ export async function GET(request: NextRequest) {
     const cespitiPeriodo = await prisma.cespite.findMany({
       where: {
         societaId,
-        operazione: { eliminato: false },
+        operazione: { eliminato: false, bozza: false },
         quoteAmmortamento: {
           some: { anno: { gte: annoInizio, lte: annoFine } },
         },
@@ -171,10 +169,7 @@ export async function GET(request: NextRequest) {
       const entry = categoriaMap.get(catId)!;
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         entry.fatturato += importo;
-      } else if (
-        op.tipoOperazione === "COSTO" ||
-        op.tipoOperazione === "SPESA"
-      ) {
+      } else if (op.tipoOperazione === "COSTO") {
         entry.costi += importo;
       }
     }
@@ -225,7 +220,7 @@ export async function GET(request: NextRequest) {
           entry.fatturato += importoCalcolato;
         } else if (
           op.tipoOperazione === "COSTO" ||
-          op.tipoOperazione === "SPESA"
+          false
         ) {
           entry.costi += importoCalcolato;
         }

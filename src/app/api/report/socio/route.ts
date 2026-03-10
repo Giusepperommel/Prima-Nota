@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
         operazione: {
           societaId,
           eliminato: false,
+          bozza: false,
           dataOperazione: {
             gte: dataInizio,
             lte: dataFine,
@@ -116,10 +117,7 @@ export async function GET(request: NextRequest) {
 
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importoSocio;
-      } else if (
-        op.tipoOperazione === "COSTO" ||
-        op.tipoOperazione === "SPESA"
-      ) {
+      } else if (op.tipoOperazione === "COSTO") {
         costi += importoSocio;
       }
 
@@ -155,6 +153,7 @@ export async function GET(request: NextRequest) {
         societaId,
         operazione: {
           eliminato: false,
+          bozza: false,
           ripartizioni: {
             some: { socioId: targetSocioId, percentuale: { gt: 0 } },
           },

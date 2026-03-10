@@ -31,7 +31,7 @@ export async function GET(request: Request, context: RouteContext) {
       where: {
         id: cespiteId,
         societaId,
-        operazione: { eliminato: false },
+        operazione: { eliminato: false, bozza: false },
       },
       include: {
         operazione: {

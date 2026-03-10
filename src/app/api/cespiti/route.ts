@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = {
       societaId,
-      operazione: { eliminato: false },
+      operazione: { eliminato: false, bozza: false },
     };
 
     if (stato) {

@@ -31,7 +31,7 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const operazione = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false },
+      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
       include: {
         categoria: {
           select: { id: true, nome: true, percentualeDeducibilita: true },
@@ -145,7 +145,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     // Load existing operazione
     const existing = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false },
+      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
       include: {
         ripartizioni: true,
       },
@@ -512,7 +512,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     const existing = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false },
+      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
     });
 
     if (!existing) {

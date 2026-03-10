@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const where: Prisma.OperazioneWhereInput = {
       societaId,
       eliminato: false,
+      bozza: false,
     };
 
     // Date range filters

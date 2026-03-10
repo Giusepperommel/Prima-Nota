@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -94,30 +93,45 @@ export async function PUT(request: Request, context: RouteContext) {
       quotaPercentuale,
       ruolo,
       dataIngresso,
-      password,
       socioLavoratore,
     } = body;
 
     // Validazione campi obbligatori
-    if (!nome || !cognome || !codiceFiscale || !email || quotaPercentuale == null) {
+    if (!nome) {
       return NextResponse.json(
-        { error: "Tutti i campi obbligatori devono essere compilati" },
+        { error: "Il nome del socio e' obbligatorio" },
         { status: 400 }
       );
     }
 
-    // Validazione email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Formato email non valido" },
-        { status: 400 }
-      );
+    // Validazione email (se fornita)
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: "Formato email non valido" },
+          { status: 400 }
+        );
+      }
+
+      // Verifica unicita' email (escludendo il socio corrente)
+      if (email !== existingSocio.email) {
+        const emailInUse = await prisma.socio.findFirst({
+          where: { email, NOT: { id: socioId } },
+        });
+
+        if (emailInUse) {
+          return NextResponse.json(
+            { error: "Esiste gia' un socio con questa email" },
+            { status: 409 }
+          );
+        }
+      }
     }
 
-    // Validazione quota percentuale
-    const quota = parseFloat(quotaPercentuale);
-    if (isNaN(quota) || quota < 0 || quota > 100) {
+    // Validazione quota percentuale (se fornita)
+    const quota = quotaPercentuale != null ? parseFloat(quotaPercentuale) : Number(existingSocio.quotaPercentuale);
+    if (quota < 0 || quota > 100) {
       return NextResponse.json(
         { error: "La quota percentuale deve essere compresa tra 0 e 100" },
         { status: 400 }
@@ -130,20 +144,6 @@ export async function PUT(request: Request, context: RouteContext) {
         { error: "Il ruolo deve essere ADMIN o STANDARD" },
         { status: 400 }
       );
-    }
-
-    // Verifica unicita' email (escludendo il socio corrente)
-    if (email !== existingSocio.email) {
-      const emailInUse = await prisma.socio.findFirst({
-        where: { email, NOT: { id: socioId } },
-      });
-
-      if (emailInUse) {
-        return NextResponse.json(
-          { error: "Esiste gia' un socio con questa email" },
-          { status: 409 }
-        );
-      }
     }
 
     // Controllo somma quote dei soci attivi (escludendo il socio corrente)
@@ -172,9 +172,9 @@ export async function PUT(request: Request, context: RouteContext) {
         where: { id: socioId },
         data: {
           nome,
-          cognome,
-          codiceFiscale,
-          email,
+          cognome: cognome ?? existingSocio.cognome,
+          codiceFiscale: codiceFiscale ?? existingSocio.codiceFiscale,
+          email: email || existingSocio.email,
           quotaPercentuale: quota,
           ruolo: ruolo || "STANDARD",
           dataIngresso: dataIngresso ? new Date(dataIngresso) : null,
@@ -183,19 +183,10 @@ export async function PUT(request: Request, context: RouteContext) {
       });
 
       // Aggiorna anche l'email dell'utente associato se cambiata
-      if (email !== existingSocio.email) {
+      if (email && email !== existingSocio.email) {
         await tx.utente.updateMany({
           where: { socioId },
           data: { email },
-        });
-      }
-
-      // Aggiorna la password se fornita
-      if (password && password.length >= 8) {
-        const passwordHash = await bcrypt.hash(password, 12);
-        await tx.utente.updateMany({
-          where: { socioId },
-          data: { passwordHash },
         });
       }
 

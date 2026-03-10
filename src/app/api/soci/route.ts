@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 
 export async function GET() {
   try {
@@ -64,29 +63,42 @@ export async function POST(request: Request) {
       quotaPercentuale,
       ruolo,
       dataIngresso,
-      password,
     } = body;
 
     // Validazione campi obbligatori
-    if (!nome || !cognome || !codiceFiscale || !email || quotaPercentuale == null || !password) {
+    if (!nome) {
       return NextResponse.json(
-        { error: "Tutti i campi obbligatori devono essere compilati (nome, cognome, codice fiscale, email, quota, password)" },
+        { error: "Il nome del socio e' obbligatorio" },
         { status: 400 }
       );
     }
 
-    // Validazione email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Formato email non valido" },
-        { status: 400 }
-      );
+    // Validazione email (se fornita)
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: "Formato email non valido" },
+          { status: 400 }
+        );
+      }
+
+      // Verifica unicita' email nel modello Socio
+      const existingEmail = await prisma.socio.findUnique({
+        where: { email },
+      });
+
+      if (existingEmail) {
+        return NextResponse.json(
+          { error: "Esiste gia' un socio con questa email" },
+          { status: 409 }
+        );
+      }
     }
 
-    // Validazione quota percentuale
-    const quota = parseFloat(quotaPercentuale);
-    if (isNaN(quota) || quota < 0 || quota > 100) {
+    // Validazione quota percentuale (se fornita)
+    const quota = quotaPercentuale != null ? parseFloat(quotaPercentuale) : 0;
+    if (quota < 0 || quota > 100) {
       return NextResponse.json(
         { error: "La quota percentuale deve essere compresa tra 0 e 100" },
         { status: 400 }
@@ -98,38 +110,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Il ruolo deve essere ADMIN o STANDARD" },
         { status: 400 }
-      );
-    }
-
-    // Validazione password
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "La password deve avere almeno 8 caratteri" },
-        { status: 400 }
-      );
-    }
-
-    // Verifica unicita' email nel modello Socio
-    const existingEmail = await prisma.socio.findUnique({
-      where: { email },
-    });
-
-    if (existingEmail) {
-      return NextResponse.json(
-        { error: "Esiste gia' un socio con questa email" },
-        { status: 409 }
-      );
-    }
-
-    // Verifica unicita' email nel modello Utente
-    const existingUtente = await prisma.utente.findUnique({
-      where: { email },
-    });
-
-    if (existingUtente) {
-      return NextResponse.json(
-        { error: "Esiste gia' un utente con questa email" },
-        { status: 409 }
       );
     }
 
@@ -146,34 +126,19 @@ export async function POST(request: Request) {
 
     const nuovaSomma = sommaQuoteAttuali + quota;
 
-    // Hash della password
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // Crea socio e utente in una transazione
-    const nuovoSocio = await prisma.$transaction(async (tx) => {
-      const socio = await tx.socio.create({
-        data: {
-          societaId,
-          nome,
-          cognome,
-          codiceFiscale,
-          email,
-          quotaPercentuale: quota,
-          ruolo: ruolo || "STANDARD",
-          dataIngresso: dataIngresso ? new Date(dataIngresso) : null,
-          attivo: true,
-        },
-      });
-
-      await tx.utente.create({
-        data: {
-          socioId: socio.id,
-          email,
-          passwordHash,
-        },
-      });
-
-      return socio;
+    // Crea il socio (senza account utente - il socio potra' registrarsi autonomamente)
+    const nuovoSocio = await prisma.socio.create({
+      data: {
+        societaId,
+        nome,
+        cognome: cognome || "",
+        codiceFiscale: codiceFiscale || "",
+        email: email || `socio-${Date.now()}@placeholder.local`,
+        quotaPercentuale: quota,
+        ruolo: ruolo || "STANDARD",
+        dataIngresso: dataIngresso ? new Date(dataIngresso) : null,
+        attivo: true,
+      },
     });
 
     // Avviso sulle quote

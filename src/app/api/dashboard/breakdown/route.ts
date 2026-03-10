@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
           operazione: {
             societaId,
             eliminato: false,
+            bozza: false,
             tipoOperazione: "FATTURA_ATTIVA",
             ...dateFilter,
           },
@@ -68,7 +69,8 @@ export async function GET(request: NextRequest) {
           operazione: {
             societaId,
             eliminato: false,
-            tipoOperazione: { in: ["COSTO", "SPESA"] },
+            bozza: false,
+            tipoOperazione: "COSTO",
             ...dateFilter,
           },
         },

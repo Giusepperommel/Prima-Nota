@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const baseWhere = {
       societaId,
       eliminato: false,
+      bozza: false,
       dataOperazione: {
         gte: inizioAnno,
         lte: fineAnno,
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
 
         if (op.tipoOperazione === "FATTURA_ATTIVA") {
           mesiData[mese].fatturato += importo;
-        } else if (op.tipoOperazione === "COSTO" || op.tipoOperazione === "SPESA") {
+        } else if (op.tipoOperazione === "COSTO") {
           mesiData[mese].costi += importo;
         }
       }
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
 
         if (op.tipoOperazione === "FATTURA_ATTIVA") {
           mesiData[mese].fatturato += importo;
-        } else if (op.tipoOperazione === "COSTO" || op.tipoOperazione === "SPESA") {
+        } else if (op.tipoOperazione === "COSTO") {
           mesiData[mese].costi += importo;
         }
       }
