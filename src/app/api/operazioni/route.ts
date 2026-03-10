@@ -141,6 +141,13 @@ export async function GET(request: NextRequest) {
     const serialized = data.map((op) => ({
       ...op,
       importoTotale: Number(op.importoTotale),
+      aliquotaIva: op.aliquotaIva != null ? Number(op.aliquotaIva) : null,
+      importoImponibile: op.importoImponibile != null ? Number(op.importoImponibile) : null,
+      importoIva: op.importoIva != null ? Number(op.importoIva) : null,
+      percentualeDetraibilitaIva: op.percentualeDetraibilitaIva != null ? Number(op.percentualeDetraibilitaIva) : null,
+      ivaDetraibile: op.ivaDetraibile != null ? Number(op.ivaDetraibile) : null,
+      ivaIndetraibile: op.ivaIndetraibile != null ? Number(op.ivaIndetraibile) : null,
+      opzioneUso: op.opzioneUso,
       importoDeducibile: Number(op.importoDeducibile),
       percentualeDeducibilita: Number(op.percentualeDeducibilita),
       dataOperazione: op.dataOperazione.toISOString(),
@@ -187,6 +194,13 @@ export async function POST(request: NextRequest) {
       numeroDocumento,
       descrizione,
       importoTotale,
+      aliquotaIva,
+      importoImponibile,
+      importoIva,
+      percentualeDetraibilitaIva,
+      ivaDetraibile,
+      ivaIndetraibile,
+      opzioneUso,
       categoriaId,
       importoDeducibile,
       percentualeDeducibilita,
@@ -209,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Tipo operazione
-    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "SPESA", "CESPITE"];
+    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE"];
     if (!tipiValidi.includes(tipoOperazione)) {
       return NextResponse.json(
         { error: "Tipo operazione non valido" },
@@ -347,6 +361,13 @@ export async function POST(request: NextRequest) {
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,
+          aliquotaIva: aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null,
+          importoImponibile: importoImponibile != null ? parseFloat(String(importoImponibile)) : null,
+          importoIva: importoIva != null ? parseFloat(String(importoIva)) : null,
+          percentualeDetraibilitaIva: percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null,
+          ivaDetraibile: ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null,
+          ivaIndetraibile: ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null,
+          opzioneUso: opzioneUso || null,
           categoriaId: parseInt(String(categoriaId), 10),
           importoDeducibile: impDeduc,
           percentualeDeducibilita: percDeduc,
@@ -427,6 +448,13 @@ export async function POST(request: NextRequest) {
       {
         ...operazione,
         importoTotale: Number(operazione.importoTotale),
+        aliquotaIva: operazione.aliquotaIva != null ? Number(operazione.aliquotaIva) : null,
+        importoImponibile: operazione.importoImponibile != null ? Number(operazione.importoImponibile) : null,
+        importoIva: operazione.importoIva != null ? Number(operazione.importoIva) : null,
+        percentualeDetraibilitaIva: operazione.percentualeDetraibilitaIva != null ? Number(operazione.percentualeDetraibilitaIva) : null,
+        ivaDetraibile: operazione.ivaDetraibile != null ? Number(operazione.ivaDetraibile) : null,
+        ivaIndetraibile: operazione.ivaIndetraibile != null ? Number(operazione.ivaIndetraibile) : null,
+        opzioneUso: operazione.opzioneUso,
         importoDeducibile: Number(operazione.importoDeducibile),
         percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
         dataOperazione: operazione.dataOperazione.toISOString(),

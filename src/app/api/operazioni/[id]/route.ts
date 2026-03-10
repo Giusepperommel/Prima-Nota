@@ -83,6 +83,13 @@ export async function GET(request: Request, context: RouteContext) {
     const serialized = {
       ...operazione,
       importoTotale: Number(operazione.importoTotale),
+      aliquotaIva: operazione.aliquotaIva != null ? Number(operazione.aliquotaIva) : null,
+      importoImponibile: operazione.importoImponibile != null ? Number(operazione.importoImponibile) : null,
+      importoIva: operazione.importoIva != null ? Number(operazione.importoIva) : null,
+      percentualeDetraibilitaIva: operazione.percentualeDetraibilitaIva != null ? Number(operazione.percentualeDetraibilitaIva) : null,
+      ivaDetraibile: operazione.ivaDetraibile != null ? Number(operazione.ivaDetraibile) : null,
+      ivaIndetraibile: operazione.ivaIndetraibile != null ? Number(operazione.ivaIndetraibile) : null,
+      opzioneUso: operazione.opzioneUso,
       importoDeducibile: Number(operazione.importoDeducibile),
       percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
       dataOperazione: operazione.dataOperazione.toISOString(),
@@ -167,6 +174,13 @@ export async function PUT(request: Request, context: RouteContext) {
       numeroDocumento,
       descrizione,
       importoTotale,
+      aliquotaIva,
+      importoImponibile,
+      importoIva,
+      percentualeDetraibilitaIva,
+      ivaDetraibile,
+      ivaIndetraibile,
+      opzioneUso,
       categoriaId,
       importoDeducibile,
       percentualeDeducibilita,
@@ -186,7 +200,7 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
-    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "SPESA", "CESPITE"];
+    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE"];
     if (!tipiValidi.includes(tipoOperazione)) {
       return NextResponse.json(
         { error: "Tipo operazione non valido" },
@@ -351,6 +365,13 @@ export async function PUT(request: Request, context: RouteContext) {
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,
+          aliquotaIva: aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null,
+          importoImponibile: importoImponibile != null ? parseFloat(String(importoImponibile)) : null,
+          importoIva: importoIva != null ? parseFloat(String(importoIva)) : null,
+          percentualeDetraibilitaIva: percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null,
+          ivaDetraibile: ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null,
+          ivaIndetraibile: ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null,
+          opzioneUso: opzioneUso || null,
           categoriaId: parseInt(String(categoriaId), 10),
           importoDeducibile: impDeduc,
           percentualeDeducibilita: percDeduc,
@@ -447,6 +468,13 @@ export async function PUT(request: Request, context: RouteContext) {
     return NextResponse.json({
       ...operazione,
       importoTotale: Number(operazione.importoTotale),
+      aliquotaIva: operazione.aliquotaIva != null ? Number(operazione.aliquotaIva) : null,
+      importoImponibile: operazione.importoImponibile != null ? Number(operazione.importoImponibile) : null,
+      importoIva: operazione.importoIva != null ? Number(operazione.importoIva) : null,
+      percentualeDetraibilitaIva: operazione.percentualeDetraibilitaIva != null ? Number(operazione.percentualeDetraibilitaIva) : null,
+      ivaDetraibile: operazione.ivaDetraibile != null ? Number(operazione.ivaDetraibile) : null,
+      ivaIndetraibile: operazione.ivaIndetraibile != null ? Number(operazione.ivaIndetraibile) : null,
+      opzioneUso: operazione.opzioneUso,
       importoDeducibile: Number(operazione.importoDeducibile),
       percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
       dataOperazione: operazione.dataOperazione.toISOString(),
