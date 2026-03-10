@@ -1,5 +1,6 @@
 import { PrismaClient, RuoloUtente } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { getCategorieDefault } from "../src/lib/categorie-default";
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,8 @@ async function main() {
       partitaIva: "12345678901",
       codiceFiscale: "12345678901",
       indirizzo: "Via Roma 123, Milano MI",
-      regimeFiscale: "Regime ordinario",
+      tipoAttivita: "SRL",
+      regimeFiscale: "ORDINARIO",
       capitaleSociale: 50000.00,
       dataCostituzione: new Date("2020-01-15"),
     },
@@ -79,43 +81,24 @@ async function main() {
 
   console.log("✓ Super Admin creato: admin@primanota.dev");
 
-  // 3. Categorie spesa standard italiane
-  const categorie = [
-    { nome: "Carburante auto", perc: 20.0, desc: "Art. 164 comma 1 TUIR - Uso promiscuo", tipo: "Auto" },
-    { nome: "Telefonia mobile", perc: 80.0, desc: "Uso promiscuo professionale/personale", tipo: "Telecomunicazioni" },
-    { nome: "Telefonia fissa ufficio", perc: 100.0, desc: "Uso esclusivo professionale", tipo: "Telecomunicazioni" },
-    { nome: "Formazione e aggiornamento professionale", perc: 100.0, desc: "Corsi, seminari, libri tecnici", tipo: "Formazione" },
-    { nome: "Cancelleria e materiale ufficio", perc: 100.0, desc: "", tipo: "Ufficio" },
-    { nome: "Software e licenze", perc: 100.0, desc: "Abbonamenti cloud, licenze software", tipo: "IT" },
-    { nome: "Hardware e computer", perc: 100.0, desc: "Beni ammortizzabili", tipo: "IT" },
-    { nome: "Affitto ufficio", perc: 100.0, desc: "", tipo: "Immobili" },
-    { nome: "Utenze ufficio (luce, gas, acqua)", perc: 100.0, desc: "", tipo: "Immobili" },
-    { nome: "Pulizie ufficio", perc: 100.0, desc: "", tipo: "Immobili" },
-    { nome: "Consulenze professionali", perc: 100.0, desc: "Commercialista, legale, tecnici", tipo: "Servizi" },
-    { nome: "Spese bancarie e commissioni", perc: 100.0, desc: "", tipo: "Banca" },
-    { nome: "Assicurazioni professionali", perc: 100.0, desc: "", tipo: "Assicurazioni" },
-    { nome: "Marketing e pubblicità", perc: 100.0, desc: "", tipo: "Marketing" },
-    { nome: "Rappresentanza", perc: 75.0, desc: "Limiti art. 108 TUIR - percentuale indicativa", tipo: "Rappresentanza" },
-    { nome: "Manutenzione auto", perc: 20.0, desc: "Coerente con uso promiscuo carburante", tipo: "Auto" },
-    { nome: "Assicurazione auto", perc: 20.0, desc: "Coerente con uso promiscuo", tipo: "Auto" },
-    { nome: "Mobili e arredi", perc: 100.0, desc: "Beni ammortizzabili", tipo: "Ufficio" },
-    { nome: "Viaggi e trasferte", perc: 100.0, desc: "Se documentati e inerenti attività", tipo: "Trasferte" },
-    { nome: "Vitto e alloggio trasferte", perc: 75.0, desc: "Limiti fiscali secondo normativa", tipo: "Trasferte" },
-  ];
+  // 3. Categorie spesa standard italiane (da config centralizzata)
+  const categorieDefault = getCategorieDefault("SRL", "ORDINARIO");
 
-  for (const c of categorie) {
-    await prisma.categoriaSpesa.create({
-      data: {
-        societaId: societa.id,
-        nome: c.nome,
-        percentualeDeducibilita: c.perc,
-        descrizione: c.desc || null,
-        tipoCategoria: c.tipo,
-      },
-    });
-  }
+  await prisma.categoriaSpesa.createMany({
+    data: categorieDefault.map((c) => ({
+      societaId: societa.id,
+      nome: c.nome,
+      percentualeDeducibilita: c.percentualeDeducibilita,
+      descrizione: c.descrizione || null,
+      tipoCategoria: c.tipoCategoria,
+      aliquotaIvaDefault: c.aliquotaIvaDefault,
+      percentualeDetraibilitaIva: c.percentualeDetraibilitaIva,
+      haOpzioniUso: c.haOpzioniUso,
+      opzioniUso: c.opzioniUso,
+    })),
+  });
 
-  console.log(`✓ ${categorie.length} categorie spesa create`);
+  console.log(`✓ ${categorieDefault.length} categorie spesa create`);
   console.log("\n✅ Seed completato!");
   console.log("\nCredenziali di accesso:");
   console.log("  mario.rossi@example.com / password123 (Admin)");
