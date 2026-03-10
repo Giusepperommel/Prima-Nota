@@ -15,6 +15,7 @@ import {
   Building2,
   LogOut,
   Landmark,
+  RepeatIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,6 +50,7 @@ const adminNavItems: NavItem[] = [
   { title: "Societa", href: "/configurazione/societa", icon: Building2 },
   { title: "Soci", href: "/configurazione/soci", icon: Users },
   { title: "Categorie Spesa", href: "/configurazione/categorie", icon: Tags },
+  { title: "Ricorrenze", href: "/configurazione/ricorrenze", icon: RepeatIcon },
   { title: "Log Attivita", href: "/configurazione/log", icon: ScrollText },
 ];
 
