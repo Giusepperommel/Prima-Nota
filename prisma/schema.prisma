@@ -13,7 +13,8 @@ model Societa {
   partitaIva       String   @unique @map("partita_iva") @db.VarChar(11)
   codiceFiscale    String   @map("codice_fiscale") @db.VarChar(16)
   indirizzo        String?  @db.Text
-  regimeFiscale    String?  @map("regime_fiscale") @db.VarChar(100)
+  tipoAttivita     TipoAttivita @default(SRL) @map("tipo_attivita")
+  regimeFiscale    RegimeFiscale @default(ORDINARIO) @map("regime_fiscale")
   aliquotaIrap     Decimal  @default(3.90) @map("aliquota_irap") @db.Decimal(5, 2)
   capitaleSociale  Decimal? @map("capitale_sociale") @db.Decimal(12, 2)
   dataCostituzione DateTime? @map("data_costituzione") @db.Date
@@ -62,6 +63,7 @@ model Utente {
   socio         Socio @relation(fields: [socioId], references: [id])
   operazioniCreate Operazione[]
   logAttivita   LogAttivita[]
+  preferenzeUso PreferenzaUsoCategoria[]
 
   @@map("utenti")
 }
@@ -73,12 +75,17 @@ model CategoriaSpesa {
   percentualeDeducibilita Decimal  @map("percentuale_deducibilita") @db.Decimal(5, 2)
   descrizione             String?  @db.Text
   tipoCategoria           String?  @map("tipo_categoria") @db.VarChar(50)
+  aliquotaIvaDefault        Decimal  @default(22) @map("aliquota_iva_default") @db.Decimal(5, 2)
+  percentualeDetraibilitaIva Decimal @default(100) @map("percentuale_detraibilita_iva") @db.Decimal(5, 2)
+  haOpzioniUso              Boolean  @default(false) @map("ha_opzioni_uso")
+  opzioniUso                Json?    @map("opzioni_uso")
   attiva                  Boolean  @default(true)
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
-  societa    Societa      @relation(fields: [societaId], references: [id])
-  operazioni Operazione[]
+  societa       Societa      @relation(fields: [societaId], references: [id])
+  operazioni    Operazione[]
+  preferenzeUso PreferenzaUsoCategoria[]
 
   @@map("categorie_spesa")
 }
@@ -91,6 +98,13 @@ model Operazione {
   numeroDocumento         String?          @map("numero_documento") @db.VarChar(50)
   descrizione             String           @db.Text
   importoTotale           Decimal          @map("importo_totale") @db.Decimal(10, 2)
+  aliquotaIva             Decimal?         @map("aliquota_iva") @db.Decimal(5, 2)
+  importoImponibile       Decimal?         @map("importo_imponibile") @db.Decimal(10, 2)
+  importoIva              Decimal?         @map("importo_iva") @db.Decimal(10, 2)
+  percentualeDetraibilitaIva Decimal?      @map("percentuale_detraibilita_iva") @db.Decimal(5, 2)
+  ivaDetraibile              Decimal?      @map("iva_detraibile") @db.Decimal(10, 2)
+  ivaIndetraibile            Decimal?      @map("iva_indetraibile") @db.Decimal(10, 2)
+  opzioneUso                 String?       @map("opzione_uso") @db.VarChar(50)
   categoriaId             Int              @map("categoria_id")
   importoDeducibile       Decimal          @map("importo_deducibile") @db.Decimal(10, 2)
   percentualeDeducibilita Decimal          @map("percentuale_deducibilita") @db.Decimal(5, 2)
@@ -174,7 +188,6 @@ enum RuoloUtente {
 enum TipoOperazione {
   FATTURA_ATTIVA
   COSTO
-  SPESA
   CESPITE
 
   @@map("tipo_operazione")
@@ -239,4 +252,38 @@ enum StatoCespite {
   IN_AMMORTAMENTO
   COMPLETATO
   CEDUTO
+}
+
+enum TipoAttivita {
+  SRL
+  SRLS
+  SNC
+  SAS
+  STP
+  DITTA_INDIVIDUALE
+  LIBERO_PROFESSIONISTA
+  AGENTE_COMMERCIO
+
+  @@map("tipo_attivita")
+}
+
+enum RegimeFiscale {
+  ORDINARIO
+  FORFETTARIO
+
+  @@map("regime_fiscale")
+}
+
+model PreferenzaUsoCategoria {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  categoriaId Int      @map("categoria_id")
+  opzioneUso  String   @map("opzione_uso") @db.VarChar(50)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  utente    Utente         @relation(fields: [userId], references: [id])
+  categoria CategoriaSpesa @relation(fields: [categoriaId], references: [id])
+
+  @@unique([userId, categoriaId])
+  @@map("preferenze_uso_categoria")
 }
