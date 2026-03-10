@@ -47,10 +47,21 @@ type Socio = {
   quotaPercentuale: number;
 };
 
+type OpzioneUso = {
+  label: string;
+  codice: string;
+  detraibilitaIva: number;
+  deducibilitaCosto: number;
+};
+
 type Categoria = {
   id: number;
   nome: string;
   percentualeDeducibilita: number;
+  aliquotaIvaDefault: number;
+  percentualeDetraibilitaIva: number;
+  haOpzioniUso: boolean;
+  opzioniUso: OpzioneUso[] | null;
 };
 
 type RipartizioneData = {
@@ -73,6 +84,13 @@ type OperazioneData = {
   numeroDocumento: string | null;
   descrizione: string;
   importoTotale: number;
+  aliquotaIva: number | null;
+  importoImponibile: number | null;
+  importoIva: number | null;
+  percentualeDetraibilitaIva: number | null;
+  ivaDetraibile: number | null;
+  ivaIndetraibile: number | null;
+  opzioneUso: string | null;
   categoriaId: number;
   importoDeducibile: number;
   percentualeDeducibilita: number;
@@ -96,11 +114,18 @@ type OperazioneData = {
   } | null;
 };
 
+type PreferenzaUso = {
+  categoriaId: number;
+  opzioneUso: string;
+};
+
 type Props = {
   soci: Socio[];
   categorie: Categoria[];
   operazione?: OperazioneData;
   readOnly?: boolean;
+  preferenzeUso?: PreferenzaUso[];
+  regimeFiscale?: string;
 };
 
 export function OperazioneForm({
@@ -108,6 +133,8 @@ export function OperazioneForm({
   categorie,
   operazione,
   readOnly = false,
+  preferenzeUso = [],
+  regimeFiscale = "ORDINARIO",
 }: Props) {
   const router = useRouter();
   const isEditing = !!operazione;
@@ -172,6 +199,9 @@ export function OperazioneForm({
     });
     return map;
   });
+  const [aliquotaIva, setAliquotaIva] = useState(
+    operazione?.aliquotaIva != null ? String(operazione.aliquotaIva) : "22"
+  );
   const [note, setNote] = useState(operazione?.note || "");
   const [aliquotaAmmortamento, setAliquotaAmmortamento] = useState(
     operazione?.cespite?.aliquotaAmmortamento
@@ -179,36 +209,130 @@ export function OperazioneForm({
       : "20"
   );
 
+  // New state variables for IVA detraibilita and usage options
+  const [opzioneUso, setOpzioneUso] = useState<string | null>(
+    operazione?.opzioneUso || null
+  );
+  const [percentualeDetraibilitaIva, setPercentualeDetraibilitaIva] = useState(
+    operazione?.percentualeDetraibilitaIva != null
+      ? String(operazione.percentualeDetraibilitaIva)
+      : "100"
+  );
+  const [ivaCustom, setIvaCustom] = useState(false);
+  const isForfettario = regimeFiscale === "FORFETTARIO";
+
+  // IVA calculation (only for COSTO and CESPITE, not for forfettario)
+  const ivaApplicabile = !isForfettario && (tipoOperazione === "COSTO" || tipoOperazione === "CESPITE");
+
+  const calcoloIvaCompleto = useMemo(() => {
+    if (!ivaApplicabile) return null;
+    const totale = parseFloat(importoTotale) || 0;
+    const aliquota = parseFloat(aliquotaIva) || 0;
+    if (totale <= 0) return null;
+
+    const imponibile = aliquota > 0
+      ? Math.round((totale / (1 + aliquota / 100)) * 100) / 100
+      : totale;
+    const ivaTotale = Math.round((totale - imponibile) * 100) / 100;
+
+    const percDetraibilita = parseFloat(percentualeDetraibilitaIva) || 0;
+    const ivaDetr = Math.round((ivaTotale * percDetraibilita / 100) * 100) / 100;
+    const ivaIndetr = Math.round((ivaTotale - ivaDetr) * 100) / 100;
+
+    return { imponibile, ivaTotale, ivaDetraibile: ivaDetr, ivaIndetraibile: ivaIndetr };
+  }, [importoTotale, aliquotaIva, percentualeDetraibilitaIva, ivaApplicabile]);
+
+  // Base amount for deducibility: imponibile + IVA indetraibile if IVA applies, otherwise total
+  const baseDeducibilita = useMemo(() => {
+    if (!ivaApplicabile || !calcoloIvaCompleto) return parseFloat(importoTotale) || 0;
+    // Costo fiscale = imponibile + IVA indetraibile
+    return calcoloIvaCompleto.imponibile + calcoloIvaCompleto.ivaIndetraibile;
+  }, [ivaApplicabile, calcoloIvaCompleto, importoTotale]);
+
   // Selected category
   const selectedCategoria = useMemo(() => {
     if (!categoriaId) return null;
     return categorie.find((c) => c.id === parseInt(categoriaId, 10)) || null;
   }, [categoriaId, categorie]);
 
+  // Auto-set IVA fields when category changes (and not in manual IVA mode)
+  useEffect(() => {
+    if (!ivaCustom && selectedCategoria && ivaApplicabile) {
+      setAliquotaIva(String(selectedCategoria.aliquotaIvaDefault));
+      setPercentualeDetraibilitaIva(String(selectedCategoria.percentualeDetraibilitaIva));
+
+      // Check for usage options and auto-select from preferences
+      if (selectedCategoria.haOpzioniUso && selectedCategoria.opzioniUso) {
+        const pref = preferenzeUso.find((p) => p.categoriaId === selectedCategoria.id);
+        const defaultOption = pref?.opzioneUso || selectedCategoria.opzioniUso[0]?.codice || null;
+        setOpzioneUso(defaultOption);
+
+        // Apply usage option overrides
+        if (defaultOption) {
+          const opt = (selectedCategoria.opzioniUso as OpzioneUso[]).find((o) => o.codice === defaultOption);
+          if (opt) {
+            setPercentualeDetraibilitaIva(String(opt.detraibilitaIva));
+            if (!deducibilitaCustom) {
+              setPercentualeDeducibilita(String(opt.deducibilitaCosto));
+            }
+          }
+        }
+      } else {
+        setOpzioneUso(null);
+      }
+    }
+  }, [selectedCategoria, ivaCustom, ivaApplicabile]);
+
+  // Handler for usage option change
+  const handleOpzioneUsoChange = (codice: string) => {
+    setOpzioneUso(codice);
+    if (selectedCategoria?.opzioniUso) {
+      const opt = (selectedCategoria.opzioniUso as OpzioneUso[]).find((o) => o.codice === codice);
+      if (opt) {
+        setPercentualeDetraibilitaIva(String(opt.detraibilitaIva));
+        if (!deducibilitaCustom) {
+          setPercentualeDeducibilita(String(opt.deducibilitaCosto));
+        }
+      }
+    }
+    // Save preference
+    if (selectedCategoria) {
+      fetch("/api/preferenze-uso", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoriaId: selectedCategoria.id, opzioneUso: codice }),
+      }).catch(() => {}); // fire and forget
+    }
+  };
+
   // Auto-fill deducibilita when category changes (and not custom)
   useEffect(() => {
     if (!deducibilitaCustom && selectedCategoria) {
-      setPercentualeDeducibilita(
-        String(selectedCategoria.percentualeDeducibilita)
-      );
-      const importo = parseFloat(importoTotale) || 0;
-      const deduc = calcolaDeducibilita(
-        importo,
-        selectedCategoria.percentualeDeducibilita
-      );
+      // If there's a usage option selected, use its deducibilitaCosto
+      if (opzioneUso && selectedCategoria.opzioniUso) {
+        const opt = (selectedCategoria.opzioniUso as OpzioneUso[]).find((o) => o.codice === opzioneUso);
+        if (opt) {
+          setPercentualeDeducibilita(String(opt.deducibilitaCosto));
+          const deduc = calcolaDeducibilita(baseDeducibilita, opt.deducibilitaCosto);
+          setImportoDeducibile(String(deduc));
+          return;
+        }
+      }
+      // Default: use category's percentualeDeducibilita
+      setPercentualeDeducibilita(String(selectedCategoria.percentualeDeducibilita));
+      const deduc = calcolaDeducibilita(baseDeducibilita, selectedCategoria.percentualeDeducibilita);
       setImportoDeducibile(String(deduc));
     }
-  }, [selectedCategoria, deducibilitaCustom, importoTotale]);
+  }, [selectedCategoria, deducibilitaCustom, baseDeducibilita, opzioneUso]);
 
-  // Auto-calculate importo deducibile when percentuale or importo changes (and not custom)
+  // Auto-calculate importo deducibile when percentuale or base amount changes (and not custom)
   useEffect(() => {
     if (!deducibilitaCustom) {
-      const importo = parseFloat(importoTotale) || 0;
       const perc = parseFloat(percentualeDeducibilita) || 0;
-      const deduc = calcolaDeducibilita(importo, perc);
+      const deduc = calcolaDeducibilita(baseDeducibilita, perc);
       setImportoDeducibile(String(deduc));
     }
-  }, [importoTotale, percentualeDeducibilita, deducibilitaCustom]);
+  }, [baseDeducibilita, percentualeDeducibilita, deducibilitaCustom]);
 
   // Calculate custom ripartizioni amounts
   const customRipartizioniCalcolate = useMemo(() => {
@@ -298,6 +422,13 @@ export function OperazioneForm({
         numeroDocumento: numeroDocumento || null,
         descrizione: descrizione.trim(),
         importoTotale: importo,
+        aliquotaIva: ivaApplicabile ? parseFloat(aliquotaIva) || 0 : null,
+        importoImponibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.imponibile : null,
+        importoIva: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaTotale : null,
+        percentualeDetraibilitaIva: ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
+        ivaDetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
+        ivaIndetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
+        opzioneUso: opzioneUso || null,
         categoriaId: parseInt(categoriaId, 10),
         importoDeducibile: parseFloat(importoDeducibile) || 0,
         percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
@@ -371,7 +502,6 @@ export function OperazioneForm({
               {[
                 { value: "FATTURA_ATTIVA", label: "Fattura Attiva" },
                 { value: "COSTO", label: "Costo" },
-                { value: "SPESA", label: "Spesa" },
                 { value: "CESPITE", label: "Cespite" },
               ].map((opt) => (
                 <div key={opt.value} className="flex items-center space-x-2">
@@ -435,6 +565,49 @@ export function OperazioneForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Categoria (full width, before importo) */}
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Categoria *</Label>
+              <Select
+                value={categoriaId}
+                onValueChange={setCategoriaId}
+                disabled={readOnly}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleziona categoria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorie.map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.nome} ({formatPercentuale(cat.percentualeDeducibilita)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Usage toggle (only if category has usage options) */}
+            {ivaApplicabile && selectedCategoria?.haOpzioniUso && selectedCategoria.opzioniUso && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Tipo di utilizzo</Label>
+                <div className="flex gap-2">
+                  {(selectedCategoria.opzioniUso as OpzioneUso[]).map((opt) => (
+                    <Button
+                      key={opt.codice}
+                      type="button"
+                      size="sm"
+                      variant={opzioneUso === opt.codice ? "default" : "outline"}
+                      onClick={() => handleOpzioneUsoChange(opt.codice)}
+                      disabled={readOnly}
+                      className="flex-1"
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Importo Totale */}
             <div className="space-y-2">
               <Label htmlFor="importoTotale">Importo Totale (EUR) *</Label>
@@ -455,28 +628,100 @@ export function OperazioneForm({
                 />
               </div>
             </div>
-
-            {/* Categoria */}
-            <div className="space-y-2">
-              <Label>Categoria *</Label>
-              <Select
-                value={categoriaId}
-                onValueChange={setCategoriaId}
-                disabled={readOnly}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleziona categoria..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categorie.map((cat) => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>
-                      {cat.nome} ({formatPercentuale(cat.percentualeDeducibilita)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
+
+          {/* IVA Summary Card */}
+          {ivaApplicabile && calcoloIvaCompleto && parseFloat(importoTotale) > 0 && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2 sm:col-span-2">
+              <h4 className="text-sm font-semibold">Riepilogo fiscale</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Totale fattura</span>
+                <span className="text-right font-mono">{formatCurrency(parseFloat(importoTotale) || 0)}</span>
+
+                <span className="text-muted-foreground">Imponibile (netto IVA {aliquotaIva}%)</span>
+                <span className="text-right font-mono">{formatCurrency(calcoloIvaCompleto.imponibile)}</span>
+
+                <span className="text-muted-foreground">IVA totale</span>
+                <span className="text-right font-mono">{formatCurrency(calcoloIvaCompleto.ivaTotale)}</span>
+
+                {parseFloat(percentualeDetraibilitaIva) < 100 && parseFloat(percentualeDetraibilitaIva) > 0 && (
+                  <>
+                    <span className="text-muted-foreground pl-4">- IVA detraibile ({percentualeDetraibilitaIva}%)</span>
+                    <span className="text-right font-mono text-green-600">{formatCurrency(calcoloIvaCompleto.ivaDetraibile)}</span>
+                    <span className="text-muted-foreground pl-4">- IVA indetraibile</span>
+                    <span className="text-right font-mono text-amber-600">{formatCurrency(calcoloIvaCompleto.ivaIndetraibile)}</span>
+                  </>
+                )}
+
+                {parseFloat(percentualeDetraibilitaIva) === 0 && (
+                  <>
+                    <span className="text-muted-foreground pl-4">- IVA interamente indetraibile</span>
+                    <span className="text-right font-mono text-amber-600">{formatCurrency(calcoloIvaCompleto.ivaTotale)}</span>
+                  </>
+                )}
+              </div>
+
+              <Separator className="my-2" />
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Costo fiscale (imponibile + IVA indetr.)</span>
+                <span className="text-right font-mono font-semibold">{formatCurrency(baseDeducibilita)}</span>
+                <span className="text-muted-foreground">Deducibile ({percentualeDeducibilita}%)</span>
+                <span className="text-right font-mono font-semibold">{formatCurrency(parseFloat(importoDeducibile) || 0)}</span>
+              </div>
+
+              {!ivaCustom && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline hover:text-foreground mt-1"
+                  onClick={() => setIvaCustom(true)}
+                >
+                  Modifica IVA manualmente
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Manual IVA override (only if ivaCustom is true) */}
+          {ivaApplicabile && ivaCustom && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2 border rounded-lg p-3 bg-muted/20">
+              <div className="space-y-2">
+                <Label>Aliquota IVA</Label>
+                <Select value={aliquotaIva} onValueChange={setAliquotaIva} disabled={readOnly}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="22">22%</SelectItem>
+                    <SelectItem value="10">10%</SelectItem>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="4">4%</SelectItem>
+                    <SelectItem value="0">Esente IVA (0%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>% Detraibilita IVA</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={percentualeDetraibilitaIva}
+                    onChange={(e) => setPercentualeDetraibilitaIva(e.target.value)}
+                    disabled={readOnly}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+                onClick={() => setIvaCustom(false)}
+              >
+                Ripristina IVA automatica
+              </button>
+            </div>
+          )}
 
           <Separator />
 
@@ -516,10 +761,9 @@ export function OperazioneForm({
                     onChange={(e) => {
                       setPercentualeDeducibilita(e.target.value);
                       if (deducibilitaCustom) {
-                        const importo = parseFloat(importoTotale) || 0;
                         const perc = parseFloat(e.target.value) || 0;
                         setImportoDeducibile(
-                          String(calcolaDeducibilita(importo, perc))
+                          String(calcolaDeducibilita(baseDeducibilita, perc))
                         );
                       }
                     }}
@@ -547,12 +791,11 @@ export function OperazioneForm({
                     onChange={(e) => {
                       setImportoDeducibile(e.target.value);
                       if (deducibilitaCustom) {
-                        const importo = parseFloat(importoTotale) || 0;
                         const deduc = parseFloat(e.target.value) || 0;
-                        if (importo > 0) {
+                        if (baseDeducibilita > 0) {
                           setPercentualeDeducibilita(
                             String(
-                              Math.round((deduc / importo) * 100 * 100) / 100
+                              Math.round((deduc / baseDeducibilita) * 100 * 100) / 100
                             )
                           );
                         }
