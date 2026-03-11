@@ -51,6 +51,7 @@ import {
   getPercentualiUso,
   calcolaBaseFiscale,
   calcolaTotaleInteressi,
+  PERCENTUALI_USO,
   TIPO_VEICOLO_LABELS,
   USO_VEICOLO_LABELS,
   MODALITA_ACQUISTO_LABELS,
@@ -508,6 +509,27 @@ export function OperazioneForm({
       setImportoFinanziato(String(Math.max(0, importoNum - anticipoNum)));
     }
   }, [importoTotale, anticipoFinanziamento, isVeicolo, modalitaAcquisto]);
+
+  // Auto-override IVA detraibilita, deducibilita, and ammortamento when vehicle is toggled
+  useEffect(() => {
+    if (isVeicolo && usoVeicolo) {
+      const percentuali = PERCENTUALI_USO[usoVeicolo];
+      setPercentualeDetraibilitaIva(String(percentuali.detraibilitaIva));
+      setPercentualeDeducibilita(String(percentuali.deducibilita));
+      setDeducibilitaCustom(true);
+      setAliquotaAmmortamento("25");
+    } else if (!isVeicolo) {
+      // Restore category defaults
+      setDeducibilitaCustom(false);
+      if (selectedCategoria) {
+        setPercentualeDetraibilitaIva(String(selectedCategoria.percentualeDetraibilitaIva));
+        setPercentualeDeducibilita(String(selectedCategoria.percentualeDeducibilita));
+      } else {
+        setPercentualeDetraibilitaIva("100");
+        setPercentualeDeducibilita("100");
+      }
+    }
+  }, [isVeicolo, usoVeicolo]);
 
   const sommaPercentualiCustom = useMemo(() => {
     return customRipartizioniCalcolate.reduce(
