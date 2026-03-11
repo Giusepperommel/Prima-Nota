@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { calcolaRipartizione, calcolaPianoAmmortamento } from "@/lib/business-utils";
 import { logAttivita } from "@/lib/log-helper";
 import { Prisma } from "@prisma/client";
+import {
+  getLimiteFiscale,
+  getPercentualiUso,
+  calcolaBaseFiscale,
+  calcolaPianoFinanziamento,
+} from "@/lib/calcoli-veicoli";
 
 export async function GET(request: NextRequest) {
   try {
@@ -213,6 +219,22 @@ export async function POST(request: NextRequest) {
       aliquotaAmmortamento,
     } = body;
 
+    const {
+      isVeicolo,
+      tipoVeicolo,
+      usoVeicolo,
+      modalitaAcquisto,
+      marca,
+      modelloVeicolo,
+      targa,
+      importoFinanziato,
+      anticipoFinanziamento,
+      numeroRate,
+      importoRata,
+      tan,
+      dataPrimaRata,
+    } = body;
+
     // --- Validations ---
 
     // Required fields
@@ -327,6 +349,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (tipoOperazione === "CESPITE" && isVeicolo) {
+      if (!tipoVeicolo || !usoVeicolo || !modalitaAcquisto) {
+        return NextResponse.json(
+          { error: "Tipo veicolo, uso e modalita acquisto sono obbligatori" },
+          { status: 400 }
+        );
+      }
+      if (!marca || !modelloVeicolo || !targa) {
+        return NextResponse.json(
+          { error: "Marca, modello e targa sono obbligatori" },
+          { status: 400 }
+        );
+      }
+      if (modalitaAcquisto === "FINANZIAMENTO") {
+        if (!importoFinanziato || !numeroRate || !importoRata || !dataPrimaRata) {
+          return NextResponse.json(
+            { error: "Importo finanziato, numero rate, importo rata e data prima rata sono obbligatori" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Calculate ripartizioni
     const customPerc = tipoRipartizione === "CUSTOM"
       ? ripartizioniCustom.map((r: { socioId: number; percentuale: number }) => ({
@@ -389,22 +434,45 @@ export async function POST(request: NextRequest) {
         })),
       });
 
-      // Create cespite + depreciation schedule if CESPITE
+      // Create cespite + depreciation schedule if CESPITE (with optional vehicle)
       if (tipoOperazione === "CESPITE") {
         const aliquota = parseFloat(String(aliquotaAmmortamento));
         const annoInizio = new Date(dataOperazione).getFullYear();
-        const piano = calcolaPianoAmmortamento(importo, aliquota, annoInizio);
+
+        let valorePerAmmortamento = importo;
+        let veicoloData: any = null;
+
+        if (isVeicolo) {
+          const percUso = getPercentualiUso(usoVeicolo);
+          const limiteFiscale = getLimiteFiscale(tipoVeicolo, usoVeicolo);
+          const ivaIndet = ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : 0;
+          valorePerAmmortamento = calcolaBaseFiscale(importo, ivaIndet, limiteFiscale);
+
+          veicoloData = {
+            tipoVeicolo,
+            usoVeicolo,
+            modalitaAcquisto,
+            marca,
+            modello: modelloVeicolo,
+            targa,
+            limiteFiscale: limiteFiscale === Infinity ? 999999.99 : limiteFiscale,
+            percentualeDeducibilita: percUso.deducibilita,
+            percentualeDetraibilitaIva: percUso.detraibilitaIva,
+          };
+        }
+
+        const piano = calcolaPianoAmmortamento(valorePerAmmortamento, aliquota, annoInizio);
         const fondoFinale = piano.length > 0
           ? piano[piano.length - 1].fondoProgressivo
           : 0;
-        const statoFinale = fondoFinale >= importo ? "COMPLETATO" : "IN_AMMORTAMENTO";
+        const statoFinale = fondoFinale >= valorePerAmmortamento ? "COMPLETATO" : "IN_AMMORTAMENTO";
 
         const cespite = await tx.cespite.create({
           data: {
             operazioneId: op.id,
             societaId,
             descrizione,
-            valoreIniziale: importo,
+            valoreIniziale: valorePerAmmortamento,
             aliquotaAmmortamento: aliquota,
             dataAcquisto: new Date(dataOperazione),
             annoInizio,
@@ -423,6 +491,74 @@ export async function POST(request: NextRequest) {
               fondoProgressivo: q.fondoProgressivo,
             })),
           });
+        }
+
+        if (isVeicolo && veicoloData) {
+          const veicolo = await tx.veicolo.create({
+            data: {
+              cespiteId: cespite.id,
+              ...veicoloData,
+            },
+          });
+
+          if (modalitaAcquisto === "FINANZIAMENTO") {
+            const impFinanziato = parseFloat(String(importoFinanziato));
+            const nRate = parseInt(String(numeroRate), 10);
+            const impRata = parseFloat(String(importoRata));
+            const tanValue = tan != null && tan !== "" ? parseFloat(String(tan)) : null;
+            const anticipo = anticipoFinanziamento != null ? parseFloat(String(anticipoFinanziamento)) : 0;
+
+            const pianoFin = calcolaPianoFinanziamento(impFinanziato, nRate, impRata, tanValue);
+            const totInteressi = pianoFin.reduce((sum, r) => sum + r.quotaInteressi, 0);
+            const interesseMedio = Math.round((totInteressi / nRate) * 100) / 100;
+
+            const dataPrimaRataDate = new Date(dataPrimaRata);
+            const giornoRata = dataPrimaRataDate.getDate();
+
+            const percDedVeicolo = veicoloData.percentualeDeducibilita;
+            const interesseDeducibile = Math.round((interesseMedio * percDedVeicolo / 100) * 100) / 100;
+
+            const ricorrente = await tx.operazioneRicorrente.create({
+              data: {
+                societaId,
+                createdByUserId: userId,
+                tipoOperazione: "COSTO",
+                categoriaId: parseInt(String(categoriaId), 10),
+                descrizione: `Rata finanziamento ${marca} ${modelloVeicolo} ${targa}`,
+                importoTotale: impRata,
+                aliquotaIva: null,
+                importoImponibile: null,
+                importoIva: null,
+                percentualeDetraibilitaIva: null,
+                ivaDetraibile: null,
+                ivaIndetraibile: null,
+                percentualeDeducibilita: percDedVeicolo,
+                importoDeducibile: interesseDeducibile,
+                deducibilitaCustom: true,
+                tipoRipartizione: tipoRipartizione as any,
+                socioSingoloId: socioSingoloId ? parseInt(String(socioSingoloId), 10) : null,
+                note: `Quota capitale media: ${Math.round((impRata - interesseMedio) * 100) / 100} | Quota interessi media: ${interesseMedio}`,
+                giornoDelMese: giornoRata,
+                dataInizio: dataPrimaRataDate,
+                dataFine: null,
+                prossimaGenerazione: dataPrimaRataDate,
+                rateRimanenti: nRate,
+              },
+            });
+
+            await tx.finanziamento.create({
+              data: {
+                veicoloId: veicolo.id,
+                importoFinanziato: impFinanziato,
+                anticipo: anticipo,
+                numeroRate: nRate,
+                importoRata: impRata,
+                tan: tanValue,
+                dataPrimaRata: dataPrimaRataDate,
+                operazioneRicorrenteId: ricorrente.id,
+              },
+            });
+          }
         }
       }
 
