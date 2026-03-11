@@ -315,7 +315,7 @@ export function OperazioneForm({
 
   // Auto-set IVA fields when category changes (and not in manual IVA mode)
   useEffect(() => {
-    if (!ivaCustom && selectedCategoria && ivaApplicabile) {
+    if (!ivaCustom && !isVeicolo && selectedCategoria && ivaApplicabile) {
       setAliquotaIva(String(selectedCategoria.aliquotaIvaDefault));
       setPercentualeDetraibilitaIva(String(selectedCategoria.percentualeDetraibilitaIva));
 
@@ -529,7 +529,7 @@ export function OperazioneForm({
         setPercentualeDeducibilita("100");
       }
     }
-  }, [isVeicolo, usoVeicolo]);
+  }, [isVeicolo, usoVeicolo, selectedCategoria]);
 
   const sommaPercentualiCustom = useMemo(() => {
     return customRipartizioniCalcolate.reduce(
