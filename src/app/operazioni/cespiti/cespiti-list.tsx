@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye } from "lucide-react";
+import { Car, Eye } from "lucide-react";
 
 type Ripartizione = {
   socioId: number;
@@ -43,6 +43,14 @@ type Cespite = {
   valoreResiduo: number;
   operazioneId: number;
   ripartizioni: Ripartizione[];
+  veicolo: {
+    marca: string;
+    modello: string;
+    targa: string;
+    tipoVeicolo: string;
+    usoVeicolo: string;
+    modalitaAcquisto: string;
+  } | null;
 };
 
 type Props = {
@@ -176,8 +184,18 @@ export function CespitiList({ ruolo }: Props) {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/operazioni/cespiti/${c.id}`)}
                 >
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {c.descrizione}
+                  <TableCell className="max-w-[200px]">
+                    <div className="flex items-center gap-2">
+                      {c.veicolo && <Car className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{c.descrizione}</p>
+                        {c.veicolo && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {c.veicolo.marca} {c.veicolo.modello} - {c.veicolo.targa}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {formatDate(c.dataAcquisto)}
