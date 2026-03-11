@@ -33,6 +33,7 @@ import {
   USO_VEICOLO_LABELS,
   MODALITA_ACQUISTO_LABELS,
   calcolaCessione,
+  type CalcoloCessione,
 } from "@/lib/calcoli-veicoli";
 
 type QuotaAmmortamento = {
@@ -145,7 +146,7 @@ export default function DettaglioCespitePage() {
   const [showCessione, setShowCessione] = useState(false);
   const [dataCessione, setDataCessione] = useState(new Date().toISOString().split("T")[0]);
   const [prezzoVendita, setPrezzoVendita] = useState("");
-  const [cessionePreview, setCessionePreview] = useState<any>(null);
+  const [cessionePreview, setCessionePreview] = useState<CalcoloCessione | null>(null);
   const [cessioneLoading, setCessioneLoading] = useState(false);
 
   // Live preview of cessione calculation
@@ -179,13 +180,13 @@ export default function DettaglioCespitePage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Errore nella cessione");
       }
       toast.success("Cessione registrata con successo");
       setShowCessione(false);
       // Reload data
-      const resData = await fetch(`/api/cespiti/${params.id}`);
+      const resData = await fetch(`/api/cespiti/${cespite.id}`);
       const data = await resData.json();
       setCespite(data);
     } catch (error: any) {
@@ -334,7 +335,7 @@ export default function DettaglioCespitePage() {
                 Dati Veicolo
               </CardTitle>
               {cespite.stato === "IN_AMMORTAMENTO" && (
-                <Dialog open={showCessione} onOpenChange={setShowCessione}>
+                <Dialog open={showCessione} onOpenChange={(open) => { setShowCessione(open); if (!open) { setPrezzoVendita(""); setCessionePreview(null); } }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
                       <HandCoins className="mr-2 h-4 w-4" />
@@ -431,7 +432,7 @@ export default function DettaglioCespitePage() {
                 <p className="text-sm text-muted-foreground">Modalità Acquisto</p>
                 <p className="font-medium">{MODALITA_ACQUISTO_LABELS[cespite.veicolo.modalitaAcquisto as keyof typeof MODALITA_ACQUISTO_LABELS] || cespite.veicolo.modalitaAcquisto}</p>
               </div>
-              {cespite.veicolo.limiteFiscale < 999999 && (
+              {isFinite(cespite.veicolo.limiteFiscale) && (
                 <div>
                   <p className="text-sm text-muted-foreground">Limite Fiscale</p>
                   <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.limiteFiscale)}</p>
