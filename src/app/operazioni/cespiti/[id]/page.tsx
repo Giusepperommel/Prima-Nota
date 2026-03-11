@@ -16,7 +16,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Car, ExternalLink, HandCoins } from "lucide-react";
+import {
+  TIPO_VEICOLO_LABELS,
+  USO_VEICOLO_LABELS,
+  MODALITA_ACQUISTO_LABELS,
+  calcolaCessione,
+} from "@/lib/calcoli-veicoli";
 
 type QuotaAmmortamento = {
   anno: number;
@@ -35,6 +52,41 @@ type Ripartizione = {
   quotaPercentuale: number;
 };
 
+type VeicoloDetail = {
+  id: number;
+  tipoVeicolo: string;
+  usoVeicolo: string;
+  modalitaAcquisto: string;
+  marca: string;
+  modello: string;
+  targa: string;
+  limiteFiscale: number;
+  percentualeDeducibilita: number;
+  percentualeDetraibilitaIva: number;
+  finanziamento: {
+    importoFinanziato: number;
+    anticipo: number;
+    numeroRate: number;
+    importoRata: number;
+    tan: number | null;
+    dataPrimaRata: string;
+    operazioneRicorrente: {
+      id: number;
+      attiva: boolean;
+      rateRimanenti: number | null;
+    } | null;
+  } | null;
+  cessione: {
+    dataCessione: string;
+    prezzoVendita: number;
+    valoreResiduoContabile: number;
+    plusvalenza: number;
+    plusvalenzaImponibile: number;
+    minusvalenza: number;
+    minusvalenzaDeducibile: number;
+  } | null;
+};
+
 type CespiteDetail = {
   id: number;
   descrizione: string;
@@ -50,6 +102,7 @@ type CespiteDetail = {
   tipoRipartizione: string;
   ripartizioni: Ripartizione[];
   quoteAmmortamento: QuotaAmmortamento[];
+  veicolo: VeicoloDetail | null;
 };
 
 const STATO_LABELS: Record<string, string> = {
@@ -88,6 +141,59 @@ export default function DettaglioCespitePage() {
   const [loading, setLoading] = useState(true);
 
   const currentYear = new Date().getFullYear();
+
+  const [showCessione, setShowCessione] = useState(false);
+  const [dataCessione, setDataCessione] = useState(new Date().toISOString().split("T")[0]);
+  const [prezzoVendita, setPrezzoVendita] = useState("");
+  const [cessionePreview, setCessionePreview] = useState<any>(null);
+  const [cessioneLoading, setCessioneLoading] = useState(false);
+
+  // Live preview of cessione calculation
+  useEffect(() => {
+    if (cespite?.veicolo && prezzoVendita) {
+      const prezzo = parseFloat(prezzoVendita);
+      if (!isNaN(prezzo) && prezzo >= 0) {
+        const result = calcolaCessione(
+          prezzo,
+          cespite.valoreIniziale,
+          cespite.fondoAmmortamento,
+          cespite.veicolo.percentualeDeducibilita
+        );
+        setCessionePreview(result);
+      }
+    } else {
+      setCessionePreview(null);
+    }
+  }, [prezzoVendita, cespite]);
+
+  async function handleCessione() {
+    if (!cespite) return;
+    setCessioneLoading(true);
+    try {
+      const res = await fetch(`/api/cespiti/${cespite.id}/cessione`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataCessione,
+          prezzoVendita: parseFloat(prezzoVendita),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+      toast.success("Cessione registrata con successo");
+      setShowCessione(false);
+      // Reload data
+      const resData = await fetch(`/api/cespiti/${params.id}`);
+      const data = await resData.json();
+      setCespite(data);
+    } catch (error: any) {
+      toast.error(error.message || "Errore nella registrazione della cessione");
+    } finally {
+      setCessioneLoading(false);
+    }
+  }
 
   useEffect(() => {
     async function fetchCespite() {
@@ -217,6 +323,211 @@ export default function DettaglioCespitePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Card: Dati Veicolo */}
+      {cespite.veicolo && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Dati Veicolo
+              </CardTitle>
+              {cespite.stato === "IN_AMMORTAMENTO" && (
+                <Dialog open={showCessione} onOpenChange={setShowCessione}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <HandCoins className="mr-2 h-4 w-4" />
+                      Registra Cessione
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cessione Veicolo</DialogTitle>
+                      <DialogDescription>
+                        Registra la vendita di {cespite.veicolo.marca} {cespite.veicolo.modello} ({cespite.veicolo.targa})
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Data Cessione</Label>
+                        <Input type="date" value={dataCessione} onChange={(e) => setDataCessione(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Prezzo di Vendita</Label>
+                        <Input type="number" step="0.01" min="0" value={prezzoVendita} onChange={(e) => setPrezzoVendita(e.target.value)} placeholder="0.00" />
+                      </div>
+                      {cessionePreview && (
+                        <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span>Valore residuo contabile:</span>
+                            <span className="font-mono">{formatCurrency(cessionePreview.valoreResiduoContabile)}</span>
+                          </div>
+                          {cessionePreview.plusvalenza > 0 && (
+                            <>
+                              <div className="flex justify-between text-green-500">
+                                <span>Plusvalenza:</span>
+                                <span className="font-mono">{formatCurrency(cessionePreview.plusvalenza)}</span>
+                              </div>
+                              <div className="flex justify-between text-green-500">
+                                <span>Plusvalenza imponibile:</span>
+                                <span className="font-mono font-medium">{formatCurrency(cessionePreview.plusvalenzaImponibile)}</span>
+                              </div>
+                            </>
+                          )}
+                          {cessionePreview.minusvalenza > 0 && (
+                            <>
+                              <div className="flex justify-between text-red-500">
+                                <span>Minusvalenza:</span>
+                                <span className="font-mono">{formatCurrency(cessionePreview.minusvalenza)}</span>
+                              </div>
+                              <div className="flex justify-between text-red-500">
+                                <span>Minusvalenza deducibile:</span>
+                                <span className="font-mono font-medium">{formatCurrency(cessionePreview.minusvalenzaDeducibile)}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowCessione(false)}>Annulla</Button>
+                      <Button onClick={handleCessione} disabled={cessioneLoading || !prezzoVendita}>
+                        {cessioneLoading ? "Registrazione..." : "Conferma Cessione"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Veicolo</p>
+                <p className="font-medium">{cespite.veicolo.marca} {cespite.veicolo.modello}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Targa</p>
+                <p className="font-medium font-mono">{cespite.veicolo.targa}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Tipo</p>
+                <p className="font-medium">{TIPO_VEICOLO_LABELS[cespite.veicolo.tipoVeicolo as keyof typeof TIPO_VEICOLO_LABELS] || cespite.veicolo.tipoVeicolo}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Uso</p>
+                <p className="font-medium">{USO_VEICOLO_LABELS[cespite.veicolo.usoVeicolo as keyof typeof USO_VEICOLO_LABELS] || cespite.veicolo.usoVeicolo}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Deducibilità</p>
+                <p className="font-medium">{formatPercentuale(cespite.veicolo.percentualeDeducibilita)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">IVA Detraibile</p>
+                <p className="font-medium">{formatPercentuale(cespite.veicolo.percentualeDetraibilitaIva)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Modalità Acquisto</p>
+                <p className="font-medium">{MODALITA_ACQUISTO_LABELS[cespite.veicolo.modalitaAcquisto as keyof typeof MODALITA_ACQUISTO_LABELS] || cespite.veicolo.modalitaAcquisto}</p>
+              </div>
+              {cespite.veicolo.limiteFiscale < 999999 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Limite Fiscale</p>
+                  <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.limiteFiscale)}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Financing info */}
+            {cespite.veicolo.finanziamento && (
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <p className="text-sm font-medium">Finanziamento</p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Importo Finanziato</p>
+                    <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.finanziamento.importoFinanziato)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Anticipo</p>
+                    <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.finanziamento.anticipo)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Rata Mensile</p>
+                    <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.finanziamento.importoRata)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Numero Rate</p>
+                    <p className="font-medium">{cespite.veicolo.finanziamento.numeroRate}</p>
+                  </div>
+                  {cespite.veicolo.finanziamento.tan != null && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">TAN</p>
+                      <p className="font-medium">{formatPercentuale(cespite.veicolo.finanziamento.tan)}</p>
+                    </div>
+                  )}
+                  {cespite.veicolo.finanziamento.operazioneRicorrente && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rate Rimanenti</p>
+                      <p className="font-medium">
+                        {cespite.veicolo.finanziamento.operazioneRicorrente.rateRimanenti ?? "N/D"}
+                        {!cespite.veicolo.finanziamento.operazioneRicorrente.attiva && (
+                          <Badge variant="outline" className="ml-2 text-xs">Terminato</Badge>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Cessione info (if sold) */}
+            {cespite.veicolo.cessione && (
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <p className="text-sm font-medium">Cessione</p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data Cessione</p>
+                    <p className="font-medium font-mono">{formatDate(cespite.veicolo.cessione.dataCessione)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Prezzo Vendita</p>
+                    <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.cessione.prezzoVendita)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valore Residuo</p>
+                    <p className="font-medium font-mono">{formatCurrency(cespite.veicolo.cessione.valoreResiduoContabile)}</p>
+                  </div>
+                  {cespite.veicolo.cessione.plusvalenza > 0 && (
+                    <>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Plusvalenza</p>
+                        <p className="font-medium font-mono text-green-500">{formatCurrency(cespite.veicolo.cessione.plusvalenza)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Plusvalenza Imponibile</p>
+                        <p className="font-medium font-mono text-green-500">{formatCurrency(cespite.veicolo.cessione.plusvalenzaImponibile)}</p>
+                      </div>
+                    </>
+                  )}
+                  {cespite.veicolo.cessione.minusvalenza > 0 && (
+                    <>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Minusvalenza</p>
+                        <p className="font-medium font-mono text-red-500">{formatCurrency(cespite.veicolo.cessione.minusvalenza)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Minusvalenza Deducibile</p>
+                        <p className="font-medium font-mono text-red-500">{formatCurrency(cespite.veicolo.cessione.minusvalenzaDeducibile)}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Card: Attribuzione */}
       <Card>
