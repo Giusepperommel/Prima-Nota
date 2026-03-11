@@ -55,6 +55,16 @@ export async function GET(request: Request, context: RouteContext) {
         quoteAmmortamento: {
           orderBy: { anno: "asc" },
         },
+        veicolo: {
+          include: {
+            finanziamento: {
+              include: {
+                operazioneRicorrente: { select: { id: true, attiva: true, rateRimanenti: true } },
+              },
+            },
+            cessione: true,
+          },
+        },
       },
     });
 
@@ -115,6 +125,35 @@ export async function GET(request: Request, context: RouteContext) {
               100,
           ) / 100,
       })),
+      veicolo: cespite.veicolo ? {
+        ...cespite.veicolo,
+        limiteFiscale: Number(cespite.veicolo.limiteFiscale),
+        percentualeDeducibilita: Number(cespite.veicolo.percentualeDeducibilita),
+        percentualeDetraibilitaIva: Number(cespite.veicolo.percentualeDetraibilitaIva),
+        finanziamento: cespite.veicolo.finanziamento ? {
+          ...cespite.veicolo.finanziamento,
+          importoFinanziato: Number(cespite.veicolo.finanziamento.importoFinanziato),
+          anticipo: Number(cespite.veicolo.finanziamento.anticipo),
+          importoRata: Number(cespite.veicolo.finanziamento.importoRata),
+          tan: cespite.veicolo.finanziamento.tan != null ? Number(cespite.veicolo.finanziamento.tan) : null,
+          dataPrimaRata: cespite.veicolo.finanziamento.dataPrimaRata.toISOString(),
+          createdAt: cespite.veicolo.finanziamento.createdAt.toISOString(),
+          updatedAt: cespite.veicolo.finanziamento.updatedAt.toISOString(),
+        } : null,
+        cessione: cespite.veicolo.cessione ? {
+          ...cespite.veicolo.cessione,
+          prezzoVendita: Number(cespite.veicolo.cessione.prezzoVendita),
+          valoreResiduoContabile: Number(cespite.veicolo.cessione.valoreResiduoContabile),
+          plusvalenza: Number(cespite.veicolo.cessione.plusvalenza),
+          plusvalenzaImponibile: Number(cespite.veicolo.cessione.plusvalenzaImponibile),
+          minusvalenza: Number(cespite.veicolo.cessione.minusvalenza),
+          minusvalenzaDeducibile: Number(cespite.veicolo.cessione.minusvalenzaDeducibile),
+          dataCessione: cespite.veicolo.cessione.dataCessione.toISOString(),
+          createdAt: cespite.veicolo.cessione.createdAt.toISOString(),
+        } : null,
+        createdAt: cespite.veicolo.createdAt.toISOString(),
+        updatedAt: cespite.veicolo.updatedAt.toISOString(),
+      } : null,
     };
 
     return NextResponse.json(serialized);

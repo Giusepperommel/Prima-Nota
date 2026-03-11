@@ -51,6 +51,16 @@ export async function GET(request: NextRequest) {
         quoteAmmortamento: {
           orderBy: { anno: "asc" },
         },
+        veicolo: {
+          include: {
+            finanziamento: {
+              include: {
+                operazioneRicorrente: { select: { id: true, attiva: true, rateRimanenti: true } },
+              },
+            },
+            cessione: true,
+          },
+        },
       },
       orderBy: { dataAcquisto: "desc" },
     });
@@ -85,6 +95,35 @@ export async function GET(request: NextRequest) {
         importoQuota: Number(q.importoQuota),
         fondoProgressivo: Number(q.fondoProgressivo),
       })),
+      veicolo: c.veicolo ? {
+        ...c.veicolo,
+        limiteFiscale: Number(c.veicolo.limiteFiscale),
+        percentualeDeducibilita: Number(c.veicolo.percentualeDeducibilita),
+        percentualeDetraibilitaIva: Number(c.veicolo.percentualeDetraibilitaIva),
+        finanziamento: c.veicolo.finanziamento ? {
+          ...c.veicolo.finanziamento,
+          importoFinanziato: Number(c.veicolo.finanziamento.importoFinanziato),
+          anticipo: Number(c.veicolo.finanziamento.anticipo),
+          importoRata: Number(c.veicolo.finanziamento.importoRata),
+          tan: c.veicolo.finanziamento.tan != null ? Number(c.veicolo.finanziamento.tan) : null,
+          dataPrimaRata: c.veicolo.finanziamento.dataPrimaRata.toISOString(),
+          createdAt: c.veicolo.finanziamento.createdAt.toISOString(),
+          updatedAt: c.veicolo.finanziamento.updatedAt.toISOString(),
+        } : null,
+        cessione: c.veicolo.cessione ? {
+          ...c.veicolo.cessione,
+          prezzoVendita: Number(c.veicolo.cessione.prezzoVendita),
+          valoreResiduoContabile: Number(c.veicolo.cessione.valoreResiduoContabile),
+          plusvalenza: Number(c.veicolo.cessione.plusvalenza),
+          plusvalenzaImponibile: Number(c.veicolo.cessione.plusvalenzaImponibile),
+          minusvalenza: Number(c.veicolo.cessione.minusvalenza),
+          minusvalenzaDeducibile: Number(c.veicolo.cessione.minusvalenzaDeducibile),
+          dataCessione: c.veicolo.cessione.dataCessione.toISOString(),
+          createdAt: c.veicolo.cessione.createdAt.toISOString(),
+        } : null,
+        createdAt: c.veicolo.createdAt.toISOString(),
+        updatedAt: c.veicolo.updatedAt.toISOString(),
+      } : null,
     }));
 
     return NextResponse.json(serialized);
