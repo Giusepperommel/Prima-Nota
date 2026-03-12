@@ -585,15 +585,18 @@ export function OperazioneForm({
     };
 
     if (hasExistingData) {
-      const conferma = window.confirm(
-        "Alcuni campi sono già compilati. Vuoi sovrascriverli con i dati estratti?"
-      );
-      if (conferma) {
-        applyOcrResult(ocrResult);
-      }
+      setTimeout(() => {
+        const conferma = window.confirm(
+          "Alcuni campi sono già compilati. Vuoi sovrascriverli con i dati estratti?"
+        );
+        if (conferma) {
+          applyOcrResult(ocrResult);
+        }
+      }, 0);
     } else {
       applyOcrResult(ocrResult);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ocrResult]);
 
   // OCR: show error toast
@@ -1029,8 +1032,8 @@ export function OperazioneForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2 border rounded-lg p-3 bg-muted/20">
               <div className="space-y-2">
                 <Label>Aliquota IVA</Label>
-                <Select value={aliquotaIva} onValueChange={setAliquotaIva} disabled={readOnly}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={aliquotaIva} onValueChange={(v) => { setAliquotaIva(v); clearOcrField("aliquotaIva"); }} disabled={readOnly}>
+                  <SelectTrigger className={ocrHighlight("aliquotaIva")}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="22">22%</SelectItem>
                     <SelectItem value="10">10%</SelectItem>

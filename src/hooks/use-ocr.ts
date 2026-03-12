@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { OcrResult, OcrStatus, ParsedDocument } from "@/lib/ocr/types";
 import { parseDocumentText } from "@/lib/ocr/parser";
 
@@ -13,6 +13,12 @@ export function useOcr() {
   const [result, setResult] = useState<ParsedDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const processingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      import("@/lib/ocr/tesseract-worker").then(m => m.terminateWorker());
+    };
+  }, []);
 
   const processFile = useCallback(async (file: File) => {
     if (processingRef.current) return;
