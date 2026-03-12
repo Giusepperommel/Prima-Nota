@@ -1,4 +1,4 @@
-import type { ParsedDocument } from "./types";
+import type { ParsedDocument, ParsedTransaction } from "./types";
 
 function parseImportoItaliano(raw: string): number | null {
   const cleaned = raw.replace(/[€\s]/g, "").trim();
@@ -125,4 +125,105 @@ export function parseDocumentText(text: string): ParsedDocument {
   }
 
   return result;
+}
+
+/**
+ * Tries to parse OCR text as a bank statement with multiple rows.
+ * Returns array of transactions if detected, null otherwise.
+ *
+ * Bank statements typically have rows with: date, description, amount
+ * Pattern per line: DD/MM/YYYY ... amount (with €, or negative sign, or comma)
+ */
+export function parseMultipleTransactions(text: string): ParsedTransaction[] | null {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  const transactions: ParsedTransaction[] = [];
+
+  // Look for lines that start with a date pattern DD/MM/YYYY
+  const dateLineRegex = /^(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/;
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const dateMatch = line.match(dateLineRegex);
+
+    if (dateMatch) {
+      const dataIso = parseDataItaliana(dateMatch[1]);
+
+      // Collect text from this line and possibly next lines until we find an amount
+      // or another date line
+      let fullText = line.substring(dateMatch[0].length).trim();
+      let importo: number | null = null;
+
+      // Try to find amount in current line
+      importo = extractAmountFromLine(fullText);
+
+      // If no amount found, check next lines (bank statements sometimes wrap)
+      if (importo === null) {
+        let j = i + 1;
+        while (j < lines.length && j <= i + 3) {
+          const nextLine = lines[j];
+          // Stop if we hit another date line
+          if (dateLineRegex.test(nextLine)) break;
+
+          fullText += " " + nextLine;
+          importo = extractAmountFromLine(nextLine);
+          if (importo !== null) {
+            j++;
+            break;
+          }
+          j++;
+        }
+        i = j;
+      } else {
+        i++;
+      }
+
+      if (importo !== null) {
+        // Clean description: remove the amount pattern and common noise
+        let descrizione = fullText
+          .replace(/[-+]?\s*[\d.,]+\s*€/g, "")
+          .replace(/€\s*[-+]?\s*[\d.,]+/g, "")
+          .replace(/[-]\s*[\d.]+,\d{2}\s*$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        // Remove a second date if present (data valuta)
+        descrizione = descrizione.replace(/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}\s*/, "").trim();
+        // Remove trailing dash
+        descrizione = descrizione.replace(/\s*-\s*$/, "").trim();
+
+        if (descrizione.length > 0) {
+          transactions.push({
+            dataOperazione: dataIso,
+            descrizione,
+            importoTotale: Math.abs(importo), // Always positive, costs are always positive in the app
+          });
+        }
+      }
+    } else {
+      i++;
+    }
+  }
+
+  // Only return if we found at least 2 transactions (otherwise it's a single document)
+  return transactions.length >= 2 ? transactions : null;
+}
+
+function extractAmountFromLine(text: string): number | null {
+  // Match patterns like: - 1.234,56 €  or  € 1.234,56  or  -1234,56  or  1.087,00 €
+  const patterns = [
+    /[-+]?\s*([\d.]+,\d{2})\s*€/,
+    /€\s*[-+]?\s*([\d.]+,\d{2})/,
+    /[-]\s*([\d.]+,\d{2})\s*$/,
+    /([\d.]+,\d{2})\s*€/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return parseImportoItaliano(match[1]);
+    }
+  }
+  return null;
 }

@@ -20,3 +20,17 @@ export type ParsedDocument = {
 export type OcrStatus = "idle" | "loading" | "processing" | "parsing" | "done" | "error";
 
 export type OcrFieldsSet = Set<keyof ParsedDocument>;
+
+export type ParsedTransaction = {
+  dataOperazione: string | null;  // ISO YYYY-MM-DD
+  descrizione: string;
+  importoTotale: number;
+};
+
+export type OcrParseResult = {
+  type: "single";
+  document: ParsedDocument;
+} | {
+  type: "multi";
+  transactions: ParsedTransaction[];
+};
