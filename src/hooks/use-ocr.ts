@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { OcrResult, OcrStatus, ParsedDocument } from "@/lib/ocr/types";
-import { parseDocumentText } from "@/lib/ocr/parser";
+import type { OcrResult, OcrStatus, ParsedDocument, OcrParseResult } from "@/lib/ocr/types";
+import { parseDocumentText, parseMultipleTransactions } from "@/lib/ocr/parser";
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_PDF_TYPES = ["application/pdf"];
@@ -10,7 +10,7 @@ const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_PDF_TYPES];
 
 export function useOcr() {
   const [status, setStatus] = useState<OcrStatus>("idle");
-  const [result, setResult] = useState<ParsedDocument | null>(null);
+  const [result, setResult] = useState<OcrParseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const processingRef = useRef(false);
 
@@ -46,8 +46,15 @@ export function useOcr() {
       const ocrResult: OcrResult = await recognizeImage(imageInput);
 
       setStatus("parsing");
-      const parsed = parseDocumentText(ocrResult.rawText);
-      setResult(parsed);
+      // Try multi-transaction first (bank statement)
+      const multiResult = parseMultipleTransactions(ocrResult.rawText);
+      if (multiResult) {
+        setResult({ type: "multi", transactions: multiResult });
+      } else {
+        // Fall back to single document parsing
+        const parsed = parseDocumentText(ocrResult.rawText);
+        setResult({ type: "single", document: parsed });
+      }
       setStatus("done");
     } catch (err: any) {
       setError(err.message || "Errore durante la scansione OCR");
