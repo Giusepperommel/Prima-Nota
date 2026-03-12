@@ -85,14 +85,12 @@ function fmtDateDisplay(iso: string): string {
 const tipoLabel: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
-  SPESA: "Spesa",
   CESPITE: "Cespite",
 };
 
 const tipoBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   FATTURA_ATTIVA: "default",
   COSTO: "secondary",
-  SPESA: "destructive",
   CESPITE: "outline",
 };
 

@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, UserX, AlertTriangle, KeyRound, UserPlus, Search } from "lucide-react";
+import { Loader2, Plus, Pencil, UserX, AlertTriangle, UserPlus, Search } from "lucide-react";
 
 type SocioData = {
   id: number;
@@ -58,7 +58,6 @@ type SocioFormData = {
   quotaPercentuale: string;
   ruolo: string;
   dataIngresso: string;
-  password: string;
   socioLavoratore: boolean;
 };
 
@@ -70,7 +69,6 @@ const emptyForm: SocioFormData = {
   quotaPercentuale: "",
   ruolo: "STANDARD",
   dataIngresso: "",
-  password: "",
   socioLavoratore: false,
 };
 
@@ -148,13 +146,12 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: formData.nome,
-          cognome: formData.cognome,
-          codiceFiscale: formData.codiceFiscale,
-          email: formData.email,
-          quotaPercentuale: parseFloat(formData.quotaPercentuale),
+          cognome: formData.cognome || null,
+          codiceFiscale: formData.codiceFiscale || null,
+          email: formData.email || null,
+          quotaPercentuale: formData.quotaPercentuale ? parseFloat(formData.quotaPercentuale) : null,
           ruolo: formData.ruolo,
           dataIngresso: formData.dataIngresso || null,
-          password: formData.password,
           socioLavoratore: formData.socioLavoratore,
         }),
       });
@@ -215,7 +212,6 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
       quotaPercentuale: String(socio.quotaPercentuale),
       ruolo: socio.ruolo,
       dataIngresso: socio.dataIngresso ?? "",
-      password: "",
       socioLavoratore: socio.socioLavoratore,
     });
     setEditDialogOpen(true);
@@ -229,17 +225,14 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
     try {
       const payload: Record<string, unknown> = {
         nome: formData.nome,
-        cognome: formData.cognome,
-        codiceFiscale: formData.codiceFiscale,
-        email: formData.email,
-        quotaPercentuale: parseFloat(formData.quotaPercentuale),
+        cognome: formData.cognome || null,
+        codiceFiscale: formData.codiceFiscale || null,
+        email: formData.email || null,
+        quotaPercentuale: formData.quotaPercentuale ? parseFloat(formData.quotaPercentuale) : null,
         ruolo: formData.ruolo,
         dataIngresso: formData.dataIngresso || null,
         socioLavoratore: formData.socioLavoratore,
       };
-      if (formData.password) {
-        payload.password = formData.password;
-      }
 
       const res = await fetch(`/api/soci/${selectedSocio.id}`, {
         method: "PUT",
@@ -284,12 +277,7 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
       ricalcolaSommaQuote(nuovaLista);
       setEditDialogOpen(false);
       setSelectedSocio(null);
-      const passwordChanged = formData.password.length > 0;
-      toast.success(
-        passwordChanged
-          ? "Socio aggiornato e password modificata con successo"
-          : "Socio aggiornato con successo"
-      );
+      toast.success("Socio aggiornato con successo");
 
       if (data.warningQuote) {
         toast.warning(data.warningQuote);
@@ -463,8 +451,8 @@ export function SociClient({ initialSoci, initialSommaQuote, currentSocioId }: P
               <DialogHeader>
                 <DialogTitle>Aggiungi Nuovo Socio</DialogTitle>
                 <DialogDescription>
-                  Inserisci i dati del nuovo socio. Verra&apos; creato anche l&apos;account utente
-                  per l&apos;accesso al sistema.
+                  Inserisci i dati del nuovo socio. Il socio potra&apos; registrarsi
+                  autonomamente sulla piattaforma in seguito.
                 </DialogDescription>
               </DialogHeader>
               <SocioForm
@@ -784,42 +772,39 @@ function SocioForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="cognome">Cognome *</Label>
+          <Label htmlFor="cognome">Cognome</Label>
           <Input
             id="cognome"
             name="cognome"
             value={formData.cognome}
             onChange={onChange}
-            required
             placeholder="Rossi"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email *</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             name="email"
             type="email"
             value={formData.email}
             onChange={onChange}
-            required
             placeholder="mario.rossi@email.com"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="codiceFiscale">Codice Fiscale *</Label>
+          <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
           <Input
             id="codiceFiscale"
             name="codiceFiscale"
             value={formData.codiceFiscale}
             onChange={onChange}
-            required
             maxLength={16}
             placeholder="RSSMRA80A01H501U"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="quotaPercentuale">Quota Percentuale (%) *</Label>
+          <Label htmlFor="quotaPercentuale">Quota Percentuale (%)</Label>
           <Input
             id="quotaPercentuale"
             name="quotaPercentuale"
@@ -829,12 +814,11 @@ function SocioForm({
             max="100"
             value={formData.quotaPercentuale}
             onChange={onChange}
-            required
             placeholder="50.00"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="ruolo">Ruolo *</Label>
+          <Label htmlFor="ruolo">Ruolo</Label>
           <Select value={formData.ruolo} onValueChange={onRuoloChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona ruolo" />
@@ -854,34 +838,6 @@ function SocioForm({
             value={formData.dataIngresso}
             onChange={onChange}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">
-            {isEdit ? (
-              <span className="flex items-center gap-1">
-                <KeyRound className="h-3.5 w-3.5" />
-                Nuova Password
-                <span className="text-muted-foreground font-normal">(opzionale)</span>
-              </span>
-            ) : (
-              "Password *"
-            )}
-          </Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={onChange}
-            required={!isEdit}
-            minLength={8}
-            placeholder={isEdit ? "Lascia vuoto per non modificare" : "Min. 8 caratteri"}
-          />
-          {isEdit && (
-            <p className="text-xs text-muted-foreground">
-              Compila solo se vuoi cambiare la password dell&apos;utente.
-            </p>
-          )}
         </div>
         <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
           <div className="space-y-0.5">

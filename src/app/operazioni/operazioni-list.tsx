@@ -81,7 +81,6 @@ type Props = {
 const TIPO_OPERAZIONE_LABELS: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
-  SPESA: "Spesa",
   CESPITE: "Cespite",
 };
 
@@ -103,7 +102,6 @@ function TipoBadge({ tipo }: { tipo: string }) {
   const colorMap: Record<string, string> = {
     FATTURA_ATTIVA: "bg-green-500/15 text-green-400 border-green-500/25",
     COSTO: "bg-red-500/15 text-red-400 border-red-500/25",
-    SPESA: "bg-orange-500/15 text-orange-400 border-orange-500/25",
     CESPITE: "bg-violet-500/15 text-violet-400 border-violet-500/25",
   };
   return (
@@ -286,7 +284,6 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
                 <SelectItem value="ALL">Tutti i tipi</SelectItem>
                 <SelectItem value="FATTURA_ATTIVA">Fattura Attiva</SelectItem>
                 <SelectItem value="COSTO">Costo</SelectItem>
-                <SelectItem value="SPESA">Spesa</SelectItem>
                 <SelectItem value="CESPITE">Cespite</SelectItem>
               </SelectContent>
             </Select>

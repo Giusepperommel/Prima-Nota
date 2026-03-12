@@ -85,7 +85,6 @@ function today(): string {
 const tipoLabel: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
-  SPESA: "Spesa",
   CESPITE: "Cespite",
 };
 
