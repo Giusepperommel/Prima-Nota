@@ -67,7 +67,7 @@ import { GlobalDropZone } from "@/components/ocr/global-drop-zone";
 import { PasteField } from "@/components/ocr/paste-field";
 import { OcrOverlay } from "@/components/ocr/ocr-overlay";
 import { useOcr } from "@/hooks/use-ocr";
-import type { ParsedDocument } from "@/lib/ocr/types";
+import type { ParsedDocument, OcrParseResult } from "@/lib/ocr/types";
 
 type Socio = {
   id: number;
@@ -540,10 +540,38 @@ export function OperazioneForm({
     }
   }, [isVeicolo, usoVeicolo, selectedCategoria]);
 
-  // OCR: apply results to form fields
+  // OCR: apply results to form fields or create bozze
   useEffect(() => {
     if (!ocrResult) return;
 
+    // Multi-transaction: create bozze via API
+    if (ocrResult.type === "multi") {
+      const createBozze = async () => {
+        try {
+          const res = await fetch("/api/bozze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactions: ocrResult.transactions }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || "Errore nella creazione delle bozze");
+          }
+          const data = await res.json();
+          toast.success(
+            `${data.bozzeCreate} bozz${data.bozzeCreate === 1 ? "a creata" : "e create"} - Controlla la dashboard per confermarle`
+          );
+          router.push("/dashboard");
+        } catch (err: any) {
+          toast.error(err.message || "Errore nella creazione delle bozze");
+        }
+      };
+      createBozze();
+      return;
+    }
+
+    // Single document: pre-fill form fields
+    const document = ocrResult.document;
     const hasExistingData = descrizione || importoTotale || numeroDocumento;
 
     const applyOcrResult = (result: ParsedDocument) => {
@@ -590,11 +618,11 @@ export function OperazioneForm({
           "Alcuni campi sono già compilati. Vuoi sovrascriverli con i dati estratti?"
         );
         if (conferma) {
-          applyOcrResult(ocrResult);
+          applyOcrResult(document);
         }
       }, 0);
     } else {
-      applyOcrResult(ocrResult);
+      applyOcrResult(document);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ocrResult]);
