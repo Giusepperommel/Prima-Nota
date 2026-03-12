@@ -1,4 +1,3 @@
-// src/lib/ocr/parser.ts
 import type { ParsedDocument } from "./types";
 
 function parseImportoItaliano(raw: string): number | null {
@@ -13,6 +12,9 @@ function parseDataItaliana(raw: string): string | null {
   const match = raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
   if (!match) return null;
   const [, day, month, year] = match;
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+  if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) return null;
   const d = day.padStart(2, "0");
   const m = month.padStart(2, "0");
   return `${year}-${m}-${d}`;
@@ -109,16 +111,17 @@ export function parseDocumentText(text: string): ParsedDocument {
     result.descrizione = parts.join(" - ");
   }
 
-  // --- Tipo operazione ---
-  if (result.importoTotale !== null || result.descrizione) {
-    result.tipoOperazione = "COSTO";
-  }
-
+  // --- Importo generico fallback ---
   if (result.importoTotale === null) {
     const importoGenerico = text.match(/€\s*([\d.,]+)/);
     if (importoGenerico) {
       result.importoTotale = parseImportoItaliano(importoGenerico[1]);
     }
+  }
+
+  // --- Tipo operazione ---
+  if (result.importoTotale !== null || result.descrizione) {
+    result.tipoOperazione = "COSTO";
   }
 
   return result;
