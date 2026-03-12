@@ -63,6 +63,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { GlobalDropZone } from "@/components/ocr/global-drop-zone";
+import { PasteField } from "@/components/ocr/paste-field";
+import { OcrOverlay } from "@/components/ocr/ocr-overlay";
+import { useOcr } from "@/hooks/use-ocr";
+import type { ParsedDocument } from "@/lib/ocr/types";
 
 type Socio = {
   id: number;
@@ -276,6 +281,10 @@ export function OperazioneForm({
   const [maxicanoneImporto, setMaxicanoneImporto] = useState("");
   const [durataContrattoMesi, setDurataContrattoMesi] = useState("");
   const [quotaServiziImporto, setQuotaServiziImporto] = useState("");
+
+  // OCR
+  const { status: ocrStatus, result: ocrResult, error: ocrError, isProcessing: ocrProcessing, processFile: ocrProcessFile, processImage: ocrProcessImage, reset: ocrReset } = useOcr();
+  const [ocrFields, setOcrFields] = useState<Set<string>>(new Set());
 
   const isForfettario = regimeFiscale === "FORFETTARIO";
 
@@ -531,6 +540,82 @@ export function OperazioneForm({
     }
   }, [isVeicolo, usoVeicolo, selectedCategoria]);
 
+  // OCR: apply results to form fields
+  useEffect(() => {
+    if (!ocrResult) return;
+
+    const hasExistingData = descrizione || importoTotale || numeroDocumento;
+
+    const applyOcrResult = (result: ParsedDocument) => {
+      const filledFields = new Set<string>();
+
+      if (result.tipoOperazione) {
+        setTipoOperazione(result.tipoOperazione);
+        filledFields.add("tipoOperazione");
+      }
+      if (result.dataOperazione) {
+        setDataOperazione(result.dataOperazione);
+        filledFields.add("dataOperazione");
+      }
+      if (result.numeroDocumento) {
+        setNumeroDocumento(result.numeroDocumento);
+        filledFields.add("numeroDocumento");
+      }
+      if (result.descrizione) {
+        setDescrizione(result.descrizione);
+        filledFields.add("descrizione");
+      }
+      if (result.importoTotale !== null) {
+        setImportoTotale(String(result.importoTotale));
+        filledFields.add("importoTotale");
+      }
+      if (result.aliquotaIva) {
+        setAliquotaIva(result.aliquotaIva);
+        filledFields.add("aliquotaIva");
+      }
+
+      setOcrFields(filledFields);
+
+      const count = filledFields.size;
+      if (count > 0) {
+        toast.success(`Scansione completata - ${count} camp${count === 1 ? "o compilato" : "i compilati"}`);
+      } else {
+        toast.warning("Nessun dato riconosciuto dal documento");
+      }
+    };
+
+    if (hasExistingData) {
+      const conferma = window.confirm(
+        "Alcuni campi sono già compilati. Vuoi sovrascriverli con i dati estratti?"
+      );
+      if (conferma) {
+        applyOcrResult(ocrResult);
+      }
+    } else {
+      applyOcrResult(ocrResult);
+    }
+  }, [ocrResult]);
+
+  // OCR: show error toast
+  useEffect(() => {
+    if (ocrError) {
+      toast.error(ocrError);
+      ocrReset();
+    }
+  }, [ocrError, ocrReset]);
+
+  // OCR: helper for field highlight
+  const ocrHighlight = (fieldName: string) =>
+    ocrFields.has(fieldName) ? "ring-2 ring-amber-500/50 border-amber-500/50" : "";
+
+  const clearOcrField = (fieldName: string) => {
+    setOcrFields((prev) => {
+      const next = new Set(prev);
+      next.delete(fieldName);
+      return next;
+    });
+  };
+
   const sommaPercentualiCustom = useMemo(() => {
     return customRipartizioniCalcolate.reduce(
       (sum, r) => sum + r.percentuale,
@@ -725,7 +810,15 @@ export function OperazioneForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <GlobalDropZone onFileDrop={ocrProcessFile} disabled={ocrProcessing || readOnly}>
+      <div className="relative max-w-4xl mx-auto space-y-6">
+        <OcrOverlay status={ocrStatus} />
+
+        {/* OCR Paste Field */}
+        {!readOnly && !isEditing && (
+          <PasteField onImagePaste={ocrProcessImage} disabled={ocrProcessing} />
+        )}
+
       {/* Section 1: Tipo, Data, Documento, Descrizione */}
       <Card>
         <CardHeader>
@@ -769,6 +862,8 @@ export function OperazioneForm({
                 value={dataOperazione}
                 onChange={(e) => setDataOperazione(e.target.value)}
                 disabled={readOnly}
+                className={ocrHighlight("dataOperazione")}
+                onFocus={() => clearOcrField("dataOperazione")}
               />
             </div>
 
@@ -781,6 +876,8 @@ export function OperazioneForm({
                 onChange={(e) => setNumeroDocumento(e.target.value)}
                 placeholder="Es. FT-2026/001"
                 disabled={readOnly}
+                className={ocrHighlight("numeroDocumento")}
+                onFocus={() => clearOcrField("numeroDocumento")}
               />
             </div>
           </div>
@@ -795,6 +892,8 @@ export function OperazioneForm({
               placeholder="Descrizione dell'operazione..."
               rows={3}
               disabled={readOnly}
+              className={ocrHighlight("descrizione")}
+              onFocus={() => clearOcrField("descrizione")}
             />
           </div>
         </CardContent>
@@ -864,9 +963,10 @@ export function OperazioneForm({
                   min="0"
                   value={importoTotale}
                   onChange={(e) => setImportoTotale(e.target.value)}
-                  className="pl-8"
+                  className={`pl-8 ${ocrHighlight("importoTotale")}`}
                   placeholder="0,00"
                   disabled={readOnly}
+                  onFocus={() => clearOcrField("importoTotale")}
                 />
               </div>
             </div>
@@ -1793,6 +1893,7 @@ export function OperazioneForm({
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </GlobalDropZone>
   );
 }
