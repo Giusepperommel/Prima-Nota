@@ -20,7 +20,7 @@ export async function pdfToImage(file: File): Promise<Blob> {
   canvas.height = viewport.height;
 
   const context = canvas.getContext("2d")!;
-  await page.render({ canvasContext: context, viewport }).promise;
+  await page.render({ canvasContext: context, viewport, canvas } as any).promise;
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
