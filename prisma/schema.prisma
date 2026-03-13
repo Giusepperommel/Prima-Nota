@@ -184,6 +184,19 @@ model VerificaEmail {
   @@map("verifica_email")
 }
 
+model ResetPassword {
+  id         Int      @id @default(autoincrement())
+  email      String   @db.VarChar(255)
+  codice     String   @db.VarChar(5)
+  scadenza   DateTime
+  utilizzato Boolean  @default(false)
+  tentativi  Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([email, utilizzato, scadenza])
+  @@map("reset_password")
+}
+
 enum RuoloUtente {
   ADMIN
   STANDARD

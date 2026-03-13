@@ -16,6 +16,7 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const verified = searchParams.get("verified");
+  const reset = searchParams.get("reset");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,6 +49,11 @@ function LoginForm() {
           Email verificata con successo! Ora puoi accedere.
         </p>
       )}
+      {reset && (
+        <p className="text-sm text-green-400 text-center mb-4">
+          Password reimpostata con successo! Accedi con la nuova password.
+        </p>
+      )}
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
@@ -77,7 +83,12 @@ function LoginForm() {
         {loading ? "Accesso in corso..." : "Accedi"}
       </Button>
     </form>
-          <p className="text-sm text-muted-foreground text-center mt-4">
+          <p className="text-sm text-muted-foreground text-center mt-3">
+            <Link href="/reset-password" className="text-primary hover:underline">
+              Password dimenticata?
+            </Link>
+          </p>
+          <p className="text-sm text-muted-foreground text-center mt-2">
             Non hai un account?{" "}
             <Link href="/registrazione" className="text-primary hover:underline">
               Registrati
