@@ -26,6 +26,7 @@ model Societa {
   operazioni     Operazione[]
   cespiti        Cespite[]
   operazioniRicorrenti OperazioneRicorrente[]
+  presetRipartizioni PresetRipartizione[]
 
   @@map("societa")
 }
@@ -48,6 +49,7 @@ model Socio {
   societa              Societa? @relation(fields: [societaId], references: [id])
   utente               Utente?
   ripartizioniOperazione RipartizioneOperazione[]
+  presetRipartizioni PresetRipartizioneSocio[]
 
   @@map("soci")
 }
@@ -150,6 +152,36 @@ model RipartizioneOperazione {
   @@index([operazioneId])
   @@index([socioId])
   @@map("ripartizioni_operazione")
+}
+
+model PresetRipartizione {
+  id            Int      @id @default(autoincrement())
+  societaId     Int      @map("societa_id")
+  nome          String   @db.VarChar(100)
+  tipiOperazione Json    @map("tipi_operazione")
+  ordinamento   Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  societa Societa @relation(fields: [societaId], references: [id])
+  soci    PresetRipartizioneSocio[]
+
+  @@index([societaId, ordinamento])
+  @@map("preset_ripartizioni")
+}
+
+model PresetRipartizioneSocio {
+  id                    Int     @id @default(autoincrement())
+  presetRipartizioneId  Int     @map("preset_ripartizione_id")
+  socioId               Int     @map("socio_id")
+  percentuale           Decimal @db.Decimal(5, 2)
+
+  preset PresetRipartizione @relation(fields: [presetRipartizioneId], references: [id], onDelete: Cascade)
+  socio  Socio              @relation(fields: [socioId], references: [id])
+
+  @@index([presetRipartizioneId])
+  @@index([socioId])
+  @@map("preset_ripartizioni_soci")
 }
 
 model LogAttivita {
