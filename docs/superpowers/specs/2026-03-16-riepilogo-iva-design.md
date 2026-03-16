@@ -17,19 +17,22 @@ La pagina Report (`src/app/report/report-client.tsx`) usa un sistema a Tabs con 
 **File:** `src/app/api/report/iva/route.ts`
 
 **Logica:**
-- Filtra operazioni per anno e societaId (dall'auth)
+- Filtra operazioni per anno, societaId (dall'auth), `eliminato: false`, `bozza: false`
+- Validazione anno: `anno >= 2000 && anno <= 2100`
+- Campi IVA nullable (`Decimal?`): coalesce a zero in aggregazione (`Number(op.importoIva) || 0`)
 - Aggrega:
   - `ivaDebito`: somma di `importoIva` dove `tipo = FATTURA_ATTIVA`
   - `ivaCredito`: somma di `ivaDetraibile` dove `tipo IN (COSTO, CESPITE)`
   - `ivaIndetraibile`: somma di `ivaIndetraibile` dove `tipo IN (COSTO, CESPITE)`
   - `saldoIva`: `ivaDebito - ivaCredito`
 - Aggrega per mese (12 mesi) con gli stessi calcoli
+- Accesso: disponibile a tutti i ruoli (dati a livello societa, non per socio)
 
 **Response shape:**
 ```ts
 type RiepilogoIvaData = {
   anno: number;
-  societa: { ragioneSociale: string; partitaIva: string };
+  societa: { ragioneSociale: string; partitaIva: string; codiceFiscale: string };
   totali: {
     ivaDebito: number;
     ivaCredito: number;
@@ -41,6 +44,7 @@ type RiepilogoIvaData = {
     meseLabel: string;  // "Gen", "Feb", ...
     ivaDebito: number;
     ivaCredito: number;
+    saldoIva: number;
   }>;
 };
 ```
