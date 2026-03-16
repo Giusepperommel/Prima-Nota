@@ -16,6 +16,7 @@ import {
   LogOut,
   Landmark,
   RepeatIcon,
+  Percent,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,6 +52,7 @@ const adminNavItems: NavItem[] = [
   { title: "Soci", href: "/configurazione/soci", icon: Users },
   { title: "Categorie Spesa", href: "/configurazione/categorie", icon: Tags },
   { title: "Ricorrenze", href: "/configurazione/ricorrenze", icon: RepeatIcon },
+  { title: "Ripartizioni", href: "/configurazione/ripartizioni", icon: Percent },
   { title: "Log Attivita", href: "/configurazione/log", icon: ScrollText },
 ];
 
