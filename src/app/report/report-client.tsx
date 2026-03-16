@@ -44,6 +44,20 @@ import {
   StimaFiscaleSocioPdf,
   type StimaFiscaleSocioData,
 } from "@/components/report/stima-fiscale-socio-pdf";
+import {
+  RiepilogoIvaPdf,
+  type RiepilogoIvaData,
+} from "@/components/report/riepilogo-iva-pdf";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -135,6 +149,13 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
   const [stimaSocioLoading, setStimaSocioLoading] = useState(false);
   const [stimaSocioError, setStimaSocioError] = useState<string | null>(null);
   const [stimaSocioPdfLoading, setStimaSocioPdfLoading] = useState(false);
+
+  // Riepilogo IVA state
+  const [ivaAnno, setIvaAnno] = useState(String(new Date().getFullYear()));
+  const [ivaData, setIvaData] = useState<RiepilogoIvaData | null>(null);
+  const [ivaLoading, setIvaLoading] = useState(false);
+  const [ivaError, setIvaError] = useState<string | null>(null);
+  const [ivaPdfLoading, setIvaPdfLoading] = useState(false);
 
   // Fetch rendiconto
   const fetchRendiconto = useCallback(async () => {
@@ -312,6 +333,47 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
     }
   }, [stimaSocioData, stimaSocioAnno]);
 
+  // Fetch riepilogo IVA
+  const fetchIva = useCallback(async () => {
+    setIvaLoading(true);
+    setIvaError(null);
+    setIvaData(null);
+
+    try {
+      const params = new URLSearchParams({ anno: ivaAnno });
+      const res = await fetch(`/api/report/iva?${params}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Errore nel caricamento del riepilogo IVA");
+      }
+      const data: RiepilogoIvaData = await res.json();
+      setIvaData(data);
+    } catch (err) {
+      setIvaError(err instanceof Error ? err.message : "Errore sconosciuto");
+    } finally {
+      setIvaLoading(false);
+    }
+  }, [ivaAnno]);
+
+  // Download PDF IVA
+  const downloadIvaPdf = useCallback(async () => {
+    if (!ivaData) return;
+    setIvaPdfLoading(true);
+    try {
+      const blob = await pdf(<RiepilogoIvaPdf data={ivaData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `riepilogo-iva-${ivaData.anno}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Errore nella generazione del PDF:", err);
+    } finally {
+      setIvaPdfLoading(false);
+    }
+  }, [ivaData]);
+
   return (
     <Tabs defaultValue="rendiconto" className="space-y-4">
       <TabsList>
@@ -319,6 +381,7 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
         <TabsTrigger value="socio">Report per Socio</TabsTrigger>
         <TabsTrigger value="stima-societa">Stima Fiscale Societa</TabsTrigger>
         <TabsTrigger value="stima-socio">Stima Fiscale Socio</TabsTrigger>
+        <TabsTrigger value="iva">Riepilogo IVA</TabsTrigger>
       </TabsList>
 
       {/* ================================================================= */}
@@ -646,6 +709,65 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
 
             {stimaSocioData && !stimaSocioLoading && (
               <StimaSocioPreview data={stimaSocioData} />
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* ================================================================= */}
+      {/* TAB: Riepilogo IVA                                                */}
+      {/* ================================================================= */}
+      <TabsContent value="iva">
+        <Card>
+          <CardHeader>
+            <CardTitle>Riepilogo IVA</CardTitle>
+            <CardDescription>
+              Prospetto riepilogativo IVA a debito e IVA a credito per l&apos;anno selezionato.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="iva-anno">Anno</Label>
+                <Input
+                  id="iva-anno"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={ivaAnno}
+                  onChange={(e) => setIvaAnno(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+              <Button onClick={fetchIva} disabled={ivaLoading}>
+                {ivaLoading ? "Caricamento..." : "Genera Riepilogo"}
+              </Button>
+              {ivaData && (
+                <Button
+                  variant="outline"
+                  onClick={downloadIvaPdf}
+                  disabled={ivaPdfLoading}
+                >
+                  {ivaPdfLoading ? "Generazione PDF..." : "Scarica PDF"}
+                </Button>
+              )}
+            </div>
+
+            {ivaError && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                {ivaError}
+              </div>
+            )}
+
+            {ivaLoading && (
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+            )}
+
+            {ivaData && !ivaLoading && (
+              <RiepilogoIvaPreview data={ivaData} />
             )}
           </CardContent>
         </Card>
@@ -1249,5 +1371,97 @@ function SummaryCard({
         <p className={`text-2xl font-bold ${className || ""}`}>{value}</p>
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Riepilogo IVA Preview
+// ---------------------------------------------------------------------------
+
+function RiepilogoIvaPreview({ data }: { data: RiepilogoIvaData }) {
+  const saldoColor = data.totali.saldoIva > 0 ? "text-red-400" : "text-green-400";
+  const saldoLabel = data.totali.saldoIva > 0 ? "IVA Dovuta" : "IVA a Credito";
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <h3 className="text-lg font-semibold">{data.societa.ragioneSociale}</h3>
+        <p className="text-sm text-muted-foreground">
+          Anno: {data.anno}
+        </p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SummaryCard label="IVA a Debito" value={formatCurrency(data.totali.ivaDebito)} />
+        <SummaryCard label="IVA a Credito" value={formatCurrency(data.totali.ivaCredito)} />
+        <SummaryCard
+          label={saldoLabel}
+          value={formatCurrency(Math.abs(data.totali.saldoIva))}
+          className={saldoColor}
+        />
+      </div>
+
+      {/* Chart */}
+      <div>
+        <h4 className="mb-3 text-sm font-semibold">Andamento Mensile</h4>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart
+            data={data.andamentoMensile}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis dataKey="meseLabel" className="text-xs" />
+            <YAxis className="text-xs" />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "var(--radius)",
+                color: "hsl(var(--popover-foreground))",
+              }}
+              formatter={(value) => formatCurrency(Number(value))}
+            />
+            <Legend />
+            <Bar dataKey="ivaDebito" name="IVA Debito" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="ivaCredito" name="IVA Credito" fill="#22c55e" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Detail table */}
+      <div>
+        <h4 className="mb-3 text-sm font-semibold">Dettaglio</h4>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Voce</TableHead>
+              <TableHead className="text-right">Importo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">IVA su fatture attive (debito)</TableCell>
+              <TableCell className="text-right">{formatCurrency(data.totali.ivaDebito)}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">IVA su costi detraibile (credito)</TableCell>
+              <TableCell className="text-right">{formatCurrency(data.totali.ivaCredito)}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">IVA su costi indetraibile</TableCell>
+              <TableCell className="text-right">{formatCurrency(data.totali.ivaIndetraibile)}</TableCell>
+            </TableRow>
+            <TableRow className="border-t-2">
+              <TableCell className="font-bold">{saldoLabel}</TableCell>
+              <TableCell className={`text-right font-bold ${saldoColor}`}>
+                {formatCurrency(Math.abs(data.totali.saldoIva))}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
