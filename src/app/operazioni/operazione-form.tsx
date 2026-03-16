@@ -93,6 +93,18 @@ type Categoria = {
   opzioniUso: OpzioneUso[] | null;
 };
 
+type PresetRipartizione = {
+  id: number;
+  nome: string;
+  tipiOperazione: string[];
+  ordinamento: number;
+  soci: {
+    socioId: number;
+    percentuale: number;
+    socio: { id: number; nome: string; cognome: string; attivo: boolean };
+  }[];
+};
+
 type RipartizioneData = {
   id?: number;
   socioId: number;
@@ -156,6 +168,7 @@ type Props = {
   preferenzeUso?: PreferenzaUso[];
   regimeFiscale?: string;
   tipoAttivita?: string;
+  presets?: PresetRipartizione[];
 };
 
 export function OperazioneForm({
@@ -166,6 +179,7 @@ export function OperazioneForm({
   preferenzeUso = [],
   regimeFiscale = "ORDINARIO",
   tipoAttivita = "SRL",
+  presets = [],
 }: Props) {
   const router = useRouter();
   const isEditing = !!operazione;
@@ -654,6 +668,12 @@ export function OperazioneForm({
     );
   }, [customRipartizioniCalcolate]);
 
+  const presetsDisponibili = useMemo(() => {
+    return presets
+      .filter((p) => (p.tipiOperazione as string[]).includes(tipoOperazione))
+      .sort((a, b) => a.ordinamento - b.ordinamento);
+  }, [presets, tipoOperazione]);
+
   const handleSave = async () => {
     // Client-side validations
     if (!tipoOperazione) {
@@ -702,6 +722,22 @@ export function OperazioneForm({
 
     setSaving(true);
     try {
+      // Normalize preset to CUSTOM for API submission
+      let effectiveTipoRipartizione = tipoRipartizione;
+      let effectiveRipartizioniCustom: { socioId: number; percentuale: number }[] | undefined;
+
+      if (tipoRipartizione.startsWith("PRESET_")) {
+        const presetId = parseInt(tipoRipartizione.replace("PRESET_", ""), 10);
+        const preset = presetsDisponibili.find((p) => p.id === presetId);
+        if (preset) {
+          effectiveTipoRipartizione = "CUSTOM";
+          effectiveRipartizioniCustom = preset.soci.map((s) => ({
+            socioId: s.socioId,
+            percentuale: s.percentuale,
+          }));
+        }
+      }
+
       const payload: any = {
         tipoOperazione,
         dataOperazione,
@@ -719,16 +755,16 @@ export function OperazioneForm({
         importoDeducibile: parseFloat(importoDeducibile) || 0,
         percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
         deducibilitaCustom,
-        tipoRipartizione,
+        tipoRipartizione: effectiveTipoRipartizione,
         note: note.trim() || null,
       };
 
-      if (tipoRipartizione === "SINGOLO") {
+      if (effectiveTipoRipartizione === "SINGOLO") {
         payload.socioSingoloId = parseInt(socioSingoloId, 10);
       }
 
-      if (tipoRipartizione === "CUSTOM") {
-        payload.ripartizioniCustom = soci.map((s) => ({
+      if (effectiveTipoRipartizione === "CUSTOM") {
+        payload.ripartizioniCustom = effectiveRipartizioniCustom || soci.map((s) => ({
           socioId: s.id,
           percentuale: parseFloat(customPercentuali[s.id] || "0") || 0,
         }));
@@ -797,8 +833,8 @@ export function OperazioneForm({
           percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
           importoDeducibile: parseFloat(importoDeducibile) || 0,
           deducibilitaCustom,
-          tipoRipartizione,
-          socioSingoloId: tipoRipartizione === "SINGOLO" ? parseInt(socioSingoloId, 10) : null,
+          tipoRipartizione: effectiveTipoRipartizione,
+          socioSingoloId: effectiveTipoRipartizione === "SINGOLO" ? parseInt(socioSingoloId, 10) : null,
           note: note.trim() || null,
           giornoDelMese,
           dataInizio: dataOperazione,
@@ -1486,7 +1522,7 @@ export function OperazioneForm({
               }
             }}
             disabled={readOnly}
-            className="grid grid-cols-3 gap-3"
+            className="flex flex-wrap gap-3"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="COMUNE" id="rip-comune" />
@@ -1512,7 +1548,44 @@ export function OperazioneForm({
                 Personalizzata
               </Label>
             </div>
+            {presetsDisponibili.map((preset) => {
+              const hasInactiveSocio = preset.soci.some((s) => !s.socio.attivo);
+              return (
+                <div key={preset.id} className="flex items-center space-x-2">
+                  <RadioGroupItem
+                    value={`PRESET_${preset.id}`}
+                    id={`rip-preset-${preset.id}`}
+                  />
+                  <Label
+                    htmlFor={`rip-preset-${preset.id}`}
+                    className="cursor-pointer font-normal flex items-center gap-1.5"
+                  >
+                    {preset.nome}
+                    {hasInactiveSocio && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Contiene soci inattivi
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </Label>
+                </div>
+              );
+            })}
           </RadioGroup>
+
+          {presets.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              <a href="/configurazione/ripartizioni" className="text-primary hover:underline">
+                Gestisci preset di ripartizione →
+              </a>
+            </p>
+          )}
 
           <Separator />
 
@@ -1664,6 +1737,49 @@ export function OperazioneForm({
               )}
             </div>
           )}
+
+          {tipoRipartizione.startsWith("PRESET_") && (() => {
+            const presetId = parseInt(tipoRipartizione.replace("PRESET_", ""), 10);
+            const preset = presetsDisponibili.find((p) => p.id === presetId);
+            if (!preset) return null;
+            const importo = parseFloat(importoTotale) || 0;
+            return (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Socio</TableHead>
+                      <TableHead className="text-right">Quota %</TableHead>
+                      <TableHead className="text-right">Importo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {preset.soci.map((s) => {
+                      const amount = Math.round(((importo * s.percentuale) / 100) * 100) / 100;
+                      return (
+                        <TableRow key={s.socioId}>
+                          <TableCell className="flex items-center gap-1.5">
+                            {s.socio.cognome} {s.socio.nome}
+                            {!s.socio.attivo && (
+                              <Badge variant="outline" className="text-orange-500 border-orange-500/25 text-xs">
+                                Inattivo
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatPercentuale(s.percentuale)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(amount)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 

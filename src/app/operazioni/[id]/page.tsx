@@ -70,7 +70,7 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     user.ruolo === "ADMIN" || operazione.createdByUserId === user.id;
 
   // Load soci and categorie for the form
-  const [soci, categorie, preferenzeUso, societa] = await Promise.all([
+  const [soci, categorie, preferenzeUso, societa, presetRipartizioni] = await Promise.all([
     prisma.socio.findMany({
       where: { societaId: user.societaId!, attivo: true },
       orderBy: [{ cognome: "asc" }, { nome: "asc" }],
@@ -101,6 +101,19 @@ export default async function DettaglioOperazionePage({ params }: Props) {
       where: { id: user.societaId! },
       select: { regimeFiscale: true, tipoAttivita: true },
     }),
+    prisma.presetRipartizione.findMany({
+      where: { societaId: user.societaId! },
+      include: {
+        soci: {
+          include: {
+            socio: {
+              select: { id: true, nome: true, cognome: true, attivo: true },
+            },
+          },
+        },
+      },
+      orderBy: { ordinamento: "asc" },
+    }),
   ]);
 
   const serializedSoci = soci.map((s) => ({
@@ -108,6 +121,18 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     nome: s.nome,
     cognome: s.cognome,
     quotaPercentuale: Number(s.quotaPercentuale),
+  }));
+
+  const serializedPresets = presetRipartizioni.map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    tipiOperazione: p.tipiOperazione as string[],
+    ordinamento: p.ordinamento,
+    soci: p.soci.map((s) => ({
+      socioId: s.socioId,
+      percentuale: Number(s.percentuale),
+      socio: s.socio,
+    })),
   }));
 
   const serializedCategorie = categorie.map((c) => ({
@@ -197,6 +222,7 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         preferenzeUso={preferenzeUso}
         regimeFiscale={societa?.regimeFiscale || "ORDINARIO"}
         tipoAttivita={societa?.tipoAttivita || "SRL"}
+        presets={serializedPresets}
       />
     </AuthenticatedLayout>
   );
