@@ -274,6 +274,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const isRicorrente = Boolean(body.isRicorrente);
+
+    if (isTipoFinanziario && isRicorrente) {
+      return NextResponse.json(
+        { error: "I tipi finanziari non possono essere operazioni ricorrenti" },
+        { status: 400 }
+      );
+    }
+
     // Importo
     const importo = parseFloat(importoTotale);
     if (isNaN(importo) || importo <= 0) {
@@ -402,13 +411,8 @@ export async function POST(request: NextRequest) {
         }))
       : undefined;
 
-    // Use imponibile for ripartizioni (net of IVA); fallback to totale for old/forfettario
-    const importoPerRipartizione = importoImponibile != null
-      ? parseFloat(String(importoImponibile))
-      : importo;
-
     const ripartizioniCalcolate = calcolaRipartizione(
-      importoPerRipartizione,
+      importo,
       tipoRipartizione as "COMUNE" | "SINGOLO" | "CUSTOM",
       sociForCalc,
       socioSingoloId ? parseInt(String(socioSingoloId), 10) : undefined,
@@ -440,12 +444,12 @@ export async function POST(request: NextRequest) {
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,
-          aliquotaIva: aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null,
-          importoImponibile: importoImponibile != null ? parseFloat(String(importoImponibile)) : null,
-          importoIva: importoIva != null ? parseFloat(String(importoIva)) : null,
-          percentualeDetraibilitaIva: percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null,
-          ivaDetraibile: ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null,
-          ivaIndetraibile: ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null,
+          aliquotaIva: isTipoFinanziario ? null : (aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null),
+          importoImponibile: isTipoFinanziario ? null : (importoImponibile != null ? parseFloat(String(importoImponibile)) : null),
+          importoIva: isTipoFinanziario ? null : (importoIva != null ? parseFloat(String(importoIva)) : null),
+          percentualeDetraibilitaIva: isTipoFinanziario ? null : (percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null),
+          ivaDetraibile: isTipoFinanziario ? null : (ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null),
+          ivaIndetraibile: isTipoFinanziario ? null : (ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null),
           opzioneUso: opzioneUso || null,
           categoriaId: isTipoFinanziario ? null : parseInt(String(categoriaId), 10),
           sottotipoOperazione: tipoOperazione === "PAGAMENTO_IMPOSTE" ? sottotipoOperazione : null,
