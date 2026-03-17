@@ -27,6 +27,7 @@ model Societa {
   cespiti        Cespite[]
   operazioniRicorrenti OperazioneRicorrente[]
   presetRipartizioni PresetRipartizione[]
+  pianiPagamento     PianoPagamento[]
 
   @@map("societa")
 }
@@ -131,6 +132,7 @@ model Operazione {
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
   ripartizioni RipartizioneOperazione[]
   cespite      Cespite?
+  pianoPagamento PianoPagamento?
   operazioneRicorrente OperazioneRicorrente? @relation(fields: [operazioneRicorrenteId], references: [id])
 
   @@index([societaId, dataOperazione])
@@ -363,6 +365,43 @@ enum ModalitaAcquisto {
   @@map("modalita_acquisto")
 }
 
+enum TipoPianoPagamento {
+  RATEALE
+  CUSTOM
+
+  @@map("tipo_piano_pagamento")
+}
+
+enum StatoPianoPagamento {
+  ATTIVO
+  CHIUSO_ANTICIPATAMENTE
+  COMPLETATO
+
+  @@map("stato_piano_pagamento")
+}
+
+enum StatoPagamento {
+  PREVISTO
+  EFFETTUATO
+  ANNULLATO
+
+  @@map("stato_pagamento")
+}
+
+enum MotivoChiusura {
+  ESTINZIONE_ANTICIPATA
+  PERMUTA
+  RIFINANZIAMENTO
+
+  @@map("motivo_chiusura")
+}
+
+enum FrequenzaRate {
+  MENSILE
+
+  @@map("frequenza_rate")
+}
+
 model PreferenzaUsoCategoria {
   id          Int      @id @default(autoincrement())
   userId      Int      @map("user_id")
@@ -488,4 +527,52 @@ model CessioneVeicolo {
   veicolo Veicolo @relation(fields: [veicoloId], references: [id], onDelete: Cascade)
 
   @@map("cessioni_veicoli")
+}
+
+model PianoPagamento {
+  id                 Int                   @id @default(autoincrement())
+  operazioneId       Int                   @unique @map("operazione_id")
+  societaId          Int                   @map("societa_id")
+  tipo               TipoPianoPagamento
+  stato              StatoPianoPagamento   @default(ATTIVO)
+  numeroRate         Int?                  @map("numero_rate")
+  importoRata        Decimal?              @map("importo_rata") @db.Decimal(10, 2)
+  tan                Decimal?              @db.Decimal(5, 2)
+  anticipo           Decimal?              @default(0) @db.Decimal(10, 2)
+  frequenzaRate      FrequenzaRate         @default(MENSILE) @map("frequenza_rate")
+  dataInizio         DateTime              @map("data_inizio") @db.Date
+  dataChiusura       DateTime?             @map("data_chiusura") @db.Date
+  motivoChiusura     MotivoChiusura?       @map("motivo_chiusura")
+  penaleEstinzione   Decimal?              @map("penale_estinzione") @db.Decimal(10, 2)
+  saldoResiduo       Decimal?              @map("saldo_residuo") @db.Decimal(10, 2)
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  operazione         Operazione            @relation(fields: [operazioneId], references: [id])
+  societa            Societa               @relation(fields: [societaId], references: [id])
+  pagamenti          Pagamento[]
+
+  @@index([societaId])
+  @@map("piani_pagamento")
+}
+
+model Pagamento {
+  id                      Int               @id @default(autoincrement())
+  pianoPagamentoId        Int               @map("piano_pagamento_id")
+  numeroPagamento         Int               @map("numero_pagamento")
+  data                    DateTime          @db.Date
+  importo                 Decimal           @db.Decimal(10, 2)
+  quotaCapitale           Decimal           @map("quota_capitale") @db.Decimal(10, 2)
+  quotaInteressi          Decimal           @map("quota_interessi") @db.Decimal(10, 2)
+  stato                   StatoPagamento    @default(PREVISTO)
+  dataEffettivaPagamento  DateTime?         @map("data_effettiva_pagamento") @db.Date
+  note                    String?           @db.Text
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  pianoPagamento          PianoPagamento    @relation(fields: [pianoPagamentoId], references: [id], onDelete: Cascade)
+
+  @@index([pianoPagamentoId, data, stato])
+  @@index([data, stato])
+  @@map("pagamenti")
 }
