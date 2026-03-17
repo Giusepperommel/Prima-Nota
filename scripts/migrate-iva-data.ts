@@ -58,8 +58,10 @@ async function migrate() {
       }
     }
 
-    // Recalculate existing COSTO/CESPITE operations
-    const operazioni = await prisma.operazione.findMany({
+    // =========================================================================
+    // 1) Recalculate COSTO/CESPITE operations (IVA detraibilità + imponibile)
+    // =========================================================================
+    const costiCespiti = await prisma.operazione.findMany({
       where: {
         societaId: s.id,
         eliminato: false,
@@ -68,7 +70,8 @@ async function migrate() {
       include: { categoria: true },
     });
 
-    for (const op of operazioni) {
+    for (const op of costiCespiti) {
+      if (!op.categoria) continue;
       const aliquota = op.aliquotaIva ? Number(op.aliquotaIva) : 22;
       const totale = Number(op.importoTotale);
       const imponibile =
@@ -103,10 +106,90 @@ async function migrate() {
       });
     }
 
-    console.log(`  Updated ${operazioni.length} operations`);
+    console.log(`  Updated ${costiCespiti.length} COSTO/CESPITE operations`);
+
+    // =========================================================================
+    // 2) Recalculate FATTURA_ATTIVA operations (scorporo IVA)
+    // =========================================================================
+    const fattureAttive = await prisma.operazione.findMany({
+      where: {
+        societaId: s.id,
+        eliminato: false,
+        tipoOperazione: "FATTURA_ATTIVA",
+      },
+    });
+
+    for (const op of fattureAttive) {
+      // Default to 22% if no aliquota stored
+      const aliquota = op.aliquotaIva ? Number(op.aliquotaIva) : 22;
+      const totale = Number(op.importoTotale);
+      const imponibile =
+        aliquota > 0
+          ? Math.round((totale / (1 + aliquota / 100)) * 100) / 100
+          : totale;
+      const ivaTotale = Math.round((totale - imponibile) * 100) / 100;
+
+      await prisma.operazione.update({
+        where: { id: op.id },
+        data: {
+          aliquotaIva: aliquota,
+          importoImponibile: imponibile,
+          importoIva: ivaTotale,
+          // Detraibilità non si applica alle fatture attive
+          percentualeDetraibilitaIva: null,
+          ivaDetraibile: null,
+          ivaIndetraibile: null,
+        },
+      });
+    }
+
+    console.log(`  Updated ${fattureAttive.length} FATTURA_ATTIVA operations`);
+
+    // =========================================================================
+    // 3) Recalculate importoCalcolato in ripartizioni (based on imponibile)
+    // =========================================================================
+    const tutteOperazioni = await prisma.operazione.findMany({
+      where: {
+        societaId: s.id,
+        eliminato: false,
+      },
+      select: {
+        id: true,
+        importoImponibile: true,
+        importoTotale: true,
+        ripartizioni: {
+          select: {
+            id: true,
+            percentuale: true,
+          },
+        },
+      },
+    });
+
+    let ripartizioniAggiornate = 0;
+
+    for (const op of tutteOperazioni) {
+      // Use imponibile if available, otherwise totale
+      const baseImporto = op.importoImponibile != null
+        ? Number(op.importoImponibile)
+        : Number(op.importoTotale);
+
+      for (const rip of op.ripartizioni) {
+        const nuovoImporto =
+          Math.round((baseImporto * Number(rip.percentuale)) / 100 * 100) / 100;
+
+        await prisma.ripartizioneOperazione.update({
+          where: { id: rip.id },
+          data: { importoCalcolato: nuovoImporto },
+        });
+        ripartizioniAggiornate++;
+      }
+    }
+
+    console.log(`  Updated ${ripartizioniAggiornate} ripartizioni`);
   }
 
-  console.log("Migration complete!");
+  console.log("\nMigration complete!");
 }
 
 migrate()
