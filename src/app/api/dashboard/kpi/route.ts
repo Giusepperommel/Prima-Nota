@@ -49,6 +49,29 @@ export async function GET(request: NextRequest) {
       ...dateFilter,
     };
 
+    // Rate in scadenza (current month)
+    const now = new Date();
+    const inizioMese = new Date(now.getFullYear(), now.getMonth(), 1);
+    const fineMese = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const rateInScadenza = await prisma.pagamento.findMany({
+      where: {
+        stato: "PREVISTO",
+        data: { gte: inizioMese, lte: fineMese },
+        pianoPagamento: {
+          societaId,
+          stato: "ATTIVO",
+          operazione: { eliminato: false, bozza: false },
+        },
+      },
+      select: { importo: true },
+    });
+
+    const rateScadenzaCount = rateInScadenza.length;
+    const rateScadenzaImporto = Math.round(
+      rateInScadenza.reduce((sum, r) => sum + Number(r.importo), 0) * 100
+    ) / 100;
+
     if (ruolo === "STANDARD") {
       // For STANDARD users: use their ripartizioni share
       const fatturatoRip = await prisma.ripartizioneOperazione.aggregate({
@@ -102,32 +125,46 @@ export async function GET(request: NextRequest) {
         utile: Math.round((fatturato - costi) * 100) / 100,
         numOperazioni,
         capitaleSociale,
+        rateInScadenza: {
+          count: rateScadenzaCount,
+          importo: rateScadenzaImporto,
+        },
       });
     }
 
-    // ADMIN: aggregate on full importoTotale
-    const fatturatoAgg = await prisma.operazione.aggregate({
-      _sum: { importoTotale: true },
-      where: {
-        ...baseWhere,
-        tipoOperazione: "FATTURA_ATTIVA",
-      },
-    });
-
-    const costiAgg = await prisma.operazione.aggregate({
-      _sum: { importoTotale: true },
-      where: {
-        ...baseWhere,
-        tipoOperazione: "COSTO",
-      },
-    });
-
-    const numOperazioni = await prisma.operazione.count({
+    // ADMIN: use importoImponibile (net) with fallback for old records
+    const adminOperazioni = await prisma.operazione.findMany({
       where: baseWhere,
+      select: {
+        tipoOperazione: true,
+        importoTotale: true,
+        importoImponibile: true,
+        aliquotaIva: true,
+      },
     });
 
-    const fatturato = Number(fatturatoAgg._sum.importoTotale ?? 0);
-    const costiDiretti = Number(costiAgg._sum.importoTotale ?? 0);
+    const numOperazioni = adminOperazioni.length;
+
+    let fatturato = 0;
+    let costiDiretti = 0;
+    for (const op of adminOperazioni) {
+      // Use importoImponibile if available; otherwise compute from totale/aliquota; last resort: totale
+      let importo: number;
+      if (op.importoImponibile != null) {
+        importo = Number(op.importoImponibile);
+      } else if (op.aliquotaIva != null && Number(op.aliquotaIva) > 0) {
+        importo = Number(op.importoTotale) / (1 + Number(op.aliquotaIva) / 100);
+      } else {
+        importo = Number(op.importoTotale);
+      }
+      if (op.tipoOperazione === "FATTURA_ATTIVA") {
+        fatturato += importo;
+      } else if (op.tipoOperazione === "COSTO") {
+        costiDiretti += importo;
+      }
+    }
+    fatturato = Math.round(fatturato * 100) / 100;
+    costiDiretti = Math.round(costiDiretti * 100) / 100;
 
     // Add depreciation for societa
     const annoInizio = new Date(da).getFullYear();
@@ -146,6 +183,10 @@ export async function GET(request: NextRequest) {
       utile: Math.round((fatturato - costi) * 100) / 100,
       numOperazioni,
       capitaleSociale,
+      rateInScadenza: {
+        count: rateScadenzaCount,
+        importo: rateScadenzaImporto,
+      },
     });
   } catch (error) {
     console.error("Errore nel recupero KPI:", error);
