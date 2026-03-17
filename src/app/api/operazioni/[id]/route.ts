@@ -192,20 +192,49 @@ export async function PUT(request: Request, context: RouteContext) {
       ripartizioniCustom,
       note,
       aliquotaAmmortamento,
+      sottotipoOperazione,
     } = body;
 
     // --- Validations ---
-    if (!tipoOperazione || !dataOperazione || !descrizione || !categoriaId) {
+    const TIPI_FINANZIARI = ["PAGAMENTO_IMPOSTE", "DISTRIBUZIONE_DIVIDENDI", "COMPENSO_AMMINISTRATORE"];
+    const isTipoFinanziario = TIPI_FINANZIARI.includes(tipoOperazione);
+
+    if (!tipoOperazione || !dataOperazione || !descrizione || (!isTipoFinanziario && !categoriaId)) {
       return NextResponse.json(
         { error: "Tipo operazione, data, descrizione e categoria sono obbligatori" },
         { status: 400 }
       );
     }
 
-    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE"];
+    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE", "PAGAMENTO_IMPOSTE", "DISTRIBUZIONE_DIVIDENDI", "COMPENSO_AMMINISTRATORE"];
     if (!tipiValidi.includes(tipoOperazione)) {
       return NextResponse.json(
         { error: "Tipo operazione non valido" },
+        { status: 400 }
+      );
+    }
+
+    // Validate sottotipoOperazione for new financial types
+    const SOTTOTIPI_IMPOSTE = ["IVA", "IRES_ACCONTO", "IRES_SALDO", "IRAP_ACCONTO", "IRAP_SALDO", "INPS"];
+    if (tipoOperazione === "PAGAMENTO_IMPOSTE") {
+      if (!sottotipoOperazione || !SOTTOTIPI_IMPOSTE.includes(sottotipoOperazione)) {
+        return NextResponse.json(
+          { error: "Specificare il tipo di imposta (IVA, IRES_ACCONTO, ecc.)" },
+          { status: 400 }
+        );
+      }
+    } else if (isTipoFinanziario && sottotipoOperazione != null) {
+      return NextResponse.json(
+        { error: "sottotipoOperazione non applicabile per questo tipo" },
+        { status: 400 }
+      );
+    }
+
+    const isRicorrente = Boolean(body.isRicorrente);
+
+    if (isTipoFinanziario && isRicorrente) {
+      return NextResponse.json(
+        { error: "I tipi finanziari non possono essere operazioni ricorrenti" },
         { status: 400 }
       );
     }
@@ -226,11 +255,13 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
-    // Validate categoria
-    const categoria = await prisma.categoriaSpesa.findFirst({
-      where: { id: parseInt(String(categoriaId), 10), societaId, attiva: true },
-    });
-    if (!categoria) {
+    // Validate categoria (skip for new financial types)
+    const categoria = !isTipoFinanziario
+      ? await prisma.categoriaSpesa.findFirst({
+          where: { id: parseInt(String(categoriaId), 10), societaId, attiva: true },
+        })
+      : null;
+    if (!isTipoFinanziario && !categoria) {
       return NextResponse.json(
         { error: "Categoria non trovata o non attiva" },
         { status: 400 }
@@ -340,15 +371,19 @@ export async function PUT(request: Request, context: RouteContext) {
     );
 
     // Deducibilita values
-    const percDeduc = deducibilitaCustom
-      ? parseFloat(String(percentualeDeducibilita))
-      : Number(categoria.percentualeDeducibilita);
+    const percDeduc = isTipoFinanziario
+      ? 0
+      : deducibilitaCustom
+        ? parseFloat(String(percentualeDeducibilita))
+        : Number(categoria!.percentualeDeducibilita);
 
-    const impDeduc = deducibilitaCustom
-      ? parseFloat(String(importoDeducibile))
-      : Math.round(
-          ((importo * Number(categoria.percentualeDeducibilita)) / 100) * 100
-        ) / 100;
+    const impDeduc = isTipoFinanziario
+      ? 0
+      : deducibilitaCustom
+        ? parseFloat(String(importoDeducibile))
+        : Math.round(
+            ((importo * Number(categoria!.percentualeDeducibilita)) / 100) * 100
+          ) / 100;
 
     // Snapshot before values
     const valoriPrima = {
@@ -372,14 +407,15 @@ export async function PUT(request: Request, context: RouteContext) {
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,
-          aliquotaIva: aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null,
-          importoImponibile: importoImponibile != null ? parseFloat(String(importoImponibile)) : null,
-          importoIva: importoIva != null ? parseFloat(String(importoIva)) : null,
-          percentualeDetraibilitaIva: percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null,
-          ivaDetraibile: ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null,
-          ivaIndetraibile: ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null,
+          aliquotaIva: isTipoFinanziario ? null : (aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null),
+          importoImponibile: isTipoFinanziario ? null : (importoImponibile != null ? parseFloat(String(importoImponibile)) : null),
+          importoIva: isTipoFinanziario ? null : (importoIva != null ? parseFloat(String(importoIva)) : null),
+          percentualeDetraibilitaIva: isTipoFinanziario ? null : (percentualeDetraibilitaIva != null ? parseFloat(String(percentualeDetraibilitaIva)) : null),
+          ivaDetraibile: isTipoFinanziario ? null : (ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null),
+          ivaIndetraibile: isTipoFinanziario ? null : (ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null),
           opzioneUso: opzioneUso || null,
-          categoriaId: parseInt(String(categoriaId), 10),
+          categoriaId: isTipoFinanziario ? null : parseInt(String(categoriaId), 10),
+          sottotipoOperazione: tipoOperazione === "PAGAMENTO_IMPOSTE" ? sottotipoOperazione : null,
           importoDeducibile: impDeduc,
           percentualeDeducibilita: percDeduc,
           deducibilitaCustom: Boolean(deducibilitaCustom),
@@ -458,7 +494,7 @@ export async function PUT(request: Request, context: RouteContext) {
       dataOperazione,
       descrizione,
       importoTotale: importo,
-      categoriaId: parseInt(String(categoriaId), 10),
+      categoriaId: isTipoFinanziario ? null : parseInt(String(categoriaId), 10),
       tipoRipartizione,
       importoDeducibile: impDeduc,
       percentualeDeducibilita: percDeduc,
