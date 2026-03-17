@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  AreaChart,
+  Area,
+  ReferenceLine,
 } from "recharts";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -76,6 +80,32 @@ type Bozza = {
 
 type PeriodoPreset = "mese" | "anno" | "custom";
 
+type CassaMensile = {
+  mese: number;
+  meseLabel: string;
+  entrate: number;
+  uscite: number;
+  usciteDettaglio: {
+    costiOperativi: number;
+    cespiti: number;
+    imposte: number;
+    dividendi: number;
+    compensiAmm: number;
+  };
+  saldoProgressivo: number;
+};
+
+type CassaData = {
+  anno: number;
+  saldoIniziale: number;
+  mensile: CassaMensile[];
+  totali: {
+    entrate: number;
+    uscite: number;
+    saldoFinale: number;
+  };
+};
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 const MESI_LABEL = [
@@ -87,6 +117,9 @@ const TIPO_LABELS: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
   CESPITE: "Cespite",
+  PAGAMENTO_IMPOSTE: "Pag. Imposte",
+  DISTRIBUZIONE_DIVIDENDI: "Dividendi",
+  COMPENSO_AMMINISTRATORE: "Comp. Amm.",
 };
 
 function getDefaultDates(preset: PeriodoPreset): { da: string; a: string } {
@@ -156,6 +189,7 @@ type Props = {
 
 export function DashboardContent({ ruolo, nome }: Props) {
   const isAdmin = ruolo === "ADMIN";
+  const router = useRouter();
 
   // Period state
   const [periodo, setPeriodo] = useState<PeriodoPreset>("mese");
@@ -179,6 +213,11 @@ export function DashboardContent({ ruolo, nome }: Props) {
   const [loadingTrend, setLoadingTrend] = useState(true);
   const [loadingBreakdown, setLoadingBreakdown] = useState(true);
   const [loadingOps, setLoadingOps] = useState(true);
+
+  // Cassa state
+  const [cassaAnno, setCassaAnno] = useState(new Date().getFullYear());
+  const [cassaData, setCassaData] = useState<CassaData | null>(null);
+  const [loadingCassa, setLoadingCassa] = useState(false);
 
   // ── Fetchers ────────────────────────────────────────────────────────────
 
@@ -253,6 +292,21 @@ export function DashboardContent({ ruolo, nome }: Props) {
     }
   }, []);
 
+  const fetchCassa = useCallback(async (anno: number) => {
+    setLoadingCassa(true);
+    try {
+      const res = await fetch(`/api/dashboard/cassa?anno=${anno}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCassaData(data);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingCassa(false);
+    }
+  }, []);
+
   const fetchBozze = useCallback(async () => {
     setLoadingBozze(true);
     try {
@@ -324,6 +378,10 @@ export function DashboardContent({ ruolo, nome }: Props) {
   useEffect(() => {
     fetchBozze();
   }, [fetchBozze]);
+
+  useEffect(() => {
+    fetchCassa(cassaAnno);
+  }, [cassaAnno, fetchCassa]);
 
   // ── Period handlers ─────────────────────────────────────────────────────
 
@@ -415,10 +473,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            setEditingBozza(bozza.id);
-                            setEditImporto(String(bozza.importoTotale));
-                          }}
+                          onClick={() => router.push(`/operazioni/${bozza.id}`)}
                         >
                           Modifica
                         </Button>
@@ -703,6 +758,116 @@ export function DashboardContent({ ruolo, nome }: Props) {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Simulazione Cassa ────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Simulazione Cassa</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="cassa-anno" className="text-sm">Anno</Label>
+            <Input
+              id="cassa-anno"
+              type="number"
+              value={cassaAnno}
+              onChange={(e) => setCassaAnno(parseInt(e.target.value, 10) || new Date().getFullYear())}
+              className="w-24 h-8 text-sm"
+              min={2000}
+              max={2100}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingCassa ? (
+            <Skeleton className="h-64 w-full" />
+          ) : !cassaData || (cassaData.totali.entrate === 0 && cassaData.totali.uscite === 0 && cassaData.saldoIniziale === 0) ? (
+            <p className="text-sm text-muted-foreground">Nessun movimento registrato per questo anno.</p>
+          ) : (
+            <div className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Saldo Iniziale Anno</p>
+                    <p className="text-lg font-semibold mt-1">{formatCurrency(cassaData.saldoIniziale)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-green-500/30">
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Entrate Lorde</p>
+                    <p className="text-lg font-semibold mt-1 text-green-400">{formatCurrency(cassaData.totali.entrate)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-red-500/30">
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Uscite Lorde</p>
+                    <p className="text-lg font-semibold mt-1 text-red-400">{formatCurrency(cassaData.totali.uscite)}</p>
+                  </CardContent>
+                </Card>
+                <Card className={cassaData.totali.saldoFinale >= 0 ? "border-green-500/30" : "border-red-500/30"}>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Saldo Finale Anno</p>
+                    <p className={`text-lg font-semibold mt-1 ${cassaData.totali.saldoFinale >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {formatCurrency(cassaData.totali.saldoFinale)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Line chart — saldo progressivo */}
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cassaData.mensile} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="cassaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="meseLabel" tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value, name) => [formatCurrency(value as number), (name as string) === "saldoProgressivo" ? "Saldo" : (name as string)]}
+                      labelFormatter={(label) => `${label} ${cassaAnno}`}
+                    />
+                    <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
+                    <Area
+                      type="monotone"
+                      dataKey="saldoProgressivo"
+                      name="saldoProgressivo"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      fill="url(#cassaGradient)"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Breakdown uscite */}
+              <div>
+                <p className="text-sm font-medium mb-2">Dettaglio Uscite</p>
+                <Table>
+                  <TableBody>
+                    {[
+                      { label: "Costi operativi", value: cassaData.mensile.reduce((s, m) => s + m.usciteDettaglio.costiOperativi, 0) },
+                      { label: "Cespiti", value: cassaData.mensile.reduce((s, m) => s + m.usciteDettaglio.cespiti, 0) },
+                      { label: "Imposte pagate", value: cassaData.mensile.reduce((s, m) => s + m.usciteDettaglio.imposte, 0) },
+                      { label: "Dividendi distribuiti", value: cassaData.mensile.reduce((s, m) => s + m.usciteDettaglio.dividendi, 0) },
+                      { label: "Compensi amministratore", value: cassaData.mensile.reduce((s, m) => s + m.usciteDettaglio.compensiAmm, 0) },
+                    ].filter((r) => r.value > 0).map((row) => (
+                      <TableRow key={row.label}>
+                        <TableCell className="text-sm text-muted-foreground">{row.label}</TableCell>
+                        <TableCell className="text-right text-sm font-medium text-red-400">{formatCurrency(row.value)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Ultime Operazioni ────────────────────────────────────────── */}
       <Card>
