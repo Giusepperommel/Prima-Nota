@@ -8,7 +8,6 @@ import {
   getLimiteFiscale,
   getPercentualiUso,
   calcolaBaseFiscale,
-  calcolaPianoFinanziamento,
 } from "@/lib/calcoli-veicoli";
 import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 
@@ -232,12 +231,6 @@ export async function POST(request: NextRequest) {
       marca,
       modelloVeicolo,
       targa,
-      importoFinanziato,
-      anticipoFinanziamento,
-      numeroRate,
-      importoRata,
-      tan,
-      dataPrimaRata,
     } = body;
 
     // --- Validations ---
@@ -397,14 +390,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (modalitaAcquisto === "FINANZIAMENTO") {
-        if (!importoFinanziato || !numeroRate || !importoRata || !dataPrimaRata) {
-          return NextResponse.json(
-            { error: "Importo finanziato, numero rate, importo rata e data prima rata sono obbligatori" },
-            { status: 400 }
-          );
-        }
-      }
     }
 
     // Calculate ripartizioni
@@ -543,64 +528,6 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          if (modalitaAcquisto === "FINANZIAMENTO") {
-            const impFinanziato = parseFloat(String(importoFinanziato));
-            const nRate = parseInt(String(numeroRate), 10);
-            const impRata = parseFloat(String(importoRata));
-            const tanValue = tan != null && tan !== "" ? parseFloat(String(tan)) : null;
-            const anticipo = anticipoFinanziamento != null ? parseFloat(String(anticipoFinanziamento)) : 0;
-
-            const pianoFin = calcolaPianoFinanziamento(impFinanziato, nRate, impRata, tanValue);
-            const totInteressi = pianoFin.reduce((sum, r) => sum + r.quotaInteressi, 0);
-            const interesseMedio = Math.round((totInteressi / nRate) * 100) / 100;
-
-            const dataPrimaRataDate = new Date(dataPrimaRata);
-            const giornoRata = dataPrimaRataDate.getDate();
-
-            const percDedVeicolo = veicoloData.percentualeDeducibilita;
-            const interesseDeducibile = Math.round((interesseMedio * percDedVeicolo / 100) * 100) / 100;
-
-            const ricorrente = await tx.operazioneRicorrente.create({
-              data: {
-                societaId,
-                createdByUserId: userId,
-                tipoOperazione: "COSTO",
-                categoriaId: parseInt(String(categoriaId), 10),
-                descrizione: `Rata finanziamento ${marca} ${modelloVeicolo} ${targa}`,
-                importoTotale: impRata,
-                aliquotaIva: null,
-                importoImponibile: null,
-                importoIva: null,
-                percentualeDetraibilitaIva: null,
-                ivaDetraibile: null,
-                ivaIndetraibile: null,
-                percentualeDeducibilita: percDedVeicolo,
-                importoDeducibile: interesseDeducibile,
-                deducibilitaCustom: true,
-                tipoRipartizione: tipoRipartizione as any,
-                socioSingoloId: socioSingoloId ? parseInt(String(socioSingoloId), 10) : null,
-                note: `Quota capitale media: ${Math.round((impRata - interesseMedio) * 100) / 100} | Quota interessi media: ${interesseMedio}`,
-                giornoDelMese: giornoRata,
-                dataInizio: dataPrimaRataDate,
-                dataFine: null,
-                prossimaGenerazione: dataPrimaRataDate,
-                rateRimanenti: nRate,
-              },
-            });
-
-            await tx.finanziamento.create({
-              data: {
-                veicoloId: veicolo.id,
-                importoFinanziato: impFinanziato,
-                anticipo: anticipo,
-                numeroRate: nRate,
-                importoRata: impRata,
-                tan: tanValue,
-                dataPrimaRata: dataPrimaRataDate,
-                operazioneRicorrenteId: ricorrente.id,
-              },
-            });
-          }
         }
       }
 

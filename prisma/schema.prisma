@@ -464,8 +464,6 @@ model OperazioneRicorrente {
   categoria          CategoriaSpesa @relation(fields: [categoriaId], references: [id])
   createdBy          Utente         @relation(fields: [createdByUserId], references: [id])
   operazioniGenerate Operazione[]
-  finanziamenti     Finanziamento[]
-
   @@index([societaId, attiva])
   @@index([prossimaGenerazione])
   @@map("operazioni_ricorrenti")
@@ -487,29 +485,9 @@ model Veicolo {
   updatedAt                 DateTime         @updatedAt @map("updated_at")
 
   cespite        Cespite          @relation(fields: [cespiteId], references: [id], onDelete: Cascade)
-  finanziamento  Finanziamento?
   cessione       CessioneVeicolo?
 
   @@map("veicoli")
-}
-
-model Finanziamento {
-  id                      Int       @id @default(autoincrement())
-  veicoloId               Int       @unique @map("veicolo_id")
-  importoFinanziato       Decimal   @map("importo_finanziato") @db.Decimal(10, 2)
-  anticipo                Decimal   @default(0) @db.Decimal(10, 2)
-  numeroRate              Int       @map("numero_rate")
-  importoRata             Decimal   @map("importo_rata") @db.Decimal(10, 2)
-  tan                     Decimal?  @db.Decimal(5, 2)
-  dataPrimaRata           DateTime  @map("data_prima_rata") @db.Date
-  operazioneRicorrenteId  Int?      @map("operazione_ricorrente_id")
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
-
-  veicolo              Veicolo               @relation(fields: [veicoloId], references: [id], onDelete: Cascade)
-  operazioneRicorrente OperazioneRicorrente? @relation(fields: [operazioneRicorrenteId], references: [id])
-
-  @@map("finanziamenti")
 }
 
 model CessioneVeicolo {

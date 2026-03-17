@@ -45,12 +45,11 @@ import {
   LIMITI_LEASING_AUTO,
   LIMITI_NLT_ANNUO,
 } from "@/lib/calcoli-ricorrenze";
-import { Save, X, Loader2, AlertTriangle, RepeatIcon, Car, Info } from "lucide-react";
+import { Save, X, Loader2, AlertTriangle, RepeatIcon, Car } from "lucide-react";
 import {
   getLimiteFiscale,
   getPercentualiUso,
   calcolaBaseFiscale,
-  calcolaTotaleInteressi,
   PERCENTUALI_USO,
   TIPO_VEICOLO_LABELS,
   USO_VEICOLO_LABELS,
@@ -286,14 +285,6 @@ export function OperazioneForm({
   const [marca, setMarca] = useState("");
   const [modelloVeicolo, setModelloVeicolo] = useState("");
   const [targa, setTarga] = useState("");
-  // Financing state
-  const [anticipoFinanziamento, setAnticipoFinanziamento] = useState("");
-  const [importoFinanziato, setImportoFinanziato] = useState("");
-  const [numeroRate, setNumeroRate] = useState("");
-  const [importoRata, setImportoRata] = useState("");
-  const [tan, setTan] = useState("");
-  const [dataPrimaRata, setDataPrimaRata] = useState("");
-
   // Payment plan
   const [pianoPagamentoForm, setPianoPagamentoForm] = useState<PianoPagamentoFormData>({
     modalita: "IMMEDIATO",
@@ -549,34 +540,6 @@ export function OperazioneForm({
       ...percentuali,
     };
   }, [isVeicolo, tipoOperazione, tipoVeicolo, usoVeicolo, importoTotale, calcoloIvaCompleto]);
-
-  const finanziamentoPreview = useMemo(() => {
-    if (!isVeicolo || modalitaAcquisto !== "FINANZIAMENTO") return null;
-    const impFin = parseFloat(importoFinanziato) || 0;
-    const nRate = parseInt(numeroRate) || 0;
-    const impRata = parseFloat(importoRata) || 0;
-    const tanVal = tan ? parseFloat(tan) : null;
-
-    if (impFin <= 0 || nRate <= 0 || impRata <= 0) return null;
-
-    const totInteressi = calcolaTotaleInteressi(impFin, nRate, impRata, tanVal);
-    const percDeduc = veicoloFiscale?.deducibilita || 20;
-    const interessiDeducibili = Math.round((totInteressi * percDeduc / 100) * 100) / 100;
-
-    return {
-      totaleInteressi: Math.round(totInteressi * 100) / 100,
-      interessiDeducibili,
-      totalePagato: Math.round((impRata * nRate + (parseFloat(anticipoFinanziamento) || 0)) * 100) / 100,
-    };
-  }, [isVeicolo, modalitaAcquisto, importoFinanziato, numeroRate, importoRata, tan, anticipoFinanziamento, veicoloFiscale]);
-
-  useEffect(() => {
-    if (isVeicolo && modalitaAcquisto === "FINANZIAMENTO") {
-      const importoNum = parseFloat(importoTotale) || 0;
-      const anticipoNum = parseFloat(anticipoFinanziamento) || 0;
-      setImportoFinanziato(String(Math.max(0, importoNum - anticipoNum)));
-    }
-  }, [importoTotale, anticipoFinanziamento, isVeicolo, modalitaAcquisto]);
 
   // Auto-override IVA detraibilita, deducibilita, and ammortamento when vehicle is toggled
   useEffect(() => {
@@ -876,16 +839,6 @@ export function OperazioneForm({
           targa,
         });
 
-        if (modalitaAcquisto === "FINANZIAMENTO") {
-          Object.assign(payload, {
-            importoFinanziato: parseFloat(importoFinanziato),
-            anticipoFinanziamento: parseFloat(anticipoFinanziamento) || 0,
-            numeroRate: parseInt(numeroRate),
-            importoRata: parseFloat(importoRata),
-            tan: tan ? parseFloat(tan) : null,
-            dataPrimaRata,
-          });
-        }
       }
 
       // Add payment plan data
@@ -1664,104 +1617,6 @@ export function OperazioneForm({
                           </Select>
                         </div>
 
-                        {modalitaAcquisto === "FINANZIAMENTO" && (
-                          <div className="space-y-4 rounded-lg border p-4">
-                            <p className="text-sm font-medium">Dati Finanziamento</p>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label>Anticipo versato</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={anticipoFinanziamento}
-                                  onChange={(e) => setAnticipoFinanziamento(e.target.value)}
-                                  placeholder="0.00"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Importo finanziato *</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={importoFinanziato}
-                                  onChange={(e) => setImportoFinanziato(e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Numero rate *</Label>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={numeroRate}
-                                  onChange={(e) => setNumeroRate(e.target.value)}
-                                  placeholder="es. 48"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Importo rata mensile *</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={importoRata}
-                                  onChange={(e) => setImportoRata(e.target.value)}
-                                  placeholder="es. 350.00"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="flex items-center gap-1">
-                                  TAN %
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Tasso Annuo Nominale - lo trovi nel contratto.<br/>Se non lo inserisci, gli interessi saranno stimati linearmente.</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  max="100"
-                                  value={tan}
-                                  onChange={(e) => setTan(e.target.value)}
-                                  placeholder="es. 5.50 (opzionale)"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Data prima rata *</Label>
-                                <Input
-                                  type="date"
-                                  value={dataPrimaRata}
-                                  onChange={(e) => setDataPrimaRata(e.target.value)}
-                                />
-                              </div>
-                            </div>
-
-                            {finanziamentoPreview && (
-                              <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Totale interessi:</span>
-                                  <span className="font-mono">{formatCurrency(finanziamentoPreview.totaleInteressi)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Interessi deducibili ({veicoloFiscale?.deducibilita}%):</span>
-                                  <span className="font-mono">{formatCurrency(finanziamentoPreview.interessiDeducibili)}</span>
-                                </div>
-                                <div className="flex justify-between font-medium">
-                                  <span className="text-muted-foreground">Totale pagato (anticipo + rate):</span>
-                                  <span className="font-mono">{formatCurrency(finanziamentoPreview.totalePagato)}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )}
                   </CardContent>
