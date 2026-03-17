@@ -54,10 +54,6 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     notFound();
   }
 
-  if (!operazione.categoria) {
-    notFound();
-  }
-
   // Check access for STANDARD users
   if (user.ruolo === "STANDARD") {
     const isCreator = operazione.createdByUserId === user.id;
@@ -178,16 +174,19 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     importoDeducibile: Number(operazione.importoDeducibile),
     percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
     deducibilitaCustom: operazione.deducibilitaCustom,
+    sottotipoOperazione: operazione.sottotipoOperazione ?? null,
     tipoRipartizione: operazione.tipoRipartizione,
     note: operazione.note,
     createdByUserId: operazione.createdByUserId,
-    categoria: {
-      id: operazione.categoria.id,
-      nome: operazione.categoria.nome,
-      percentualeDeducibilita: Number(
-        operazione.categoria.percentualeDeducibilita
-      ),
-    },
+    categoria: operazione.categoria
+      ? {
+          id: operazione.categoria.id,
+          nome: operazione.categoria.nome,
+          percentualeDeducibilita: Number(
+            operazione.categoria.percentualeDeducibilita
+          ),
+        }
+      : null,
     ripartizioni: operazione.ripartizioni.map((rip) => ({
       id: rip.id,
       socioId: rip.socioId,

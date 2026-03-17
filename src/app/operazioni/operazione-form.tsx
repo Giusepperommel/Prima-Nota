@@ -156,7 +156,7 @@ type OperazioneData = {
     id: number;
     nome: string;
     percentualeDeducibilita: number;
-  };
+  } | null;
   cespite?: {
     id: number;
     aliquotaAmmortamento: number;
