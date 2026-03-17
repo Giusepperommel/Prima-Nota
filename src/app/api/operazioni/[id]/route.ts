@@ -31,7 +31,7 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const operazione = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
+      where: { id: operazioneId, societaId, eliminato: false },
       include: {
         categoria: {
           select: { id: true, nome: true, percentualeDeducibilita: true },
@@ -95,12 +95,14 @@ export async function GET(request: Request, context: RouteContext) {
       dataOperazione: operazione.dataOperazione.toISOString(),
       createdAt: operazione.createdAt.toISOString(),
       updatedAt: operazione.updatedAt.toISOString(),
-      categoria: {
-        ...operazione.categoria,
-        percentualeDeducibilita: Number(
-          operazione.categoria.percentualeDeducibilita
-        ),
-      },
+      categoria: operazione.categoria
+        ? {
+            ...operazione.categoria,
+            percentualeDeducibilita: Number(
+              operazione.categoria.percentualeDeducibilita
+            ),
+          }
+        : null,
       ripartizioni: operazione.ripartizioni.map((rip) => ({
         ...rip,
         percentuale: Number(rip.percentuale),
@@ -145,7 +147,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     // Load existing operazione
     const existing = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
+      where: { id: operazioneId, societaId, eliminato: false },
       include: {
         ripartizioni: true,
       },
@@ -324,8 +326,13 @@ export async function PUT(request: Request, context: RouteContext) {
           )
         : undefined;
 
+    // Use imponibile for ripartizioni (net of IVA); fallback to totale for old/forfettario
+    const importoPerRipartizione = importoImponibile != null
+      ? parseFloat(String(importoImponibile))
+      : importo;
+
     const ripartizioniCalcolate = calcolaRipartizione(
-      importo,
+      importoPerRipartizione,
       tipoRipartizione as "COMUNE" | "SINGOLO" | "CUSTOM",
       sociForCalc,
       socioSingoloId ? parseInt(String(socioSingoloId), 10) : undefined,
@@ -378,6 +385,7 @@ export async function PUT(request: Request, context: RouteContext) {
           deducibilitaCustom: Boolean(deducibilitaCustom),
           tipoRipartizione: tipoRipartizione as any,
           note: note || null,
+          bozza: false,
         },
       });
 
@@ -512,7 +520,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     const existing = await prisma.operazione.findFirst({
-      where: { id: operazioneId, societaId, eliminato: false, bozza: false },
+      where: { id: operazioneId, societaId, eliminato: false },
     });
 
     if (!existing) {
