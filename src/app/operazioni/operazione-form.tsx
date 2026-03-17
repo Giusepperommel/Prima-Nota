@@ -333,7 +333,7 @@ export function OperazioneForm({
     if (tipoOperazione !== "PAGAMENTO_IMPOSTE") {
       setSottotipoOperazione("");
     }
-  }, [tipoOperazione, isTipoFinanziario]);
+  }, [tipoOperazione]);
 
   const calcoloIvaCompleto = useMemo(() => {
     if (!ivaApplicabile) return null;
@@ -876,7 +876,7 @@ export function OperazioneForm({
       if (isRicorrente && !isEditing) {
         const ricorrenzaPayload: any = {
           tipoOperazione,
-          categoriaId: parseInt(categoriaId, 10),
+          categoriaId: isTipoFinanziario ? null : parseInt(categoriaId, 10),
           descrizione: descrizione.trim(),
           importoTotale: importo,
           aliquotaIva: ivaApplicabile ? parseFloat(aliquotaIva) || 0 : null,
