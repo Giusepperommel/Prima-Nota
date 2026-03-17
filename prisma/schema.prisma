@@ -110,7 +110,8 @@ model Operazione {
   ivaDetraibile              Decimal?      @map("iva_detraibile") @db.Decimal(10, 2)
   ivaIndetraibile            Decimal?      @map("iva_indetraibile") @db.Decimal(10, 2)
   opzioneUso                 String?       @map("opzione_uso") @db.VarChar(50)
-  categoriaId             Int              @map("categoria_id")
+  categoriaId          Int?     @map("categoria_id")
+  sottotipoOperazione  String?  @map("sottotipo_operazione") @db.VarChar(50)
   importoDeducibile       Decimal          @map("importo_deducibile") @db.Decimal(10, 2)
   percentualeDeducibilita Decimal          @map("percentuale_deducibilita") @db.Decimal(5, 2)
   deducibilitaCustom      Boolean          @default(false) @map("deducibilita_custom")
@@ -126,7 +127,7 @@ model Operazione {
   updatedAt               DateTime         @updatedAt @map("updated_at")
 
   societa      Societa                  @relation(fields: [societaId], references: [id])
-  categoria    CategoriaSpesa           @relation(fields: [categoriaId], references: [id])
+  categoria    CategoriaSpesa?          @relation(fields: [categoriaId], references: [id])
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
   ripartizioni RipartizioneOperazione[]
   cespite      Cespite?
@@ -241,6 +242,9 @@ enum TipoOperazione {
   FATTURA_ATTIVA
   COSTO
   CESPITE
+  PAGAMENTO_IMPOSTE
+  DISTRIBUZIONE_DIVIDENDI
+  COMPENSO_AMMINISTRATORE
 
   @@map("tipo_operazione")
 }
