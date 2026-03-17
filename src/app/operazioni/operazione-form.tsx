@@ -68,6 +68,7 @@ import { PasteField } from "@/components/ocr/paste-field";
 import { OcrOverlay } from "@/components/ocr/ocr-overlay";
 import { useOcr } from "@/hooks/use-ocr";
 import type { ParsedDocument, ParsedTransaction, OcrParseResult } from "@/lib/ocr/types";
+import { SelettoreModalitaPagamento, type PianoPagamentoFormData } from "@/components/pagamenti/selettore-modalita-pagamento";
 
 const TIPI_FINANZIARI = ["PAGAMENTO_IMPOSTE", "DISTRIBUZIONE_DIVIDENDI", "COMPENSO_AMMINISTRATORE"] as const;
 const SOTTOTIPI_IMPOSTE = [
@@ -292,6 +293,11 @@ export function OperazioneForm({
   const [importoRata, setImportoRata] = useState("");
   const [tan, setTan] = useState("");
   const [dataPrimaRata, setDataPrimaRata] = useState("");
+
+  // Payment plan
+  const [pianoPagamentoForm, setPianoPagamentoForm] = useState<PianoPagamentoFormData>({
+    modalita: "IMMEDIATO",
+  });
 
   // Ricorrenza
   const [isRicorrente, setIsRicorrente] = useState(false);
@@ -777,6 +783,33 @@ export function OperazioneForm({
       }
     }
 
+    // Payment plan validations
+    if (pianoPagamentoForm.modalita === "RATEALE") {
+      if (!pianoPagamentoForm.numeroRate || pianoPagamentoForm.numeroRate <= 0) {
+        toast.error("Inserire il numero di rate");
+        return;
+      }
+      if (!pianoPagamentoForm.dataInizio) {
+        toast.error("Inserire la data della prima rata");
+        return;
+      }
+      if (pianoPagamentoForm.anticipo && pianoPagamentoForm.anticipo >= importo) {
+        toast.error("L'anticipo deve essere inferiore all'importo totale");
+        return;
+      }
+    }
+    if (pianoPagamentoForm.modalita === "CUSTOM") {
+      if (!pianoPagamentoForm.pagamentiCustom || pianoPagamentoForm.pagamentiCustom.length === 0) {
+        toast.error("Aggiungere almeno un pagamento personalizzato");
+        return;
+      }
+      const hasEmptyDates = pianoPagamentoForm.pagamentiCustom.some(p => !p.data);
+      if (hasEmptyDates) {
+        toast.error("Tutti i pagamenti devono avere una data");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // Normalize preset to CUSTOM for API submission
@@ -852,6 +885,21 @@ export function OperazioneForm({
             tan: tan ? parseFloat(tan) : null,
             dataPrimaRata,
           });
+        }
+      }
+
+      // Add payment plan data
+      if (pianoPagamentoForm.modalita !== "IMMEDIATO") {
+        payload.modalitaPagamento = pianoPagamentoForm.modalita;
+        if (pianoPagamentoForm.modalita === "RATEALE") {
+          payload.pianoPagamentoData = {
+            numeroRate: pianoPagamentoForm.numeroRate,
+            tan: pianoPagamentoForm.tan || 0,
+            anticipo: pianoPagamentoForm.anticipo || 0,
+            dataInizio: pianoPagamentoForm.dataInizio,
+          };
+        } else if (pianoPagamentoForm.modalita === "CUSTOM") {
+          payload.pagamentiCustom = pianoPagamentoForm.pagamentiCustom;
         }
       }
 
@@ -2000,6 +2048,15 @@ export function OperazioneForm({
           })()}
         </CardContent>
       </Card>
+
+      {/* Section: Modalità di Pagamento */}
+      {!isEditing && !readOnly && !isTipoFinanziario && (
+        <SelettoreModalitaPagamento
+          importoTotale={parseFloat(importoTotale) || 0}
+          value={pianoPagamentoForm}
+          onChange={setPianoPagamentoForm}
+        />
+      )}
 
       {/* Section 4: Note */}
       <Card>
