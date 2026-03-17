@@ -73,7 +73,7 @@ type Bozza = {
   dataOperazione: string;
   descrizione: string;
   importoTotale: number;
-  categoria: { id: number; nome: string };
+  categoria: { id: number; nome: string } | null;
   tipoOperazione: string;
   tipoContratto: string | null;
 };
@@ -429,7 +429,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                       {formatDataItaliana(bozza.dataOperazione)}
                     </span>
                     <span className="text-sm font-medium truncate">{bozza.descrizione}</span>
-                    <Badge variant="outline" className="text-xs shrink-0">{bozza.categoria.nome}</Badge>
+                    <Badge variant="outline" className="text-xs shrink-0">{bozza.categoria?.nome ?? "—"}</Badge>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
                     {editingBozza === bozza.id ? (
