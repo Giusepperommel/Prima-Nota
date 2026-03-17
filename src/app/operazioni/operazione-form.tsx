@@ -91,6 +91,7 @@ type OpzioneUso = {
   codice: string;
   detraibilitaIva: number;
   deducibilitaCosto: number;
+  aliquotaIva?: number;
 };
 
 type Categoria = {

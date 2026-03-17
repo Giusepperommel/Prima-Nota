@@ -54,6 +54,10 @@ export default async function DettaglioOperazionePage({ params }: Props) {
     notFound();
   }
 
+  if (!operazione.categoria) {
+    notFound();
+  }
+
   // Check access for STANDARD users
   if (user.ruolo === "STANDARD") {
     const isCreator = operazione.createdByUserId === user.id;

@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
         importoTotale,
         importoSocio,
         percentuale: Number(rip.percentuale),
-        categoria: op.categoria.nome,
+        categoria: op.categoria?.nome ?? null,
       };
     });
 
