@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -67,7 +67,17 @@ import { GlobalDropZone } from "@/components/ocr/global-drop-zone";
 import { PasteField } from "@/components/ocr/paste-field";
 import { OcrOverlay } from "@/components/ocr/ocr-overlay";
 import { useOcr } from "@/hooks/use-ocr";
-import type { ParsedDocument, OcrParseResult } from "@/lib/ocr/types";
+import type { ParsedDocument, ParsedTransaction, OcrParseResult } from "@/lib/ocr/types";
+
+const TIPI_FINANZIARI = ["PAGAMENTO_IMPOSTE", "DISTRIBUZIONE_DIVIDENDI", "COMPENSO_AMMINISTRATORE"] as const;
+const SOTTOTIPI_IMPOSTE = [
+  { value: "IVA", label: "Liquidazione IVA" },
+  { value: "IRES_ACCONTO", label: "Acconto IRES" },
+  { value: "IRES_SALDO", label: "Saldo IRES" },
+  { value: "IRAP_ACCONTO", label: "Acconto IRAP" },
+  { value: "IRAP_SALDO", label: "Saldo IRAP" },
+  { value: "INPS", label: "Contributi INPS" },
+];
 
 type Socio = {
   id: number;
@@ -132,7 +142,8 @@ type OperazioneData = {
   ivaDetraibile: number | null;
   ivaIndetraibile: number | null;
   opzioneUso: string | null;
-  categoriaId: number;
+  categoriaId: number | null;
+  sottotipoOperazione?: string | null;
   importoDeducibile: number;
   percentualeDeducibilita: number;
   deducibilitaCustom: boolean;
@@ -205,7 +216,7 @@ export function OperazioneForm({
     operazione ? String(operazione.importoTotale) : ""
   );
   const [categoriaId, setCategoriaId] = useState(
-    operazione ? String(operazione.categoriaId) : ""
+    operazione?.categoriaId != null ? String(operazione.categoriaId) : ""
   );
   const [percentualeDeducibilita, setPercentualeDeducibilita] = useState(
     operazione ? String(operazione.percentualeDeducibilita) : ""
@@ -283,6 +294,9 @@ export function OperazioneForm({
 
   // Ricorrenza
   const [isRicorrente, setIsRicorrente] = useState(false);
+  const [sottotipoOperazione, setSottotipoOperazione] = useState(
+    operazione?.sottotipoOperazione ?? ""
+  );
   const [giornoDelMese, setGiornoDelMese] = useState(() => {
     const d = operazione?.dataOperazione ? new Date(operazione.dataOperazione) : new Date();
     return d.getDate();
@@ -299,11 +313,27 @@ export function OperazioneForm({
   // OCR
   const { status: ocrStatus, result: ocrResult, error: ocrError, isProcessing: ocrProcessing, processFile: ocrProcessFile, processImage: ocrProcessImage, reset: ocrReset } = useOcr();
   const [ocrFields, setOcrFields] = useState<Set<string>>(new Set());
+  const [ocrQueue, setOcrQueue] = useState<ParsedTransaction[]>([]);
+  const [ocrQueueIndex, setOcrQueueIndex] = useState(0);
+  const [ocrSelected, setOcrSelected] = useState<Set<number>>(new Set());
 
   const isForfettario = regimeFiscale === "FORFETTARIO";
 
-  // IVA calculation (only for COSTO and CESPITE, not for forfettario)
-  const ivaApplicabile = !isForfettario && (tipoOperazione === "COSTO" || tipoOperazione === "CESPITE");
+  // IVA calculation (for all operation types in regime ordinario)
+  const ivaApplicabile = !isForfettario && (tipoOperazione === "COSTO" || tipoOperazione === "CESPITE" || tipoOperazione === "FATTURA_ATTIVA");
+  // Detraibilità IVA applies only to purchases (COSTO/CESPITE), not to sales
+  const isAcquisto = tipoOperazione === "COSTO" || tipoOperazione === "CESPITE";
+
+  const isTipoFinanziario = (TIPI_FINANZIARI as readonly string[]).includes(tipoOperazione);
+
+  useEffect(() => {
+    if (isTipoFinanziario) {
+      setIsRicorrente(false);
+    }
+    if (tipoOperazione !== "PAGAMENTO_IMPOSTE") {
+      setSottotipoOperazione("");
+    }
+  }, [tipoOperazione, isTipoFinanziario]);
 
   const calcoloIvaCompleto = useMemo(() => {
     if (!ivaApplicabile) return null;
@@ -325,10 +355,10 @@ export function OperazioneForm({
 
   // Base amount for deducibility: imponibile + IVA indetraibile if IVA applies, otherwise total
   const baseDeducibilita = useMemo(() => {
-    if (!ivaApplicabile || !calcoloIvaCompleto) return parseFloat(importoTotale) || 0;
+    if (!isAcquisto || !ivaApplicabile || !calcoloIvaCompleto) return parseFloat(importoTotale) || 0;
     // Costo fiscale = imponibile + IVA indetraibile
     return calcoloIvaCompleto.imponibile + calcoloIvaCompleto.ivaIndetraibile;
-  }, [ivaApplicabile, calcoloIvaCompleto, importoTotale]);
+  }, [isAcquisto, ivaApplicabile, calcoloIvaCompleto, importoTotale]);
 
   // Selected category
   const selectedCategoria = useMemo(() => {
@@ -340,10 +370,12 @@ export function OperazioneForm({
   useEffect(() => {
     if (!ivaCustom && !isVeicolo && selectedCategoria && ivaApplicabile) {
       setAliquotaIva(String(selectedCategoria.aliquotaIvaDefault));
-      setPercentualeDetraibilitaIva(String(selectedCategoria.percentualeDetraibilitaIva));
+      if (isAcquisto) {
+        setPercentualeDetraibilitaIva(String(selectedCategoria.percentualeDetraibilitaIva));
+      }
 
-      // Check for usage options and auto-select from preferences
-      if (selectedCategoria.haOpzioniUso && selectedCategoria.opzioniUso) {
+      // Check for usage options and auto-select from preferences (only for purchases)
+      if (isAcquisto && selectedCategoria.haOpzioniUso && selectedCategoria.opzioniUso) {
         const pref = preferenzeUso.find((p) => p.categoriaId === selectedCategoria.id);
         const defaultOption = pref?.opzioneUso || selectedCategoria.opzioniUso[0]?.codice || null;
         setOpzioneUso(defaultOption);
@@ -352,6 +384,9 @@ export function OperazioneForm({
         if (defaultOption) {
           const opt = (selectedCategoria.opzioniUso as OpzioneUso[]).find((o) => o.codice === defaultOption);
           if (opt) {
+            if (opt.aliquotaIva !== undefined) {
+              setAliquotaIva(String(opt.aliquotaIva));
+            }
             setPercentualeDetraibilitaIva(String(opt.detraibilitaIva));
             if (!deducibilitaCustom) {
               setPercentualeDeducibilita(String(opt.deducibilitaCosto));
@@ -362,7 +397,7 @@ export function OperazioneForm({
         setOpzioneUso(null);
       }
     }
-  }, [selectedCategoria, ivaCustom, ivaApplicabile]);
+  }, [selectedCategoria, ivaCustom, ivaApplicabile, isAcquisto]);
 
   // Sync giorno del mese when dataOperazione changes
   useEffect(() => {
@@ -416,6 +451,9 @@ export function OperazioneForm({
     if (selectedCategoria?.opzioniUso) {
       const opt = (selectedCategoria.opzioniUso as OpzioneUso[]).find((o) => o.codice === codice);
       if (opt) {
+        if (opt.aliquotaIva !== undefined) {
+          setAliquotaIva(String(opt.aliquotaIva));
+        }
         setPercentualeDetraibilitaIva(String(opt.detraibilitaIva));
         if (!deducibilitaCustom) {
           setPercentualeDeducibilita(String(opt.deducibilitaCosto));
@@ -554,33 +592,47 @@ export function OperazioneForm({
     }
   }, [isVeicolo, usoVeicolo, selectedCategoria]);
 
-  // OCR: apply results to form fields or create bozze
+  // OCR: load a transaction into the form fields
+  const loadTransactionIntoForm = useCallback((tx: ParsedTransaction) => {
+    const filledFields = new Set<string>();
+
+    setTipoOperazione(tx.tipoOperazione || "COSTO");
+    filledFields.add("tipoOperazione");
+
+    if (tx.dataOperazione) {
+      setDataOperazione(tx.dataOperazione);
+      filledFields.add("dataOperazione");
+    }
+    if (tx.descrizione) {
+      setDescrizione(tx.descrizione);
+      filledFields.add("descrizione");
+    }
+    if (tx.importoTotale != null) {
+      setImportoTotale(String(tx.importoTotale));
+      filledFields.add("importoTotale");
+    }
+    if (tx.categoriaId) {
+      setCategoriaId(String(tx.categoriaId));
+      filledFields.add("categoriaId");
+    }
+
+    // Reset fields not set by OCR
+    setNumeroDocumento("");
+    setNote("");
+    setOcrFields(filledFields);
+  }, []);
+
+  // OCR: apply results to form fields
   useEffect(() => {
     if (!ocrResult) return;
 
-    // Multi-transaction: create bozze via API
+    // Multi-transaction: load first into form, queue the rest
     if (ocrResult.type === "multi") {
-      const createBozze = async () => {
-        try {
-          const res = await fetch("/api/bozze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transactions: ocrResult.transactions }),
-          });
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || "Errore nella creazione delle bozze");
-          }
-          const data = await res.json();
-          toast.success(
-            `${data.bozzeCreate} bozz${data.bozzeCreate === 1 ? "a creata" : "e create"} - Controlla la dashboard per confermarle`
-          );
-          router.push("/dashboard");
-        } catch (err: any) {
-          toast.error(err.message || "Errore nella creazione delle bozze");
-        }
-      };
-      createBozze();
+      const txs = ocrResult.transactions;
+      setOcrQueue(txs);
+      setOcrQueueIndex(0);
+      loadTransactionIntoForm(txs[0]);
+      toast.success(`${txs.length} operazioni trovate - Salva e passa alla successiva`);
       return;
     }
 
@@ -693,8 +745,12 @@ export function OperazioneForm({
       toast.error("L'importo totale deve essere maggiore di zero");
       return;
     }
-    if (!categoriaId) {
+    if (!isTipoFinanziario && !categoriaId) {
       toast.error("Selezionare una categoria");
+      return;
+    }
+    if (tipoOperazione === "PAGAMENTO_IMPOSTE" && !sottotipoOperazione) {
+      toast.error("Selezionare il tipo di imposta");
       return;
     }
     if (tipoRipartizione === "SINGOLO" && !socioSingoloId) {
@@ -747,14 +803,14 @@ export function OperazioneForm({
         aliquotaIva: ivaApplicabile ? parseFloat(aliquotaIva) || 0 : null,
         importoImponibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.imponibile : null,
         importoIva: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaTotale : null,
-        percentualeDetraibilitaIva: ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
-        ivaDetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
-        ivaIndetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
-        opzioneUso: opzioneUso || null,
-        categoriaId: parseInt(categoriaId, 10),
-        importoDeducibile: parseFloat(importoDeducibile) || 0,
-        percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
-        deducibilitaCustom,
+        percentualeDetraibilitaIva: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
+        ivaDetraibile: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
+        ivaIndetraibile: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
+        opzioneUso: isAcquisto ? (opzioneUso || null) : null,
+        ...(isTipoFinanziario
+          ? { categoriaId: null, importoDeducibile: 0, percentualeDeducibilita: 0, deducibilitaCustom: false }
+          : { categoriaId: parseInt(categoriaId, 10), importoDeducibile: parseFloat(importoDeducibile) || 0, percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0, deducibilitaCustom }),
+        sottotipoOperazione: tipoOperazione === "PAGAMENTO_IMPOSTE" ? sottotipoOperazione : null,
         tipoRipartizione: effectiveTipoRipartizione,
         note: note.trim() || null,
       };
@@ -826,10 +882,10 @@ export function OperazioneForm({
           aliquotaIva: ivaApplicabile ? parseFloat(aliquotaIva) || 0 : null,
           importoImponibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.imponibile : null,
           importoIva: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaTotale : null,
-          percentualeDetraibilitaIva: ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
-          ivaDetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
-          ivaIndetraibile: ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
-          opzioneUso: opzioneUso || null,
+          percentualeDetraibilitaIva: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? parseFloat(percentualeDetraibilitaIva) || 0 : null,
+          ivaDetraibile: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaDetraibile : null,
+          ivaIndetraibile: isAcquisto && ivaApplicabile && calcoloIvaCompleto ? calcoloIvaCompleto.ivaIndetraibile : null,
+          opzioneUso: isAcquisto ? (opzioneUso || null) : null,
           percentualeDeducibilita: parseFloat(percentualeDeducibilita) || 0,
           importoDeducibile: parseFloat(importoDeducibile) || 0,
           deducibilitaCustom,
@@ -860,15 +916,27 @@ export function OperazioneForm({
         });
       }
 
-      toast.success(
-        isEditing
-          ? "Operazione aggiornata con successo"
-          : isRicorrente
-            ? "Operazione creata e ricorrenza impostata"
-            : "Operazione creata con successo"
-      );
-      router.push("/operazioni");
-      router.refresh();
+      // If we have queued OCR transactions, load next instead of navigating away
+      if (!isEditing && ocrQueue.length > 0 && ocrQueueIndex < ocrQueue.length - 1) {
+        const nextIndex = ocrQueueIndex + 1;
+        setOcrQueueIndex(nextIndex);
+        loadTransactionIntoForm(ocrQueue[nextIndex]);
+        toast.success(`Operazione ${ocrQueueIndex + 1}/${ocrQueue.length} salvata - Caricata la successiva`);
+      } else {
+        if (ocrQueue.length > 0) {
+          setOcrQueue([]);
+          setOcrQueueIndex(0);
+        }
+        toast.success(
+          isEditing
+            ? "Operazione aggiornata con successo"
+            : isRicorrente
+              ? "Operazione creata e ricorrenza impostata"
+              : "Operazione creata con successo"
+        );
+        router.push("/operazioni");
+        router.refresh();
+      }
     } catch (error: any) {
       toast.error(error.message || "Errore nel salvataggio dell'operazione");
     } finally {
@@ -880,6 +948,109 @@ export function OperazioneForm({
     <GlobalDropZone onFileDrop={ocrProcessFile} disabled={ocrProcessing || readOnly}>
       <div className="relative max-w-4xl mx-auto space-y-6">
         <OcrOverlay status={ocrStatus} />
+
+        {/* OCR Queue Progress Banner */}
+        {ocrQueue.length > 0 && (
+          <Card className="border-amber-500/50 bg-amber-500/5">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-amber-600 border-amber-500/50">
+                    {ocrQueueIndex + 1} / {ocrQueue.length}
+                  </Badge>
+                  <span className="text-sm font-medium">
+                    Operazioni da screenshot
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {ocrSelected.size > 0 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => {
+                        const newQueue = ocrQueue.filter((_, i) => !ocrSelected.has(i));
+                        setOcrSelected(new Set());
+                        if (newQueue.length === 0) {
+                          setOcrQueue([]);
+                          setOcrQueueIndex(0);
+                          setDescrizione("");
+                          setImportoTotale("");
+                          setDataOperazione(new Date().toISOString().split("T")[0]);
+                          toast.info("Tutte le operazioni eliminate");
+                        } else {
+                          const nextIndex = Math.min(ocrQueueIndex, newQueue.length - 1);
+                          setOcrQueue(newQueue);
+                          setOcrQueueIndex(nextIndex);
+                          loadTransactionIntoForm(newQueue[nextIndex]);
+                          toast.info(`${ocrSelected.size} operazion${ocrSelected.size === 1 ? "e eliminata" : "i eliminate"}`);
+                        }
+                      }}
+                    >
+                      Elimina selezionate ({ocrSelected.size})
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setOcrQueue([]);
+                      setOcrQueueIndex(0);
+                      setOcrSelected(new Set());
+                      toast.info("Coda operazioni annullata");
+                    }}
+                  >
+                    Annulla coda
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {ocrQueue.map((tx, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-3 py-1.5 px-2 rounded text-sm cursor-pointer transition-colors ${
+                      i === ocrQueueIndex
+                        ? "bg-amber-500/15 font-medium"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={() => {
+                      setOcrQueueIndex(i);
+                      loadTransactionIntoForm(ocrQueue[i]);
+                    }}
+                  >
+                    <Checkbox
+                      checked={ocrSelected.has(i)}
+                      onCheckedChange={(checked) => {
+                        setOcrSelected((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(i);
+                          else next.delete(i);
+                          return next;
+                        });
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-muted-foreground w-20 shrink-0">
+                      {tx.dataOperazione?.split("-").reverse().join("/") ?? "—"}
+                    </span>
+                    <span className="truncate flex-1">{tx.descrizione}</span>
+                    <span className={`shrink-0 font-mono ${tx.tipoOperazione === "FATTURA_ATTIVA" ? "text-green-600" : "text-destructive"}`}>
+                      {tx.tipoOperazione === "FATTURA_ATTIVA" ? "+" : "-"} {formatCurrency(tx.importoTotale)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 w-full bg-muted rounded-full h-1.5">
+                <div
+                  className="bg-amber-500 h-1.5 rounded-full transition-all"
+                  style={{ width: `${((ocrQueueIndex + 1) / ocrQueue.length) * 100}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* OCR Paste Field */}
         {!readOnly && !isEditing && (
@@ -908,16 +1079,46 @@ export function OperazioneForm({
               ].map((opt) => (
                 <div key={opt.value} className="flex items-center space-x-2">
                   <RadioGroupItem value={opt.value} id={`tipo-${opt.value}`} />
-                  <Label
-                    htmlFor={`tipo-${opt.value}`}
-                    className="cursor-pointer font-normal"
-                  >
+                  <Label htmlFor={`tipo-${opt.value}`} className="cursor-pointer font-normal">
+                    {opt.label}
+                  </Label>
+                </div>
+              ))}
+              <div className="col-span-2 sm:col-span-4 pt-1">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Movimenti Finanziari</p>
+              </div>
+              {[
+                { value: "PAGAMENTO_IMPOSTE", label: "Pag. Imposte" },
+                { value: "DISTRIBUZIONE_DIVIDENDI", label: "Dividendi" },
+                { value: "COMPENSO_AMMINISTRATORE", label: "Comp. Amm." },
+              ].map((opt) => (
+                <div key={opt.value} className="flex items-center space-x-2">
+                  <RadioGroupItem value={opt.value} id={`tipo-${opt.value}`} />
+                  <Label htmlFor={`tipo-${opt.value}`} className="cursor-pointer font-normal">
                     {opt.label}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
           </div>
+
+          {tipoOperazione === "PAGAMENTO_IMPOSTE" && (
+            <div className="space-y-2">
+              <Label>Tipo Imposta *</Label>
+              <Select value={sottotipoOperazione} onValueChange={setSottotipoOperazione} disabled={readOnly}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona tipo imposta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOTTOTIPI_IMPOSTE.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Data Operazione */}
@@ -974,6 +1175,7 @@ export function OperazioneForm({
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Categoria (full width, before importo) */}
+            {!isTipoFinanziario && (
             <div className="space-y-2 sm:col-span-2">
               <Label>Categoria *</Label>
               <Select
@@ -993,9 +1195,10 @@ export function OperazioneForm({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             {/* Usage toggle (only if category has usage options) */}
-            {ivaApplicabile && selectedCategoria?.haOpzioniUso && selectedCategoria.opzioniUso && (
+            {isAcquisto && ivaApplicabile && selectedCategoria?.haOpzioniUso && selectedCategoria.opzioniUso && (
               <div className="space-y-2 sm:col-span-2">
                 <Label>Tipo di utilizzo</Label>
                 <div className="flex gap-2">
@@ -1042,7 +1245,9 @@ export function OperazioneForm({
           {/* IVA Summary Card */}
           {ivaApplicabile && calcoloIvaCompleto && parseFloat(importoTotale) > 0 && (
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2 sm:col-span-2">
-              <h4 className="text-sm font-semibold">Riepilogo fiscale</h4>
+              <h4 className="text-sm font-semibold">
+                {isAcquisto ? "Riepilogo fiscale" : "Scorporo IVA"}
+              </h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <span className="text-muted-foreground">Totale fattura</span>
                 <span className="text-right font-mono">{formatCurrency(parseFloat(importoTotale) || 0)}</span>
@@ -1050,10 +1255,12 @@ export function OperazioneForm({
                 <span className="text-muted-foreground">Imponibile (netto IVA {aliquotaIva}%)</span>
                 <span className="text-right font-mono">{formatCurrency(calcoloIvaCompleto.imponibile)}</span>
 
-                <span className="text-muted-foreground">IVA totale</span>
+                <span className="text-muted-foreground">
+                  {isAcquisto ? "IVA totale" : "IVA a debito"}
+                </span>
                 <span className="text-right font-mono">{formatCurrency(calcoloIvaCompleto.ivaTotale)}</span>
 
-                {parseFloat(percentualeDetraibilitaIva) < 100 && parseFloat(percentualeDetraibilitaIva) > 0 && (
+                {isAcquisto && parseFloat(percentualeDetraibilitaIva) < 100 && parseFloat(percentualeDetraibilitaIva) > 0 && (
                   <>
                     <span className="text-muted-foreground pl-4">- IVA detraibile ({percentualeDetraibilitaIva}%)</span>
                     <span className="text-right font-mono text-green-600">{formatCurrency(calcoloIvaCompleto.ivaDetraibile)}</span>
@@ -1062,7 +1269,7 @@ export function OperazioneForm({
                   </>
                 )}
 
-                {parseFloat(percentualeDetraibilitaIva) === 0 && (
+                {isAcquisto && parseFloat(percentualeDetraibilitaIva) === 0 && (
                   <>
                     <span className="text-muted-foreground pl-4">- IVA interamente indetraibile</span>
                     <span className="text-right font-mono text-amber-600">{formatCurrency(calcoloIvaCompleto.ivaTotale)}</span>
@@ -1070,14 +1277,18 @@ export function OperazioneForm({
                 )}
               </div>
 
-              <Separator className="my-2" />
+              {isAcquisto && (
+                <>
+                  <Separator className="my-2" />
 
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <span className="text-muted-foreground">Costo fiscale (imponibile + IVA indetr.)</span>
-                <span className="text-right font-mono font-semibold">{formatCurrency(baseDeducibilita)}</span>
-                <span className="text-muted-foreground">Deducibile ({percentualeDeducibilita}%)</span>
-                <span className="text-right font-mono font-semibold">{formatCurrency(parseFloat(importoDeducibile) || 0)}</span>
-              </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <span className="text-muted-foreground">Costo fiscale (imponibile + IVA indetr.)</span>
+                    <span className="text-right font-mono font-semibold">{formatCurrency(baseDeducibilita)}</span>
+                    <span className="text-muted-foreground">Deducibile ({percentualeDeducibilita}%)</span>
+                    <span className="text-right font-mono font-semibold">{formatCurrency(parseFloat(importoDeducibile) || 0)}</span>
+                  </div>
+                </>
+              )}
 
               {!ivaCustom && (
                 <button
@@ -1093,7 +1304,7 @@ export function OperazioneForm({
 
           {/* Manual IVA override (only if ivaCustom is true) */}
           {ivaApplicabile && ivaCustom && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2 border rounded-lg p-3 bg-muted/20">
+            <div className={`grid grid-cols-1 ${isAcquisto ? "sm:grid-cols-2" : ""} gap-4 sm:col-span-2 border rounded-lg p-3 bg-muted/20`}>
               <div className="space-y-2">
                 <Label>Aliquota IVA</Label>
                 <Select value={aliquotaIva} onValueChange={(v) => { setAliquotaIva(v); clearOcrField("aliquotaIva"); }} disabled={readOnly}>
@@ -1107,21 +1318,23 @@ export function OperazioneForm({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>% Detraibilita IVA</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100"
-                    value={percentualeDetraibilitaIva}
-                    onChange={(e) => setPercentualeDetraibilitaIva(e.target.value)}
-                    disabled={readOnly}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+              {isAcquisto && (
+                <div className="space-y-2">
+                  <Label>% Detraibilita IVA</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={percentualeDetraibilitaIva}
+                      onChange={(e) => setPercentualeDetraibilitaIva(e.target.value)}
+                      disabled={readOnly}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                  </div>
                 </div>
-              </div>
+              )}
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -1132,6 +1345,8 @@ export function OperazioneForm({
             </div>
           )}
 
+          {!isTipoFinanziario && (
+            <>
           <Separator />
 
           {/* Deducibilita */}
@@ -1217,6 +1432,8 @@ export function OperazioneForm({
               </div>
             </div>
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -1799,8 +2016,8 @@ export function OperazioneForm({
         </CardContent>
       </Card>
 
-      {/* Section 5: Ricorrenza (solo per nuova operazione, non per editing) */}
-      {!isEditing && !readOnly && (
+      {/* Section 5: Ricorrenza (solo per nuova operazione, non per editing, non per tipi finanziari) */}
+      {!isEditing && !readOnly && !isTipoFinanziario && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
