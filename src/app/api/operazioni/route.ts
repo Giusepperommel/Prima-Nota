@@ -216,6 +216,7 @@ export async function POST(request: NextRequest) {
       socioSingoloId,
       ripartizioniCustom,
       note,
+      sottotipoOperazione,
       aliquotaAmmortamento,
     } = body;
 
@@ -237,8 +238,11 @@ export async function POST(request: NextRequest) {
 
     // --- Validations ---
 
+    const TIPI_FINANZIARI = ["PAGAMENTO_IMPOSTE", "DISTRIBUZIONE_DIVIDENDI", "COMPENSO_AMMINISTRATORE"];
+    const isTipoFinanziario = TIPI_FINANZIARI.includes(tipoOperazione);
+
     // Required fields
-    if (!tipoOperazione || !dataOperazione || !descrizione || !categoriaId) {
+    if (!tipoOperazione || !dataOperazione || !descrizione || (!isTipoFinanziario && !categoriaId)) {
       return NextResponse.json(
         { error: "Tipo operazione, data, descrizione e categoria sono obbligatori" },
         { status: 400 }
@@ -246,10 +250,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Tipo operazione
-    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE"];
+    const tipiValidi = ["FATTURA_ATTIVA", "COSTO", "CESPITE", ...TIPI_FINANZIARI];
     if (!tipiValidi.includes(tipoOperazione)) {
       return NextResponse.json(
         { error: "Tipo operazione non valido" },
+        { status: 400 }
+      );
+    }
+
+    // Validate sottotipoOperazione for new financial types
+    const SOTTOTIPI_IMPOSTE = ["IVA", "IRES_ACCONTO", "IRES_SALDO", "IRAP_ACCONTO", "IRAP_SALDO", "INPS"];
+    if (tipoOperazione === "PAGAMENTO_IMPOSTE") {
+      if (!sottotipoOperazione || !SOTTOTIPI_IMPOSTE.includes(sottotipoOperazione)) {
+        return NextResponse.json(
+          { error: "Specificare il tipo di imposta (IVA, IRES_ACCONTO, ecc.)" },
+          { status: 400 }
+        );
+      }
+    } else if (isTipoFinanziario && sottotipoOperazione != null) {
+      return NextResponse.json(
+        { error: "sottotipoOperazione non applicabile per questo tipo" },
         { status: 400 }
       );
     }
@@ -272,11 +292,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate categoriaId exists and belongs to the societa
-    const categoria = await prisma.categoriaSpesa.findFirst({
-      where: { id: parseInt(String(categoriaId), 10), societaId, attiva: true },
-    });
-    if (!categoria) {
+    // Validate categoria (skip for new financial types)
+    const categoria = !isTipoFinanziario
+      ? await prisma.categoriaSpesa.findFirst({
+          where: { id: parseInt(String(categoriaId), 10), societaId, attiva: true },
+        })
+      : null;
+    if (!isTipoFinanziario && !categoria) {
       return NextResponse.json(
         { error: "Categoria non trovata o non attiva" },
         { status: 400 }
@@ -380,8 +402,13 @@ export async function POST(request: NextRequest) {
         }))
       : undefined;
 
+    // Use imponibile for ripartizioni (net of IVA); fallback to totale for old/forfettario
+    const importoPerRipartizione = importoImponibile != null
+      ? parseFloat(String(importoImponibile))
+      : importo;
+
     const ripartizioniCalcolate = calcolaRipartizione(
-      importo,
+      importoPerRipartizione,
       tipoRipartizione as "COMUNE" | "SINGOLO" | "CUSTOM",
       sociForCalc,
       socioSingoloId ? parseInt(String(socioSingoloId), 10) : undefined,
@@ -389,13 +416,19 @@ export async function POST(request: NextRequest) {
     );
 
     // Deducibilita values
-    const percDeduc = deducibilitaCustom
-      ? parseFloat(String(percentualeDeducibilita))
-      : Number(categoria.percentualeDeducibilita);
+    const percDeduc = isTipoFinanziario
+      ? 0
+      : deducibilitaCustom
+        ? parseFloat(String(percentualeDeducibilita))
+        : Number(categoria!.percentualeDeducibilita);
 
-    const impDeduc = deducibilitaCustom
-      ? parseFloat(String(importoDeducibile))
-      : Math.round((importo * Number(categoria.percentualeDeducibilita)) / 100 * 100) / 100;
+    const impDeduc = isTipoFinanziario
+      ? 0
+      : deducibilitaCustom
+        ? parseFloat(String(importoDeducibile))
+        : Math.round(
+            ((importo * Number(categoria!.percentualeDeducibilita)) / 100) * 100
+          ) / 100;
 
     // Create operazione + ripartizioni in a transaction
     const operazione = await prisma.$transaction(async (tx) => {
@@ -414,7 +447,8 @@ export async function POST(request: NextRequest) {
           ivaDetraibile: ivaDetraibile != null ? parseFloat(String(ivaDetraibile)) : null,
           ivaIndetraibile: ivaIndetraibile != null ? parseFloat(String(ivaIndetraibile)) : null,
           opzioneUso: opzioneUso || null,
-          categoriaId: parseInt(String(categoriaId), 10),
+          categoriaId: isTipoFinanziario ? null : parseInt(String(categoriaId), 10),
+          sottotipoOperazione: tipoOperazione === "PAGAMENTO_IMPOSTE" ? sottotipoOperazione : null,
           importoDeducibile: impDeduc,
           percentualeDeducibilita: percDeduc,
           deducibilitaCustom: Boolean(deducibilitaCustom),
@@ -576,7 +610,7 @@ export async function POST(request: NextRequest) {
         dataOperazione,
         descrizione,
         importoTotale: importo,
-        categoriaId: parseInt(String(categoriaId), 10),
+        categoriaId: isTipoFinanziario ? null : parseInt(String(categoriaId), 10),
         tipoRipartizione,
       },
     });
