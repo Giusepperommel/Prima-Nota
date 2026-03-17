@@ -83,7 +83,14 @@ export async function GET(request: NextRequest) {
     const numOperazioni = operazioni.length;
 
     for (const op of operazioni) {
-      const importo = Number(op.importoTotale);
+      let importo: number;
+      if (op.importoImponibile != null) {
+        importo = Number(op.importoImponibile);
+      } else if (op.aliquotaIva != null && Number(op.aliquotaIva) > 0) {
+        importo = Number(op.importoTotale) / (1 + Number(op.aliquotaIva) / 100);
+      } else {
+        importo = Number(op.importoTotale);
+      }
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importo;
       } else if (op.tipoOperazione === "COSTO") {
@@ -158,9 +165,17 @@ export async function GET(request: NextRequest) {
     >();
 
     for (const op of operazioni) {
-      const catId = op.categoriaId;
+      if (!op.categoria) continue; // nuovi tipi finanziari: nessuna categoria
+      const catId = op.categoriaId!;
       const catNome = op.categoria.nome;
-      const importo = Number(op.importoTotale);
+      let importo: number;
+      if (op.importoImponibile != null) {
+        importo = Number(op.importoImponibile);
+      } else if (op.aliquotaIva != null && Number(op.aliquotaIva) > 0) {
+        importo = Number(op.importoTotale) / (1 + Number(op.aliquotaIva) / 100);
+      } else {
+        importo = Number(op.importoTotale);
+      }
 
       if (!categoriaMap.has(catId)) {
         categoriaMap.set(catId, { categoria: catNome, fatturato: 0, costi: 0 });
