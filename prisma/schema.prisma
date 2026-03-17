@@ -127,7 +127,7 @@ model Operazione {
   updatedAt               DateTime         @updatedAt @map("updated_at")
 
   societa      Societa                  @relation(fields: [societaId], references: [id])
-  categoria    CategoriaSpesa?          @relation(fields: [categoriaId], references: [id])
+  categoria    CategoriaSpesa?          @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
   ripartizioni RipartizioneOperazione[]
   cespite      Cespite?
@@ -385,6 +385,8 @@ model OperazioneRicorrente {
 
   // Template dati operazione
   tipoOperazione    TipoOperazione @map("tipo_operazione")
+  // Note: PAGAMENTO_IMPOSTE / DISTRIBUZIONE_DIVIDENDI / COMPENSO_AMMINISTRATORE
+  // are not supported as recurring operation types; categoriaId remains required here.
   categoriaId       Int            @map("categoria_id")
   descrizione       String         @db.Text
   importoTotale     Decimal        @map("importo_totale") @db.Decimal(10, 2)
