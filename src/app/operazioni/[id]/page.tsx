@@ -3,6 +3,7 @@ import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { OperazioneForm } from "../operazione-form";
+import { SezionePagamenti } from "@/components/pagamenti/sezione-pagamenti";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -46,6 +47,11 @@ export default async function DettaglioOperazionePage({ params }: Props) {
           },
         },
         orderBy: { socio: { cognome: "asc" } },
+      },
+      pianoPagamento: {
+        include: {
+          pagamenti: { orderBy: { numeroPagamento: "asc" } },
+        },
       },
     },
   });
@@ -209,6 +215,34 @@ export default async function DettaglioOperazionePage({ params }: Props) {
           annoInizio: cespite.annoInizio,
         }
       : null,
+    pianoPagamento: operazione.pianoPagamento
+      ? {
+          id: operazione.pianoPagamento.id,
+          tipo: operazione.pianoPagamento.tipo,
+          stato: operazione.pianoPagamento.stato,
+          numeroRate: operazione.pianoPagamento.numeroRate,
+          importoRata: operazione.pianoPagamento.importoRata ? Number(operazione.pianoPagamento.importoRata) : null,
+          tan: operazione.pianoPagamento.tan ? Number(operazione.pianoPagamento.tan) : null,
+          anticipo: operazione.pianoPagamento.anticipo ? Number(operazione.pianoPagamento.anticipo) : null,
+          frequenzaRate: operazione.pianoPagamento.frequenzaRate,
+          dataInizio: operazione.pianoPagamento.dataInizio.toISOString(),
+          dataChiusura: operazione.pianoPagamento.dataChiusura?.toISOString() || null,
+          motivoChiusura: operazione.pianoPagamento.motivoChiusura,
+          penaleEstinzione: operazione.pianoPagamento.penaleEstinzione ? Number(operazione.pianoPagamento.penaleEstinzione) : null,
+          saldoResiduo: operazione.pianoPagamento.saldoResiduo ? Number(operazione.pianoPagamento.saldoResiduo) : null,
+          pagamenti: operazione.pianoPagamento.pagamenti.map(p => ({
+            id: p.id,
+            numeroPagamento: p.numeroPagamento,
+            data: p.data.toISOString(),
+            importo: Number(p.importo),
+            quotaCapitale: Number(p.quotaCapitale),
+            quotaInteressi: Number(p.quotaInteressi),
+            stato: p.stato,
+            dataEffettivaPagamento: p.dataEffettivaPagamento?.toISOString() || null,
+            note: p.note,
+          })),
+        }
+      : null,
   };
 
   const pageTitle = canEdit
@@ -227,6 +261,14 @@ export default async function DettaglioOperazionePage({ params }: Props) {
         tipoAttivita={societa?.tipoAttivita || "SRL"}
         presets={serializedPresets}
       />
+      {serializedOperazione.pianoPagamento && (
+        <div className="max-w-4xl mx-auto px-4 mt-6">
+          <SezionePagamenti
+            pianoPagamento={serializedOperazione.pianoPagamento}
+            canEdit={canEdit}
+          />
+        </div>
+      )}
     </AuthenticatedLayout>
   );
 }
