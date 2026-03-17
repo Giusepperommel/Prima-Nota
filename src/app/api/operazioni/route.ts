@@ -10,6 +10,7 @@ import {
   calcolaBaseFiscale,
   calcolaPianoFinanziamento,
 } from "@/lib/calcoli-veicoli";
+import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 
 export async function GET(request: NextRequest) {
   try {
@@ -218,6 +219,9 @@ export async function POST(request: NextRequest) {
       note,
       sottotipoOperazione,
       aliquotaAmmortamento,
+      modalitaPagamento,
+      pianoPagamentoData,
+      pagamentiCustom,
     } = body;
 
     const {
@@ -595,6 +599,92 @@ export async function POST(request: NextRequest) {
                 dataPrimaRata: dataPrimaRataDate,
                 operazioneRicorrenteId: ricorrente.id,
               },
+            });
+          }
+        }
+      }
+
+      // Create PianoPagamento if not immediate payment
+      if (modalitaPagamento && modalitaPagamento !== "IMMEDIATO") {
+        const ppTipo = modalitaPagamento as "RATEALE" | "CUSTOM";
+
+        if (ppTipo === "RATEALE" && pianoPagamentoData) {
+          const anticipoVal = pianoPagamentoData.anticipo ? parseFloat(String(pianoPagamentoData.anticipo)) : 0;
+          const importoDaFinanziare = importo - anticipoVal;
+          const tanVal = pianoPagamentoData.tan != null ? parseFloat(String(pianoPagamentoData.tan)) : 0;
+          const nRate = parseInt(String(pianoPagamentoData.numeroRate));
+          const dataInizioRata = new Date(pianoPagamentoData.dataInizio);
+
+          const pianoCalcolato = generaPianoPagamento(importoDaFinanziare, nRate, tanVal, dataInizioRata);
+
+          const pp = await tx.pianoPagamento.create({
+            data: {
+              operazioneId: op.id,
+              societaId,
+              tipo: "RATEALE",
+              stato: "ATTIVO",
+              numeroRate: nRate,
+              importoRata: pianoCalcolato.rate.length > 0 ? pianoCalcolato.rate[0].importo : 0,
+              tan: tanVal,
+              anticipo: anticipoVal,
+              dataInizio: dataInizioRata,
+            },
+          });
+
+          const pagamentiData: any[] = [];
+          let numPag = 0;
+
+          if (anticipoVal > 0) {
+            numPag++;
+            pagamentiData.push({
+              pianoPagamentoId: pp.id,
+              numeroPagamento: numPag,
+              data: dataInizioRata,
+              importo: anticipoVal,
+              quotaCapitale: anticipoVal,
+              quotaInteressi: 0,
+              stato: "EFFETTUATO",
+              dataEffettivaPagamento: dataInizioRata,
+            });
+          }
+
+          for (const rata of pianoCalcolato.rate) {
+            numPag++;
+            pagamentiData.push({
+              pianoPagamentoId: pp.id,
+              numeroPagamento: numPag,
+              data: rata.data,
+              importo: rata.importo,
+              quotaCapitale: rata.quotaCapitale,
+              quotaInteressi: rata.quotaInteressi,
+              stato: "PREVISTO",
+            });
+          }
+
+          await tx.pagamento.createMany({ data: pagamentiData });
+        } else if (ppTipo === "CUSTOM" && pagamentiCustom) {
+          const pp = await tx.pianoPagamento.create({
+            data: {
+              operazioneId: op.id,
+              societaId,
+              tipo: "CUSTOM",
+              stato: "ATTIVO",
+              dataInizio: new Date(pagamentiCustom[0]?.data || new Date()),
+            },
+          });
+
+          if (pagamentiCustom.length > 0) {
+            await tx.pagamento.createMany({
+              data: pagamentiCustom.map((p: any, i: number) => ({
+                pianoPagamentoId: pp.id,
+                numeroPagamento: i + 1,
+                data: new Date(p.data),
+                importo: parseFloat(String(p.importo)),
+                quotaCapitale: parseFloat(String(p.importo)),
+                quotaInteressi: 0,
+                stato: "PREVISTO",
+                note: p.note || null,
+              })),
             });
           }
         }
