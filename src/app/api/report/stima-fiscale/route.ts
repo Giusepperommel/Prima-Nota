@@ -72,15 +72,95 @@ export async function GET(request: NextRequest) {
       select: {
         tipoOperazione: true,
         importoTotale: true,
+        importoImponibile: true,
+        aliquotaIva: true,
       },
     });
 
-    // Calculate fatturato and costi
+    // Fetch interest expenses from payment plans (by competence date)
+    const pagamentiAnno = await prisma.pagamento.findMany({
+      where: {
+        data: { gte: dataInizio, lte: dataFine },
+        quotaInteressi: { gt: 0 },
+        stato: { not: "ANNULLATO" },
+        pianoPagamento: {
+          societaId,
+          operazione: { eliminato: false, bozza: false },
+        },
+      },
+      select: {
+        quotaInteressi: true,
+        pianoPagamento: {
+          select: {
+            operazione: {
+              select: {
+                tipoOperazione: true,
+                cespite: {
+                  select: {
+                    veicolo: {
+                      select: { percentualeDeducibilita: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let interessiPassivi = 0;
+    let interessiDeducibili = 0;
+
+    for (const pag of pagamentiAnno) {
+      const qi = Number(pag.quotaInteressi);
+      interessiPassivi += qi;
+
+      // For vehicles: apply Art. 164 TUIR deductibility %
+      const veicolo = pag.pianoPagamento.operazione.cespite?.veicolo;
+      if (veicolo) {
+        interessiDeducibili += qi * Number(veicolo.percentualeDeducibilita) / 100;
+      } else {
+        // Non-vehicle: 100% deductible
+        interessiDeducibili += qi;
+      }
+    }
+
+    interessiPassivi = Math.round(interessiPassivi * 100) / 100;
+    interessiDeducibili = Math.round(interessiDeducibili * 100) / 100;
+
+    // Fetch early closure penalties from payment plans
+    const pianiChiusi = await prisma.pianoPagamento.findMany({
+      where: {
+        societaId,
+        stato: "CHIUSO_ANTICIPATAMENTE",
+        dataChiusura: { gte: dataInizio, lte: dataFine },
+        penaleEstinzione: { gt: 0 },
+        operazione: { eliminato: false, bozza: false },
+      },
+      select: { penaleEstinzione: true },
+    });
+
+    const penaliEstinzione = Math.round(
+      pianiChiusi.reduce((sum, p) => sum + Number(p.penaleEstinzione), 0) * 100
+    ) / 100;
+
+    interessiDeducibili += penaliEstinzione;
+    interessiDeducibili = Math.round(interessiDeducibili * 100) / 100;
+
+    // Calculate fatturato and costi (using imponibile, with scorporo fallback for old records)
     let fatturato = 0;
     let costiDiretti = 0;
 
     for (const op of operazioni) {
-      const importo = Number(op.importoTotale);
+      let importo: number;
+      if (op.importoImponibile != null) {
+        importo = Number(op.importoImponibile);
+      } else if (op.aliquotaIva != null && Number(op.aliquotaIva) > 0) {
+        importo = Number(op.importoTotale) / (1 + Number(op.aliquotaIva) / 100);
+      } else {
+        importo = Number(op.importoTotale);
+      }
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
         fatturato += importo;
       } else if (op.tipoOperazione === "COSTO") {
@@ -93,7 +173,7 @@ export async function GET(request: NextRequest) {
 
     // Add depreciation
     const ammortamento = await getAmmortamentoTotaleSocieta(societaId, anno);
-    const costi = Math.round((costiDiretti + ammortamento) * 100) / 100;
+    const costi = Math.round((costiDiretti + ammortamento + interessiDeducibili) * 100) / 100;
 
     // Fetch active soci
     const soci = await prisma.socio.findMany({
@@ -139,6 +219,12 @@ export async function GET(request: NextRequest) {
       },
       anno,
       ...stima,
+      interessiPassivi: {
+        totale: interessiPassivi,
+        deducibili: interessiDeducibili,
+        indeducibili: Math.round((interessiPassivi - interessiDeducibili) * 100) / 100,
+        penaliEstinzione,
+      },
       dettaglioSoci,
     });
   } catch (error) {
