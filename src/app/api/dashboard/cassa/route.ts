@@ -98,41 +98,99 @@ export async function GET(request: NextRequest) {
 
     if (ruolo === "ADMIN") {
       // ─── ADMIN path ────────────────────────────────────────────────────
-      // Saldo iniziale: capitaleSociale + net cash flow anni precedenti
-      const opsPrecedenti = await prisma.operazione.findMany({
+
+      // --- Saldo iniziale: capitaleSociale + net cash flow anni precedenti ---
+
+      // 1a. Immediate ops (no piano pagamento) from previous years
+      const opsPrecedentiImmediate = await prisma.operazione.findMany({
         where: {
           societaId,
           eliminato: false,
           bozza: false,
+          pianoPagamento: { is: null },
           dataOperazione: { lt: dataInizioAnno },
         },
         select: { tipoOperazione: true, importoTotale: true },
       });
 
+      // 1b. Payments from plans in previous years (only EFFETTUATO)
+      const pagamentiPrecedenti = await prisma.pagamento.findMany({
+        where: {
+          stato: "EFFETTUATO",
+          data: { lt: dataInizioAnno },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          importo: true,
+          pianoPagamento: {
+            select: { operazione: { select: { tipoOperazione: true } } },
+          },
+        },
+      });
+
       let cashFlowPrecedenti = 0;
-      for (const op of opsPrecedenti) {
+      for (const op of opsPrecedentiImmediate) {
         const v = Number(op.importoTotale);
         if (op.tipoOperazione === "FATTURA_ATTIVA") cashFlowPrecedenti += v;
         else if (TIPI_USCITA.includes(op.tipoOperazione)) cashFlowPrecedenti -= v;
       }
+      for (const pag of pagamentiPrecedenti) {
+        const v = Number(pag.importo);
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        if (tipo === "FATTURA_ATTIVA") cashFlowPrecedenti += v;
+        else if (TIPI_USCITA.includes(tipo)) cashFlowPrecedenti -= v;
+      }
+
       const saldoIniziale = Math.round((capitaleSociale + cashFlowPrecedenti) * 100) / 100;
 
-      // Monthly data for selected year
-      const ops = await prisma.operazione.findMany({
+      // --- Monthly data for selected year ---
+
+      // 2a. Immediate ops (no piano pagamento) for current year
+      const opsImmediate = await prisma.operazione.findMany({
         where: {
           societaId,
           eliminato: false,
           bozza: false,
+          pianoPagamento: { is: null },
           dataOperazione: { gte: dataInizioAnno, lte: dataFineAnno },
         },
         select: { tipoOperazione: true, importoTotale: true, dataOperazione: true },
       });
 
+      // 2b. Payments from plans for current year (EFFETTUATO + PREVISTO = forecast)
+      const pagamentiAnno = await prisma.pagamento.findMany({
+        where: {
+          stato: { in: ["EFFETTUATO", "PREVISTO"] },
+          data: { gte: dataInizioAnno, lte: dataFineAnno },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          data: true,
+          importo: true,
+          pianoPagamento: {
+            select: { operazione: { select: { tipoOperazione: true } } },
+          },
+        },
+      });
+
       const mensile = buildMensile();
-      for (const op of ops) {
+
+      for (const op of opsImmediate) {
         const mese = new Date(op.dataOperazione).getMonth() + 1;
         accumulaMovimento(mensile, op.tipoOperazione, Number(op.importoTotale), mese);
       }
+      for (const pag of pagamentiAnno) {
+        const mese = new Date(pag.data).getMonth() + 1;
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        accumulaMovimento(mensile, tipo, Number(pag.importo), mese);
+      }
+
       const saldoFinale = finalizzaMensile(mensile, saldoIniziale);
 
       const totali = {
@@ -145,20 +203,25 @@ export async function GET(request: NextRequest) {
 
     } else {
       // ─── STANDARD path ─────────────────────────────────────────────────
-      // Saldo iniziale: capitaleSociale × quota% + net ripartizioni anni precedenti
+      // Saldo iniziale: capitaleSociale x quota% + net ripartizioni anni precedenti
+
       const socio = await prisma.socio.findFirst({
         where: { id: socioId, societaId },
         select: { quotaPercentuale: true },
       });
       const quotaPercentuale = Number(socio?.quotaPercentuale ?? 0);
 
-      const ripPrecedenti = await prisma.ripartizioneOperazione.findMany({
+      // --- Saldo iniziale from previous years ---
+
+      // 1a. Immediate ops (no piano pagamento) — use ripartizioni
+      const ripPrecedentiImmediate = await prisma.ripartizioneOperazione.findMany({
         where: {
           socioId,
           operazione: {
             societaId,
             eliminato: false,
             bozza: false,
+            pianoPagamento: { is: null },
             dataOperazione: { lt: dataInizioAnno },
           },
         },
@@ -168,24 +231,62 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // 1b. Payments from plans in previous years (only EFFETTUATO)
+      //     Apply socio's ripartizione percentage to each payment
+      const pagamentiPrecedentiStd = await prisma.pagamento.findMany({
+        where: {
+          stato: "EFFETTUATO",
+          data: { lt: dataInizioAnno },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          importo: true,
+          pianoPagamento: {
+            select: {
+              operazione: {
+                select: {
+                  tipoOperazione: true,
+                  ripartizioni: { where: { socioId }, select: { percentuale: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
       let cashFlowPrecedenti = 0;
-      for (const rip of ripPrecedenti) {
+      for (const rip of ripPrecedentiImmediate) {
         const v = Number(rip.importoCalcolato);
         if (rip.operazione.tipoOperazione === "FATTURA_ATTIVA") cashFlowPrecedenti += v;
         else if (TIPI_USCITA.includes(rip.operazione.tipoOperazione)) cashFlowPrecedenti -= v;
       }
+      for (const pag of pagamentiPrecedentiStd) {
+        const ripartizione = pag.pianoPagamento.operazione.ripartizioni[0];
+        if (!ripartizione) continue;
+        const v = Number(pag.importo) * Number(ripartizione.percentuale) / 100;
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        if (tipo === "FATTURA_ATTIVA") cashFlowPrecedenti += v;
+        else if (TIPI_USCITA.includes(tipo)) cashFlowPrecedenti -= v;
+      }
+
       const saldoIniziale = Math.round(
         (capitaleSociale * (quotaPercentuale / 100) + cashFlowPrecedenti) * 100
       ) / 100;
 
-      // Monthly ripartizioni for selected year
-      const rips = await prisma.ripartizioneOperazione.findMany({
+      // --- Monthly data for selected year ---
+
+      // 2a. Immediate ops (no piano pagamento) — use ripartizioni
+      const ripsImmediate = await prisma.ripartizioneOperazione.findMany({
         where: {
           socioId,
           operazione: {
             societaId,
             eliminato: false,
             bozza: false,
+            pianoPagamento: { is: null },
             dataOperazione: { gte: dataInizioAnno, lte: dataFineAnno },
           },
         },
@@ -195,11 +296,47 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // 2b. Payments from plans for current year (EFFETTUATO + PREVISTO)
+      const pagamentiAnnoStd = await prisma.pagamento.findMany({
+        where: {
+          stato: { in: ["EFFETTUATO", "PREVISTO"] },
+          data: { gte: dataInizioAnno, lte: dataFineAnno },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          data: true,
+          importo: true,
+          pianoPagamento: {
+            select: {
+              operazione: {
+                select: {
+                  tipoOperazione: true,
+                  ripartizioni: { where: { socioId }, select: { percentuale: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
       const mensile = buildMensile();
-      for (const rip of rips) {
+
+      for (const rip of ripsImmediate) {
         const mese = new Date(rip.operazione.dataOperazione).getMonth() + 1;
         accumulaMovimento(mensile, rip.operazione.tipoOperazione, Number(rip.importoCalcolato), mese);
       }
+      for (const pag of pagamentiAnnoStd) {
+        const ripartizione = pag.pianoPagamento.operazione.ripartizioni[0];
+        if (!ripartizione) continue;
+        const v = Number(pag.importo) * Number(ripartizione.percentuale) / 100;
+        const mese = new Date(pag.data).getMonth() + 1;
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        accumulaMovimento(mensile, tipo, v, mese);
+      }
+
       const saldoFinale = finalizzaMensile(mensile, saldoIniziale);
 
       const totali = {
