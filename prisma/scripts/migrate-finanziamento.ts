@@ -2,39 +2,51 @@
  * Migration script: Finanziamento → PianoPagamento
  * Run with: npx tsx prisma/scripts/migrate-finanziamento.ts
  *
- * For each existing Finanziamento record:
- * 1. Traverse Finanziamento → Veicolo → Cespite → Operazione to get operazioneId
- * 2. Create PianoPagamento with the financing parameters
- * 3. Generate Pagamento records from the installment schedule
- * 4. Deactivate linked OperazioneRicorrente
+ * Uses raw SQL to read from finanziamenti table (model already removed from schema)
+ * and Prisma client to write PianoPagamento + Pagamento records.
  */
 
 import { PrismaClient } from "@prisma/client";
 import { generaPianoPagamento } from "../../src/lib/calcoli-pagamenti";
 
+type FinanziamentoRow = {
+  id: number;
+  importo_finanziato: number; // Decimal comes as number in raw
+  anticipo: number;
+  numero_rate: number;
+  tan: number | null;
+  data_prima_rata: Date;
+  operazione_ricorrente_id: number | null;
+  operazione_id: number;
+  societa_id: number;
+};
+
 const prisma = new PrismaClient();
 
 async function main() {
-  const finanziamenti = await prisma.finanziamento.findMany({
-    include: {
-      veicolo: {
-        include: {
-          cespite: {
-            include: {
-              operazione: { select: { id: true, societaId: true } },
-            },
-          },
-        },
-      },
-      operazioneRicorrente: true,
-    },
-  });
+  // Raw SQL join: finanziamenti → veicoli → cespiti → operazioni
+  const finanziamenti = await prisma.$queryRaw<FinanziamentoRow[]>`
+    SELECT
+      f.id,
+      f.importo_finanziato,
+      f.anticipo,
+      f.numero_rate,
+      f.tan,
+      f.data_prima_rata,
+      f.operazione_ricorrente_id,
+      o.id AS operazione_id,
+      o.societa_id
+    FROM finanziamenti f
+    JOIN veicoli v ON v.id = f.veicolo_id
+    JOIN cespiti c ON c.id = v.cespite_id
+    JOIN operazioni o ON o.id = c.operazione_id
+  `;
 
   console.log(`Found ${finanziamenti.length} finanziamenti to migrate`);
 
   for (const fin of finanziamenti) {
-    const operazioneId = fin.veicolo.cespite.operazione.id;
-    const societaId = fin.veicolo.cespite.operazione.societaId;
+    const operazioneId = fin.operazione_id;
+    const societaId = fin.societa_id;
 
     // Check if already migrated
     const existing = await prisma.pianoPagamento.findUnique({
@@ -45,11 +57,11 @@ async function main() {
       continue;
     }
 
-    const importoFinanziato = Number(fin.importoFinanziato);
-    const numeroRate = fin.numeroRate;
+    const importoFinanziato = Number(fin.importo_finanziato);
+    const numeroRate = fin.numero_rate;
     const tanVal = fin.tan ? Number(fin.tan) : 0;
     const anticipoVal = Number(fin.anticipo);
-    const dataPrimaRata = fin.dataPrimaRata;
+    const dataPrimaRata = new Date(fin.data_prima_rata);
 
     const piano = generaPianoPagamento(importoFinanziato, numeroRate, tanVal, dataPrimaRata);
 
@@ -106,9 +118,9 @@ async function main() {
       await tx.pagamento.createMany({ data: pagamentiData });
 
       // Deactivate linked OperazioneRicorrente
-      if (fin.operazioneRicorrenteId) {
+      if (fin.operazione_ricorrente_id) {
         await tx.operazioneRicorrente.update({
-          where: { id: fin.operazioneRicorrenteId },
+          where: { id: fin.operazione_ricorrente_id },
           data: { attiva: false },
         });
       }
