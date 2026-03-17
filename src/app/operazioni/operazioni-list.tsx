@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Socio = {
@@ -61,9 +62,9 @@ type Operazione = {
   importoDeducibile: number;
   percentualeDeducibilita: number;
   tipoRipartizione: string;
-  categoriaId: number;
+  categoriaId: number | null;
   createdByUserId: number;
-  categoria: { id: number; nome: string };
+  categoria: { id: number; nome: string } | null;
   ripartizioni: Ripartizione[];
   createdBy: {
     id: number;
@@ -82,6 +83,9 @@ const TIPO_OPERAZIONE_LABELS: Record<string, string> = {
   FATTURA_ATTIVA: "Fattura Attiva",
   COSTO: "Costo",
   CESPITE: "Cespite",
+  PAGAMENTO_IMPOSTE: "Pag. Imposte",
+  DISTRIBUZIONE_DIVIDENDI: "Dividendi",
+  COMPENSO_AMMINISTRATORE: "Comp. Amm.",
 };
 
 const TIPO_RIPARTIZIONE_LABELS: Record<string, string> = {
@@ -103,6 +107,9 @@ function TipoBadge({ tipo }: { tipo: string }) {
     FATTURA_ATTIVA: "bg-green-500/15 text-green-400 border-green-500/25",
     COSTO: "bg-red-500/15 text-red-400 border-red-500/25",
     CESPITE: "bg-violet-500/15 text-violet-400 border-violet-500/25",
+    PAGAMENTO_IMPOSTE: "bg-orange-100 text-orange-800 border-orange-200",
+    DISTRIBUZIONE_DIVIDENDI: "bg-purple-100 text-purple-800 border-purple-200",
+    COMPENSO_AMMINISTRATORE: "bg-sky-100 text-sky-800 border-sky-200",
   };
   return (
     <Badge variant="outline" className={colorMap[tipo] || ""}>
@@ -142,9 +149,13 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
   const [q, setQ] = useState("");
   const [searchText, setSearchText] = useState("");
 
+  // Selection
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operazioneToDelete, setOperazioneToDelete] = useState<Operazione | null>(null);
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const isAdmin = ruolo === "ADMIN";
@@ -180,6 +191,7 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
 
   useEffect(() => {
     fetchOperazioni();
+    setSelected(new Set());
   }, [fetchOperazioni]);
 
   const handleSearch = () => {
@@ -215,9 +227,31 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
     }
   };
 
+  const handleBulkDelete = async () => {
+    setDeleting(true);
+    try {
+      let deleted = 0;
+      for (const id of selected) {
+        const res = await fetch(`/api/operazioni/${id}`, { method: "DELETE" });
+        if (res.ok) deleted++;
+      }
+      toast.success(`${deleted} operazion${deleted === 1 ? "e eliminata" : "i eliminate"}`);
+      setSelected(new Set());
+      setBulkDeleteMode(false);
+      setDeleteDialogOpen(false);
+      fetchOperazioni();
+    } catch (error: any) {
+      toast.error(error.message || "Errore nell'eliminazione");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const canModify = (op: Operazione) => {
     return isAdmin || op.createdByUserId === userId;
   };
+
+  const selectableOps = operazioni.filter(canModify);
 
   const totalPages = Math.ceil(total / perPage);
 
@@ -237,9 +271,24 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {total} operazion{total === 1 ? "e" : "i"} trovate
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            {total} operazion{total === 1 ? "e" : "i"} trovate
+          </p>
+          {selected.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setBulkDeleteMode(true);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina selezionate ({selected.size})
+            </Button>
+          )}
+        </div>
         <Button onClick={() => router.push("/operazioni/nuova")}>
           <Plus className="mr-2 h-4 w-4" />
           Nuova Operazione
@@ -285,6 +334,9 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
                 <SelectItem value="FATTURA_ATTIVA">Fattura Attiva</SelectItem>
                 <SelectItem value="COSTO">Costo</SelectItem>
                 <SelectItem value="CESPITE">Cespite</SelectItem>
+                <SelectItem value="PAGAMENTO_IMPOSTE">Pag. Imposte</SelectItem>
+                <SelectItem value="DISTRIBUZIONE_DIVIDENDI">Dividendi</SelectItem>
+                <SelectItem value="COMPENSO_AMMINISTRATORE">Comp. Amm.</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -381,6 +433,18 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={selectableOps.length > 0 && selectableOps.every((op) => selected.has(op.id))}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelected(new Set(selectableOps.map((op) => op.id)));
+                    } else {
+                      setSelected(new Set());
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead className="w-[100px]">Data</TableHead>
               <TableHead className="w-[100px]">N. Doc.</TableHead>
               <TableHead>Descrizione</TableHead>
@@ -395,13 +459,13 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Caricamento...
                 </TableCell>
               </TableRow>
             ) : operazioni.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Nessuna operazione trovata
                 </TableCell>
               </TableRow>
@@ -412,6 +476,21 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/operazioni/${op.id}`)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {canModify(op) && (
+                      <Checkbox
+                        checked={selected.has(op.id)}
+                        onCheckedChange={(checked) => {
+                          setSelected((prev) => {
+                            const next = new Set(prev);
+                            if (checked) next.add(op.id);
+                            else next.delete(op.id);
+                            return next;
+                          });
+                        }}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-sm">
                     {formatDate(op.dataOperazione)}
                   </TableCell>
@@ -424,7 +503,7 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
                   <TableCell>
                     <TipoBadge tipo={op.tipoOperazione} />
                   </TableCell>
-                  <TableCell className="text-sm">{op.categoria.nome}</TableCell>
+                  <TableCell className="text-sm">{op.categoria?.nome ?? "—"}</TableCell>
                   <TableCell className="text-right font-mono text-sm">
                     {formatCurrency(op.importoTotale)}
                   </TableCell>
@@ -501,23 +580,32 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
       )}
 
       {/* Delete confirmation dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) setBulkDeleteMode(false);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Conferma eliminazione</DialogTitle>
           </DialogHeader>
+          {bulkDeleteMode ? (
+            <p className="text-sm text-muted-foreground">
+              Sei sicuro di voler eliminare <strong>{selected.size} operazion{selected.size === 1 ? "e" : "i"}</strong>?
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sei sicuro di voler eliminare l&apos;operazione{" "}
+              <strong>
+                {operazioneToDelete?.descrizione}
+              </strong>
+              {operazioneToDelete?.numeroDocumento
+                ? ` (${operazioneToDelete.numeroDocumento})`
+                : ""}
+              ?
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
-            Sei sicuro di voler eliminare l&apos;operazione{" "}
-            <strong>
-              {operazioneToDelete?.descrizione}
-            </strong>
-            {operazioneToDelete?.numeroDocumento
-              ? ` (${operazioneToDelete.numeroDocumento})`
-              : ""}
-            ?
-          </p>
-          <p className="text-sm text-muted-foreground">
-            L&apos;operazione non verra eliminata definitivamente ma sara contrassegnata come eliminata.
+            Le operazioni non verranno eliminate definitivamente ma saranno contrassegnate come eliminate.
           </p>
           <DialogFooter>
             <Button
@@ -529,10 +617,10 @@ export function OperazioniList({ soci, categorie, ruolo, userId }: Props) {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
+              onClick={bulkDeleteMode ? handleBulkDelete : handleDelete}
               disabled={deleting}
             >
-              {deleting ? "Eliminazione..." : "Elimina"}
+              {deleting ? "Eliminazione..." : bulkDeleteMode ? `Elimina ${selected.size}` : "Elimina"}
             </Button>
           </DialogFooter>
         </DialogContent>
