@@ -77,12 +77,21 @@ export async function GET(request: NextRequest) {
           tipoOperazione: true,
           dataOperazione: true,
           importoTotale: true,
+          importoImponibile: true,
+          aliquotaIva: true,
         },
       });
 
       for (const op of operazioni) {
         const mese = op.dataOperazione.getMonth(); // 0-based
-        const importo = Number(op.importoTotale);
+        let importo: number;
+        if (op.importoImponibile != null) {
+          importo = Number(op.importoImponibile);
+        } else if (op.aliquotaIva != null && Number(op.aliquotaIva) > 0) {
+          importo = Number(op.importoTotale) / (1 + Number(op.aliquotaIva) / 100);
+        } else {
+          importo = Number(op.importoTotale);
+        }
 
         if (op.tipoOperazione === "FATTURA_ATTIVA") {
           mesiData[mese].fatturato += importo;

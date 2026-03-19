@@ -136,6 +136,16 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { socio: { cognome: "asc" } },
           },
+          pianoPagamento: {
+            select: {
+              id: true,
+              tipo: true,
+              stato: true,
+              pagamenti: {
+                select: { importo: true, stato: true },
+              },
+            },
+          },
         },
         orderBy: [{ dataOperazione: "desc" }, { createdAt: "desc" }],
         skip,
@@ -169,6 +179,19 @@ export async function GET(request: NextRequest) {
           quotaPercentuale: Number(rip.socio.quotaPercentuale),
         },
       })),
+      pianoPagamento: op.pianoPagamento
+        ? {
+            id: op.pianoPagamento.id,
+            tipo: op.pianoPagamento.tipo,
+            stato: op.pianoPagamento.stato,
+            importoTotale: Number(op.importoTotale),
+            quotaPagata: Math.round(
+              op.pianoPagamento.pagamenti
+                .filter((p: any) => p.stato === "EFFETTUATO")
+                .reduce((sum: number, p: any) => sum + Number(p.importo), 0) * 100
+            ) / 100,
+          }
+        : null,
     }));
 
     return NextResponse.json({ data: serialized, total, page, perPage });

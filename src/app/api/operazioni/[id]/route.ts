@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcolaRipartizione, calcolaPianoAmmortamento } from "@/lib/business-utils";
+import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 import { logAttivita } from "@/lib/log-helper";
 
 type RouteContext = {
@@ -193,6 +194,9 @@ export async function PUT(request: Request, context: RouteContext) {
       note,
       aliquotaAmmortamento,
       sottotipoOperazione,
+      modalitaPagamento,
+      pianoPagamentoData,
+      pagamentiCustom,
     } = body;
 
     // --- Validations ---
@@ -482,6 +486,109 @@ export async function PUT(request: Request, context: RouteContext) {
               fondoProgressivo: q.fondoProgressivo,
             })),
           });
+        }
+      }
+
+      // Handle payment plan changes
+      const existingPiano = await tx.pianoPagamento.findUnique({
+        where: { operazioneId },
+        include: { pagamenti: true },
+      });
+
+      const wantsPiano = modalitaPagamento && modalitaPagamento !== "IMMEDIATO";
+
+      if (existingPiano && !wantsPiano) {
+        // User switched to IMMEDIATO — delete the payment plan
+        await tx.pagamento.deleteMany({ where: { pianoPagamentoId: existingPiano.id } });
+        await tx.pianoPagamento.delete({ where: { id: existingPiano.id } });
+      } else if (wantsPiano) {
+        // Delete existing plan if present, then recreate
+        if (existingPiano) {
+          await tx.pagamento.deleteMany({ where: { pianoPagamentoId: existingPiano.id } });
+          await tx.pianoPagamento.delete({ where: { id: existingPiano.id } });
+        }
+
+        const ppTipo = modalitaPagamento as "RATEALE" | "CUSTOM";
+
+        if (ppTipo === "RATEALE" && pianoPagamentoData) {
+          const anticipoVal = pianoPagamentoData.anticipo ? parseFloat(String(pianoPagamentoData.anticipo)) : 0;
+          const importoDaFinanziare = importo - anticipoVal;
+          const tanVal = pianoPagamentoData.tan != null ? parseFloat(String(pianoPagamentoData.tan)) : 0;
+          const nRate = parseInt(String(pianoPagamentoData.numeroRate));
+          const dataInizioRata = new Date(pianoPagamentoData.dataInizio);
+
+          const pianoCalcolato = generaPianoPagamento(importoDaFinanziare, nRate, tanVal, dataInizioRata);
+
+          const pp = await tx.pianoPagamento.create({
+            data: {
+              operazioneId,
+              societaId,
+              tipo: "RATEALE",
+              stato: "ATTIVO",
+              numeroRate: nRate,
+              importoRata: pianoCalcolato.rate.length > 0 ? pianoCalcolato.rate[0].importo : 0,
+              tan: tanVal,
+              anticipo: anticipoVal,
+              dataInizio: dataInizioRata,
+            },
+          });
+
+          const pagamentiData: any[] = [];
+          let numPag = 0;
+
+          if (anticipoVal > 0) {
+            numPag++;
+            pagamentiData.push({
+              pianoPagamentoId: pp.id,
+              numeroPagamento: numPag,
+              data: dataInizioRata,
+              importo: anticipoVal,
+              quotaCapitale: anticipoVal,
+              quotaInteressi: 0,
+              stato: "EFFETTUATO",
+              dataEffettivaPagamento: dataInizioRata,
+            });
+          }
+
+          for (const rata of pianoCalcolato.rate) {
+            numPag++;
+            pagamentiData.push({
+              pianoPagamentoId: pp.id,
+              numeroPagamento: numPag,
+              data: rata.data,
+              importo: rata.importo,
+              quotaCapitale: rata.quotaCapitale,
+              quotaInteressi: rata.quotaInteressi,
+              stato: "PREVISTO",
+            });
+          }
+
+          await tx.pagamento.createMany({ data: pagamentiData });
+        } else if (ppTipo === "CUSTOM" && pagamentiCustom) {
+          const pp = await tx.pianoPagamento.create({
+            data: {
+              operazioneId,
+              societaId,
+              tipo: "CUSTOM",
+              stato: "ATTIVO",
+              dataInizio: new Date(pagamentiCustom[0]?.data || new Date()),
+            },
+          });
+
+          if (pagamentiCustom.length > 0) {
+            await tx.pagamento.createMany({
+              data: pagamentiCustom.map((p: any, i: number) => ({
+                pianoPagamentoId: pp.id,
+                numeroPagamento: i + 1,
+                data: new Date(p.data),
+                importo: parseFloat(String(p.importo)),
+                quotaCapitale: parseFloat(String(p.importo)),
+                quotaInteressi: 0,
+                stato: "PREVISTO",
+                note: p.note || null,
+              })),
+            });
+          }
         }
       }
 

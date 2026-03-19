@@ -3,6 +3,7 @@ export type OpzioneUso = {
   codice: string;
   detraibilitaIva: number;
   deducibilitaCosto: number;
+  aliquotaIva?: number;
 };
 
 export type CategoriaDefault = {
@@ -19,16 +20,23 @@ export type CategoriaDefault = {
 const OPZIONI_AUTO_STANDARD: OpzioneUso[] = [
   { label: "Uso misto (personale + lavoro)", codice: "MISTO", detraibilitaIva: 40, deducibilitaCosto: 20 },
   { label: "Solo lavoro", codice: "ESCLUSIVO", detraibilitaIva: 100, deducibilitaCosto: 100 },
+  { label: "Fringe benefit dipendenti", codice: "FRINGE_BENEFIT", detraibilitaIva: 40, deducibilitaCosto: 70 },
 ];
 
 const OPZIONI_AUTO_AGENTE: OpzioneUso[] = [
   { label: "Uso misto (personale + lavoro)", codice: "MISTO", detraibilitaIva: 100, deducibilitaCosto: 80 },
   { label: "Solo lavoro", codice: "ESCLUSIVO", detraibilitaIva: 100, deducibilitaCosto: 100 },
+  { label: "Fringe benefit dipendenti", codice: "FRINGE_BENEFIT", detraibilitaIva: 40, deducibilitaCosto: 70 },
 ];
 
 const OPZIONI_TELEFONIA_MOBILE: OpzioneUso[] = [
   { label: "Uso misto (personale + lavoro)", codice: "MISTO", detraibilitaIva: 50, deducibilitaCosto: 80 },
   { label: "Solo lavoro", codice: "ESCLUSIVO", detraibilitaIva: 100, deducibilitaCosto: 100 },
+];
+
+const OPZIONI_AFFITTO_UFFICIO: OpzioneUso[] = [
+  { label: "Con IVA (locatore soggetto IVA)", codice: "CON_IVA", detraibilitaIva: 100, deducibilitaCosto: 100, aliquotaIva: 22 },
+  { label: "Senza IVA (locatore privato)", codice: "SENZA_IVA", detraibilitaIva: 0, deducibilitaCosto: 100, aliquotaIva: 0 },
 ];
 
 const OPZIONI_ALBERGHI_RISTORANTI: OpzioneUso[] = [
@@ -82,6 +90,16 @@ export function getCategorieDefault(tipoAttivita: TipoAttivita, regimeFiscale: R
       nome: "Leasing e noleggio auto",
       percentualeDeducibilita: dedAutoMisto,
       descrizione: isAgente ? "Max deducibile 5.164,57 EUR/anno" : "Max deducibile 3.615,20 EUR/anno",
+      tipoCategoria: "Auto",
+      aliquotaIvaDefault: 22,
+      percentualeDetraibilitaIva: isAgente ? 100 : 40,
+      haOpzioniUso: true,
+      opzioniUso: opzioniAuto,
+    },
+    {
+      nome: "Acquisto auto",
+      percentualeDeducibilita: dedAutoMisto,
+      descrizione: isAgente ? "Art. 164 TUIR - Max deducibile 25.822,84 EUR" : "Art. 164 TUIR - Max deducibile 18.075,99 EUR",
       tipoCategoria: "Auto",
       aliquotaIvaDefault: 22,
       percentualeDetraibilitaIva: isAgente ? 100 : 40,
@@ -159,8 +177,8 @@ export function getCategorieDefault(tipoAttivita: TipoAttivita, regimeFiscale: R
       tipoCategoria: "Immobili",
       aliquotaIvaDefault: 22,
       percentualeDetraibilitaIva: 100,
-      haOpzioniUso: false,
-      opzioniUso: null,
+      haOpzioniUso: true,
+      opzioniUso: OPZIONI_AFFITTO_UFFICIO,
     },
     {
       nome: "Utenze ufficio (luce, gas, acqua)",

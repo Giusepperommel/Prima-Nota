@@ -94,8 +94,20 @@ export async function POST(request: NextRequest) {
 
     const ids: number[] = [];
 
+    // Build a map of valid category IDs for quick lookup
+    const validCategoriaIds = new Set<number>();
+    const categorieMap = new Map<number, { percentualeDeducibilita: number }>();
+    const allCategorie = await prisma.categoriaSpesa.findMany({
+      where: { societaId, attiva: true },
+      select: { id: true, percentualeDeducibilita: true },
+    });
+    for (const cat of allCategorie) {
+      validCategoriaIds.add(cat.id);
+      categorieMap.set(cat.id, { percentualeDeducibilita: Number(cat.percentualeDeducibilita) });
+    }
+
     for (const tx of transactions) {
-      const { dataOperazione, descrizione, importoTotale } = tx;
+      const { dataOperazione, descrizione, importoTotale, categoriaId } = tx;
 
       if (!descrizione || !importoTotale) continue;
 
@@ -103,8 +115,14 @@ export async function POST(request: NextRequest) {
       if (isNaN(importo) || importo <= 0) continue;
 
       const data = dataOperazione
-        ? new Date(dataOperazione + "T00:00:00")
+        ? new Date(dataOperazione + "T12:00:00")
         : new Date();
+
+      // Use AI-suggested category if valid, otherwise fall back to default
+      const useCategoriaId = categoriaId && validCategoriaIds.has(categoriaId)
+        ? categoriaId
+        : defaultCategoria.id;
+      const catData = categorieMap.get(useCategoriaId) ?? { percentualeDeducibilita: Number(defaultCategoria.percentualeDeducibilita) };
 
       const operazione = await prisma.operazione.create({
         data: {
@@ -113,9 +131,9 @@ export async function POST(request: NextRequest) {
           dataOperazione: data,
           descrizione: String(descrizione),
           importoTotale: importo,
-          categoriaId: defaultCategoria.id,
-          percentualeDeducibilita: Number(defaultCategoria.percentualeDeducibilita),
-          importoDeducibile: importo * Number(defaultCategoria.percentualeDeducibilita) / 100,
+          categoriaId: useCategoriaId,
+          percentualeDeducibilita: catData.percentualeDeducibilita,
+          importoDeducibile: importo * catData.percentualeDeducibilita / 100,
           deducibilitaCustom: false,
           tipoRipartizione: "COMUNE",
           bozza: true,

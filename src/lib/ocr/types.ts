@@ -25,6 +25,8 @@ export type ParsedTransaction = {
   dataOperazione: string | null;  // ISO YYYY-MM-DD
   descrizione: string;
   importoTotale: number;
+  categoriaId?: number | null;
+  tipoOperazione?: "COSTO" | "FATTURA_ATTIVA";
 };
 
 export type OcrParseResult = {

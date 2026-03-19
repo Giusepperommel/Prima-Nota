@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCategorieDefault } from "@/lib/categorie-default";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +16,29 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const attive = searchParams.get("attive");
+
+    // Sync usage options from defaults (lightweight: only updates when needed)
+    const societa = await prisma.societa.findUnique({
+      where: { id: societaId },
+      select: { tipoAttivita: true, regimeFiscale: true },
+    });
+    if (societa) {
+      const defaults = getCategorieDefault(societa.tipoAttivita, societa.regimeFiscale);
+      const defaultsWithOptions = defaults.filter((d) => d.haOpzioniUso && d.opzioniUso);
+      for (const def of defaultsWithOptions) {
+        await prisma.categoriaSpesa.updateMany({
+          where: {
+            societaId,
+            nome: def.nome,
+            haOpzioniUso: false,
+          },
+          data: {
+            haOpzioniUso: true,
+            opzioniUso: def.opzioniUso as unknown as Prisma.JsonArray,
+          },
+        });
+      }
+    }
 
     const where: any = { societaId };
     if (attive === "true") {

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 
-const publicPaths = ["/login", "/registrazione", "/verifica-email", "/api/auth"];
+const publicPaths = ["/login", "/registrazione", "/verifica-email", "/reset-password", "/api/auth"];
 const noSocietaRequiredPaths = ["/crea-societa", "/api/societa"];
 
 export default auth((req) => {

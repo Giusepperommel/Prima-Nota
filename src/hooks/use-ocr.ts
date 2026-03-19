@@ -1,24 +1,44 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import type { OcrResult, OcrStatus, ParsedDocument, OcrParseResult } from "@/lib/ocr/types";
-import { parseDocumentText, parseMultipleTransactions } from "@/lib/ocr/parser";
+import { useState, useCallback, useRef } from "react";
+import type { OcrStatus, ParsedDocument, OcrParseResult, ParsedTransaction } from "@/lib/ocr/types";
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_PDF_TYPES = ["application/pdf"];
 const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_PDF_TYPES];
+
+type VisionMultiResult = {
+  type: "multi";
+  transactions: Array<{
+    dataOperazione: string;
+    descrizione: string;
+    importo: number;
+    segno: "+" | "-";
+    categoriaId?: number | null;
+  }>;
+};
+
+type VisionSingleResult = {
+  type: "single";
+  document: {
+    dataOperazione: string | null;
+    numeroDocumento: string | null;
+    descrizione: string | null;
+    importoTotale: number | null;
+    imponibile: number | null;
+    aliquotaIva: string | null;
+    importoIva: number | null;
+    fornitore: string | null;
+  };
+};
+
+type VisionResult = VisionMultiResult | VisionSingleResult;
 
 export function useOcr() {
   const [status, setStatus] = useState<OcrStatus>("idle");
   const [result, setResult] = useState<OcrParseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const processingRef = useRef(false);
-
-  useEffect(() => {
-    return () => {
-      import("@/lib/ocr/tesseract-worker").then(m => m.terminateWorker());
-    };
-  }, []);
 
   const processFile = useCallback(async (file: File) => {
     if (processingRef.current) return;
@@ -33,28 +53,58 @@ export function useOcr() {
     setResult(null);
 
     try {
-      let imageInput: File | Blob = file;
+      let imageFile = file;
 
+      // Convert PDF to image first
       if (ACCEPTED_PDF_TYPES.includes(file.type)) {
         setStatus("processing");
         const { pdfToImage } = await import("@/lib/ocr/pdf-extractor");
-        imageInput = await pdfToImage(file);
+        const blob = await pdfToImage(file);
+        imageFile = new File([blob], "page.png", { type: "image/png" });
       }
 
       setStatus("processing");
-      const { recognizeImage } = await import("@/lib/ocr/tesseract-worker");
-      const ocrResult: OcrResult = await recognizeImage(imageInput);
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Errore ${res.status}`);
+      }
 
       setStatus("parsing");
-      // Try multi-transaction first (bank statement)
-      const multiResult = parseMultipleTransactions(ocrResult.rawText);
-      if (multiResult) {
-        setResult({ type: "multi", transactions: multiResult });
+      const visionResult: VisionResult = await res.json();
+
+      if (visionResult.type === "multi") {
+        const transactions: ParsedTransaction[] = visionResult.transactions.map((tx) => ({
+          dataOperazione: tx.dataOperazione || null,
+          descrizione: tx.descrizione,
+          importoTotale: Math.abs(tx.importo),
+          categoriaId: tx.categoriaId || null,
+          tipoOperazione: tx.segno === "+" ? "FATTURA_ATTIVA" as const : "COSTO" as const,
+        }));
+        setResult({ type: "multi", transactions });
       } else {
-        // Fall back to single document parsing
-        const parsed = parseDocumentText(ocrResult.rawText);
+        const doc = visionResult.document;
+        const parsed: ParsedDocument = {
+          dataOperazione: doc.dataOperazione || null,
+          numeroDocumento: doc.numeroDocumento || null,
+          descrizione: doc.descrizione || null,
+          importoTotale: doc.importoTotale != null ? Math.abs(doc.importoTotale) : null,
+          imponibile: doc.imponibile || null,
+          aliquotaIva: doc.aliquotaIva || null,
+          importoIva: doc.importoIva || null,
+          tipoOperazione: doc.importoTotale != null ? "COSTO" : null,
+          fornitore: doc.fornitore || null,
+        };
         setResult({ type: "single", document: parsed });
       }
+
       setStatus("done");
     } catch (err: any) {
       setError(err.message || "Errore durante la scansione OCR");

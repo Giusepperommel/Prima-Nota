@@ -77,8 +77,13 @@ export async function POST() {
 
         if (!esistente) {
           // Calculate ripartizioni for this draft
+          // Use imponibile for ripartizioni (net of IVA); fallback to totale
+          const importoPerRipartizione = ric.importoImponibile != null
+            ? Number(ric.importoImponibile)
+            : Number(ric.importoTotale);
+
           const ripartizioniCalcolate = calcolaRipartizione(
-            Number(ric.importoTotale),
+            importoPerRipartizione,
             ric.tipoRipartizione as "COMUNE" | "SINGOLO" | "CUSTOM",
             sociForCalc,
             ric.socioSingoloId ?? undefined

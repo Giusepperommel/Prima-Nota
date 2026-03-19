@@ -17,7 +17,7 @@ export const RITENUTA_DIVIDENDI = 26; // %
 // IRPEF — Imposta sul Reddito delle Persone Fisiche (scaglioni 2025/2026)
 export const IRPEF_BRACKETS: { upTo: number; rate: number }[] = [
   { upTo: 28000, rate: 23 },
-  { upTo: 50000, rate: 33 },
+  { upTo: 50000, rate: 35 },
   { upTo: Infinity, rate: 43 },
 ];
 

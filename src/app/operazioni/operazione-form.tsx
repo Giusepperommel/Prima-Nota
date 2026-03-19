@@ -165,6 +165,21 @@ type OperazioneData = {
     fondoAmmortamento: number;
     annoInizio: number;
   } | null;
+  pianoPagamento?: {
+    id: number;
+    tipo: string;
+    stato: string;
+    numeroRate?: number | null;
+    tan?: number | null;
+    anticipo?: number | null;
+    dataInizio: string;
+    pagamenti: Array<{
+      data: string;
+      importo: number;
+      stato: string;
+      note?: string | null;
+    }>;
+  } | null;
 };
 
 type PreferenzaUso = {
@@ -196,6 +211,15 @@ export function OperazioneForm({
   const router = useRouter();
   const isEditing = !!operazione;
   const [saving, setSaving] = useState(false);
+  const [duplicateMatch, setDuplicateMatch] = useState<{
+    pagamentoId: number;
+    pianoId: number;
+    operazioneId: number;
+    operazioneDescrizione: string;
+    importo: number;
+    data: string;
+  } | null>(null);
+  const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
 
   // Form state
   const [tipoOperazione, setTipoOperazione] = useState(
@@ -285,9 +309,32 @@ export function OperazioneForm({
   const [marca, setMarca] = useState("");
   const [modelloVeicolo, setModelloVeicolo] = useState("");
   const [targa, setTarga] = useState("");
-  // Payment plan
-  const [pianoPagamentoForm, setPianoPagamentoForm] = useState<PianoPagamentoFormData>({
-    modalita: "IMMEDIATO",
+  // Payment plan — hydrate from existing operation when editing
+  const [pianoPagamentoForm, setPianoPagamentoForm] = useState<PianoPagamentoFormData>(() => {
+    if (operazione?.pianoPagamento) {
+      const pp = operazione.pianoPagamento;
+      if (pp.tipo === "RATEALE") {
+        return {
+          modalita: "RATEALE",
+          numeroRate: pp.numeroRate ?? undefined,
+          tan: pp.tan ?? 0,
+          anticipo: pp.anticipo ?? 0,
+          dataInizio: pp.dataInizio ? pp.dataInizio.split("T")[0] : undefined,
+        };
+      } else if (pp.tipo === "CUSTOM") {
+        return {
+          modalita: "CUSTOM",
+          pagamentiCustom: pp.pagamenti
+            .filter((p: any) => p.stato !== "ANNULLATO")
+            .map((p: any) => ({
+              data: p.data.split("T")[0],
+              importo: p.importo,
+              note: p.note || undefined,
+            })),
+        };
+      }
+    }
+    return { modalita: "IMMEDIATO" };
   });
 
   // Ricorrenza
@@ -770,6 +817,25 @@ export function OperazioneForm({
       if (hasEmptyDates) {
         toast.error("Tutti i pagamenti devono avere una data");
         return;
+      }
+    }
+
+    // Check for duplicate payments in existing piani pagamento (only for new ops without piano)
+    if (!isEditing && !skipDuplicateCheck && pianoPagamentoForm.modalita === "IMMEDIATO") {
+      try {
+        const checkRes = await fetch(
+          `/api/piani-pagamento/check-duplicati?importo=${importo}&data=${dataOperazione}`
+        );
+        if (checkRes.ok) {
+          const { matches } = await checkRes.json();
+          if (matches.length > 0) {
+            const m = matches[0];
+            setDuplicateMatch(m);
+            return; // Stop save, show confirmation dialog
+          }
+        }
+      } catch {
+        // If check fails, proceed with save
       }
     }
 
@@ -1905,7 +1971,7 @@ export function OperazioneForm({
       </Card>
 
       {/* Section: Modalità di Pagamento */}
-      {!isEditing && !readOnly && !isTipoFinanziario && (
+      {!readOnly && !isTipoFinanziario && (
         <SelettoreModalitaPagamento
           importoTotale={parseFloat(importoTotale) || 0}
           value={pianoPagamentoForm}
@@ -2129,6 +2195,70 @@ export function OperazioneForm({
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Duplicate payment warning */}
+      {duplicateMatch && (
+        <Card className="border-amber-500 bg-amber-500/10">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-amber-200">Possibile pagamento duplicato</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Esiste un pagamento previsto di{" "}
+                  <strong>{formatCurrency(duplicateMatch.importo)}</strong> il{" "}
+                  <strong>{new Date(duplicateMatch.data).toLocaleDateString("it-IT")}</strong>{" "}
+                  per l&apos;operazione &quot;{duplicateMatch.operazioneDescrizione}&quot;.
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Vuoi segnare quel pagamento come effettuato invece di creare una nuova operazione?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDuplicateMatch(null);
+                  setSkipDuplicateCheck(true);
+                }}
+              >
+                No, crea comunque l&apos;operazione
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      `/api/piani-pagamento/${duplicateMatch.pianoId}/pagamenti/${duplicateMatch.pagamentoId}`,
+                      {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ stato: "EFFETTUATO" }),
+                      }
+                    );
+                    if (res.ok) {
+                      toast.success("Pagamento segnato come effettuato");
+                      router.push(`/operazioni/${duplicateMatch.operazioneId}`);
+                    } else {
+                      const err = await res.json().catch(() => ({}));
+                      toast.error(err.error || "Errore nel segnare il pagamento");
+                    }
+                  } catch {
+                    toast.error("Errore di rete");
+                  } finally {
+                    setDuplicateMatch(null);
+                  }
+                }}
+              >
+                Segna come pagato
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

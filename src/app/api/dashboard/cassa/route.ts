@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
       // --- Monthly data for selected year ---
 
       // 2a. Immediate ops (no piano pagamento) for current year
+      // SAFETY: pianoPagamento: { is: null } ensures ops with payment plans are NEVER counted here
       const opsImmediate = await prisma.operazione.findMany({
         where: {
           societaId,
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest) {
           pianoPagamento: { is: null },
           dataOperazione: { gte: dataInizioAnno, lte: dataFineAnno },
         },
-        select: { tipoOperazione: true, importoTotale: true, dataOperazione: true },
+        select: { id: true, tipoOperazione: true, importoTotale: true, dataOperazione: true },
       });
 
       // 2b. Payments from plans for current year (EFFETTUATO + PREVISTO = forecast)
@@ -174,10 +175,18 @@ export async function GET(request: NextRequest) {
           data: true,
           importo: true,
           pianoPagamento: {
-            select: { operazione: { select: { tipoOperazione: true } } },
+            select: { operazione: { select: { id: true, tipoOperazione: true } } },
           },
         },
       });
+
+      // Runtime safety: detect any op that appears in both channels
+      const immediateIds = new Set(opsImmediate.map(op => op.id));
+      const pianoOpIds = new Set(pagamentiAnno.map(p => p.pianoPagamento.operazione.id));
+      const overlap = [...immediateIds].filter(id => pianoOpIds.has(id));
+      if (overlap.length > 0) {
+        console.error("CASSA SAFETY: ops counted in both immediate and piano channels:", overlap);
+      }
 
       const mensile = buildMensile();
 
@@ -199,7 +208,50 @@ export async function GET(request: NextRequest) {
         saldoFinale,
       };
 
-      return NextResponse.json({ anno, saldoIniziale, mensile, totali });
+      // Saldo attuale: only EFFETTUATO payments (not PREVISTO) up to today
+      const oggi = new Date();
+      const pagamentiEffettuatiAnno = await prisma.pagamento.findMany({
+        where: {
+          stato: "EFFETTUATO",
+          data: { gte: dataInizioAnno, lte: oggi },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          importo: true,
+          pianoPagamento: {
+            select: { operazione: { select: { tipoOperazione: true } } },
+          },
+        },
+      });
+      // Immediate ops up to today
+      const opsImmediateOggi = await prisma.operazione.findMany({
+        where: {
+          societaId,
+          eliminato: false,
+          bozza: false,
+          pianoPagamento: { is: null },
+          dataOperazione: { gte: dataInizioAnno, lte: oggi },
+        },
+        select: { tipoOperazione: true, importoTotale: true },
+      });
+      let cashFlowAttuale = 0;
+      for (const op of opsImmediateOggi) {
+        const v = Number(op.importoTotale);
+        if (op.tipoOperazione === "FATTURA_ATTIVA") cashFlowAttuale += v;
+        else if (TIPI_USCITA.includes(op.tipoOperazione)) cashFlowAttuale -= v;
+      }
+      for (const pag of pagamentiEffettuatiAnno) {
+        const v = Number(pag.importo);
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        if (tipo === "FATTURA_ATTIVA") cashFlowAttuale += v;
+        else if (TIPI_USCITA.includes(tipo)) cashFlowAttuale -= v;
+      }
+      const saldoAttuale = Math.round((saldoIniziale + cashFlowAttuale) * 100) / 100;
+
+      return NextResponse.json({ anno, saldoIniziale, saldoAttuale, mensile, totali });
 
     } else {
       // ─── STANDARD path ─────────────────────────────────────────────────
@@ -345,7 +397,64 @@ export async function GET(request: NextRequest) {
         saldoFinale,
       };
 
-      return NextResponse.json({ anno, saldoIniziale, mensile, totali });
+      // Saldo attuale (STANDARD): only EFFETTUATO payments up to today
+      const oggi = new Date();
+      const pagEffStd = await prisma.pagamento.findMany({
+        where: {
+          stato: "EFFETTUATO",
+          data: { gte: dataInizioAnno, lte: oggi },
+          pianoPagamento: {
+            societaId,
+            operazione: { eliminato: false, bozza: false },
+          },
+        },
+        select: {
+          importo: true,
+          pianoPagamento: {
+            select: {
+              operazione: {
+                select: {
+                  tipoOperazione: true,
+                  ripartizioni: { where: { socioId }, select: { percentuale: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+      const ripsImmOggi = await prisma.ripartizioneOperazione.findMany({
+        where: {
+          socioId,
+          operazione: {
+            societaId,
+            eliminato: false,
+            bozza: false,
+            pianoPagamento: { is: null },
+            dataOperazione: { gte: dataInizioAnno, lte: oggi },
+          },
+        },
+        select: {
+          importoCalcolato: true,
+          operazione: { select: { tipoOperazione: true } },
+        },
+      });
+      let cashFlowAttuale = 0;
+      for (const rip of ripsImmOggi) {
+        const v = Number(rip.importoCalcolato);
+        if (rip.operazione.tipoOperazione === "FATTURA_ATTIVA") cashFlowAttuale += v;
+        else if (TIPI_USCITA.includes(rip.operazione.tipoOperazione)) cashFlowAttuale -= v;
+      }
+      for (const pag of pagEffStd) {
+        const ripartizione = pag.pianoPagamento.operazione.ripartizioni[0];
+        if (!ripartizione) continue;
+        const v = Number(pag.importo) * Number(ripartizione.percentuale) / 100;
+        const tipo = pag.pianoPagamento.operazione.tipoOperazione;
+        if (tipo === "FATTURA_ATTIVA") cashFlowAttuale += v;
+        else if (TIPI_USCITA.includes(tipo)) cashFlowAttuale -= v;
+      }
+      const saldoAttuale = Math.round((saldoIniziale + cashFlowAttuale) * 100) / 100;
+
+      return NextResponse.json({ anno, saldoIniziale, saldoAttuale, mensile, totali });
     }
   } catch (error) {
     console.error("Errore simulazione cassa:", error);

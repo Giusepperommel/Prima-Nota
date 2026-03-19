@@ -66,6 +66,13 @@ type Operazione = {
   descrizione: string;
   importoTotale: number;
   numeroDocumento?: string;
+  pianoPagamento?: {
+    id: number;
+    tipo: string;
+    stato: string;
+    importoTotale: number;
+    quotaPagata: number;
+  } | null;
 };
 
 type Bozza = {
@@ -98,6 +105,7 @@ type CassaMensile = {
 type CassaData = {
   anno: number;
   saldoIniziale: number;
+  saldoAttuale?: number;
   mensile: CassaMensile[];
   totali: {
     entrate: number;
@@ -275,10 +283,10 @@ export function DashboardContent({ ruolo, nome }: Props) {
     [isAdmin]
   );
 
-  const fetchRecentOps = useCallback(async () => {
+  const fetchRecentOps = useCallback(async (da: string, a: string) => {
     setLoadingOps(true);
     try {
-      const res = await fetch("/api/operazioni?perPage=10");
+      const res = await fetch(`/api/operazioni?da=${da}&a=${a}&perPage=100`);
       if (res.ok) {
         const data = await res.json();
         // The operazioni API may return { data: [...], ... } or [...]
@@ -338,7 +346,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
         setBozze((prev) => prev.filter((b) => b.id !== id));
         setEditingBozza(null);
         fetchKpi(dates.da, dates.a);
-        fetchRecentOps();
+        fetchRecentOps(dates.da, dates.a);
       }
     } finally {
       setConfermando(null);
@@ -352,7 +360,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
       if (res.ok) {
         setBozze([]);
         fetchKpi(dates.da, dates.a);
-        fetchRecentOps();
+        fetchRecentOps(dates.da, dates.a);
       }
     } finally {
       setConfermando(null);
@@ -372,8 +380,8 @@ export function DashboardContent({ ruolo, nome }: Props) {
   }, [dates.da, fetchTrend]);
 
   useEffect(() => {
-    fetchRecentOps();
-  }, [fetchRecentOps]);
+    fetchRecentOps(dates.da, dates.a);
+  }, [dates, fetchRecentOps]);
 
   useEffect(() => {
     fetchBozze();
@@ -784,13 +792,23 @@ export function DashboardContent({ ruolo, nome }: Props) {
           ) : (
             <div className="space-y-6">
               {/* KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-xs text-muted-foreground">Saldo Iniziale Anno</p>
                     <p className="text-lg font-semibold mt-1">{formatCurrency(cassaData.saldoIniziale)}</p>
                   </CardContent>
                 </Card>
+                {cassaData.saldoAttuale != null && (
+                  <Card className={cassaData.saldoAttuale >= 0 ? "border-blue-500/30" : "border-red-500/30"}>
+                    <CardContent className="pt-4">
+                      <p className="text-xs text-muted-foreground">Saldo Attuale (ad oggi)</p>
+                      <p className={`text-lg font-semibold mt-1 ${cassaData.saldoAttuale >= 0 ? "text-blue-400" : "text-red-400"}`}>
+                        {formatCurrency(cassaData.saldoAttuale)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card className="border-green-500/30">
                   <CardContent className="pt-4">
                     <p className="text-xs text-muted-foreground">Entrate Lorde</p>
@@ -805,7 +823,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                 </Card>
                 <Card className={cassaData.totali.saldoFinale >= 0 ? "border-green-500/30" : "border-red-500/30"}>
                   <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">Saldo Finale Anno</p>
+                    <p className="text-xs text-muted-foreground">Previsione Fine Anno</p>
                     <p className={`text-lg font-semibold mt-1 ${cassaData.totali.saldoFinale >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {formatCurrency(cassaData.totali.saldoFinale)}
                     </p>
@@ -890,6 +908,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                   <TableHead>Descrizione</TableHead>
                   <TableHead>N. Documento</TableHead>
                   <TableHead className="text-right">Importo</TableHead>
+                  <TableHead className="text-right">Pagato</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -912,6 +931,15 @@ export function DashboardContent({ ruolo, nome }: Props) {
                         typeof op.importoTotale === "number"
                           ? op.importoTotale
                           : Number(op.importoTotale)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {op.pianoPagamento ? (
+                        <span className={op.pianoPagamento.quotaPagata < op.pianoPagamento.importoTotale ? "text-amber-500" : "text-green-500"}>
+                          {formatCurrency(op.pianoPagamento.quotaPagata)}
+                        </span>
+                      ) : (
+                        <span className="text-green-500">{formatCurrency(typeof op.importoTotale === "number" ? op.importoTotale : Number(op.importoTotale))}</span>
                       )}
                     </TableCell>
                   </TableRow>

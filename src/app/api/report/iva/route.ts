@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
       },
       select: {
         tipoOperazione: true,
+        importoTotale: true,
+        aliquotaIva: true,
         importoIva: true,
         ivaDetraibile: true,
         ivaIndetraibile: true,
@@ -67,7 +69,16 @@ export async function GET(request: NextRequest) {
       const mese = new Date(op.dataOperazione).getMonth();
 
       if (op.tipoOperazione === "FATTURA_ATTIVA") {
-        const importoIva = Number(op.importoIva) || 0;
+        // Use importoIva if available, otherwise compute from totale and aliquota (fallback for old records)
+        let importoIva = Number(op.importoIva) || 0;
+        if (importoIva === 0 && op.importoTotale && op.aliquotaIva) {
+          const totale = Number(op.importoTotale);
+          const aliquota = Number(op.aliquotaIva);
+          if (aliquota > 0) {
+            const imponibile = totale / (1 + aliquota / 100);
+            importoIva = Math.round((totale - imponibile) * 100) / 100;
+          }
+        }
         ivaDebito += importoIva;
         mensileDebito[mese] += importoIva;
       } else {
