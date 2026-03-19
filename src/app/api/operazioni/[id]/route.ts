@@ -56,6 +56,10 @@ export async function GET(request: Request, context: RouteContext) {
           },
           orderBy: { socio: { cognome: "asc" } },
         },
+        fornitore: true,
+        cliente: true,
+        codiceConto: true,
+        ritenuta: true,
       },
     });
 
@@ -91,6 +95,10 @@ export async function GET(request: Request, context: RouteContext) {
       ivaDetraibile: operazione.ivaDetraibile != null ? Number(operazione.ivaDetraibile) : null,
       ivaIndetraibile: operazione.ivaIndetraibile != null ? Number(operazione.ivaIndetraibile) : null,
       opzioneUso: operazione.opzioneUso,
+      importoRitenuta: operazione.importoRitenuta ? Number(operazione.importoRitenuta) : null,
+      importoNettoRitenuta: operazione.importoNettoRitenuta ? Number(operazione.importoNettoRitenuta) : null,
+      importoPagato: operazione.importoPagato ? Number(operazione.importoPagato) : null,
+      importoBollo: operazione.importoBollo ? Number(operazione.importoBollo) : null,
       importoDeducibile: Number(operazione.importoDeducibile),
       percentualeDeducibilita: Number(operazione.percentualeDeducibilita),
       dataOperazione: operazione.dataOperazione.toISOString(),
