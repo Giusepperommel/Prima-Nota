@@ -5,7 +5,8 @@ import type { OcrStatus, ParsedDocument, OcrParseResult, ParsedTransaction } fro
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_PDF_TYPES = ["application/pdf"];
-const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_PDF_TYPES];
+const ACCEPTED_XML_TYPES = ["text/xml", "application/xml"];
+const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_PDF_TYPES, ...ACCEPTED_XML_TYPES];
 
 type VisionMultiResult = {
   type: "multi";
@@ -42,8 +43,9 @@ export function useOcr() {
 
   const processFile = useCallback(async (file: File) => {
     if (processingRef.current) return;
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Formato non supportato. Usa PNG, JPG, WEBP o PDF.");
+    const isXml = ACCEPTED_XML_TYPES.includes(file.type) || file.name?.toLowerCase().endsWith(".xml");
+    if (!ACCEPTED_TYPES.includes(file.type) && !isXml) {
+      setError("Formato non supportato. Usa PNG, JPG, WEBP, PDF o XML.");
       return;
     }
 
@@ -53,19 +55,22 @@ export function useOcr() {
     setResult(null);
 
     try {
-      let imageFile = file;
+      let fileToSend = file;
 
-      // Convert PDF to image first
-      if (ACCEPTED_PDF_TYPES.includes(file.type)) {
-        setStatus("processing");
-        const { pdfToImage } = await import("@/lib/ocr/pdf-extractor");
-        const blob = await pdfToImage(file);
-        imageFile = new File([blob], "page.png", { type: "image/png" });
+      // XML files are sent directly to the API
+      if (!isXml) {
+        // Convert PDF to image first
+        if (ACCEPTED_PDF_TYPES.includes(file.type)) {
+          setStatus("processing");
+          const { pdfToImage } = await import("@/lib/ocr/pdf-extractor");
+          const blob = await pdfToImage(file);
+          fileToSend = new File([blob], "page.png", { type: "image/png" });
+        }
       }
 
       setStatus("processing");
       const formData = new FormData();
-      formData.append("image", imageFile);
+      formData.append("image", fileToSend);
 
       const res = await fetch("/api/ocr", {
         method: "POST",

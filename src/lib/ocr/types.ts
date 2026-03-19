@@ -15,6 +15,25 @@ export type ParsedDocument = {
   importoIva: number | null;
   tipoOperazione: "COSTO" | "FATTURA_ATTIVA" | null;
   fornitore: string | null;
+
+  // Advanced mode fields from XML (FatturaPA)
+  tipoDocumentoSdi?: string;
+  naturaIva?: string;
+  splitPayment?: boolean;
+  cedentePrestatore?: {
+    denominazione?: string;
+    partitaIva?: string;
+    codiceFiscale?: string;
+    regimeFiscale?: string;
+  };
+  datiRitenuta?: {
+    tipoRitenuta?: string;
+    aliquota?: number;
+    importoRitenuta?: number;
+  };
+  cassaPrevidenziale?: number;
+  dataPagamento?: string;
+  fornitoreId?: number;
 };
 
 export type OcrStatus = "idle" | "loading" | "processing" | "parsing" | "done" | "error";
