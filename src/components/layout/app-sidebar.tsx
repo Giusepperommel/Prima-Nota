@@ -194,14 +194,26 @@ export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: stri
             <span className="text-sm font-medium">{nome} {cognome}</span>
             <span className="text-xs text-muted-foreground capitalize">{ruolo.toLowerCase()}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Esci"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              title="Impostazioni"
+            >
+              <Link href="/impostazioni/account">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              title="Esci"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
