@@ -40,7 +40,8 @@ Per un singolo documento/fattura:
     "aliquotaIva": "22" o null,
     "importoIva": 1234.56 o null,
     "fornitore": "string" o null,
-    "categoriaId": 123 o null
+    "categoriaId": 123 o null,
+    "tipoMerce": "BENI" o "SERVIZI" - classifica in base alle righe del documento. Se il documento contiene sia beni che servizi, usa la componente prevalente per importo.
   }
 }
 
