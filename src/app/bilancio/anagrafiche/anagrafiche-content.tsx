@@ -26,10 +26,13 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EU_COUNTRY_LIST } from "@/lib/iva/countries";
 
 // Types
 interface Anagrafica {
@@ -59,10 +62,20 @@ interface FormData {
   cap: string;
   citta: string;
   provincia: string;
+  nazione: string;
   soggettoARitenuta: boolean;
   regimeForfettario: boolean;
   tipoRitenuta: string;
 }
+
+const EXTRA_UE_COUNTRIES = [
+  { code: "US", name: "Stati Uniti" },
+  { code: "GB", name: "Regno Unito" },
+  { code: "CH", name: "Svizzera" },
+  { code: "CN", name: "Cina" },
+  { code: "JP", name: "Giappone" },
+  { code: "SM", name: "San Marino" },
+];
 
 const EMPTY_FORM: FormData = {
   denominazione: "",
@@ -74,6 +87,7 @@ const EMPTY_FORM: FormData = {
   cap: "",
   citta: "",
   provincia: "",
+  nazione: "IT",
   soggettoARitenuta: false,
   regimeForfettario: false,
   tipoRitenuta: "",
@@ -161,6 +175,7 @@ export function AnagraficheContent() {
       cap: a.cap ?? "",
       citta: a.citta ?? "",
       provincia: a.provincia ?? "",
+      nazione: (a as any).nazione ?? "IT",
       soggettoARitenuta: a.soggettoARitenuta,
       regimeForfettario: a.regimeForfettario,
       tipoRitenuta: a.tipoRitenuta ?? "",
@@ -185,6 +200,7 @@ export function AnagraficheContent() {
         cap: form.cap || null,
         citta: form.citta || null,
         provincia: form.provincia || null,
+        nazione: form.nazione || "IT",
         soggettoARitenuta: form.soggettoARitenuta,
         regimeForfettario: form.regimeForfettario,
         tipoRitenuta: form.soggettoARitenuta ? form.tipoRitenuta || null : null,
@@ -238,18 +254,19 @@ export function AnagraficheContent() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Anagrafiche</h1>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuova Anagrafica
+        <Button onClick={openCreate} size="sm" className="sm:size-default shrink-0">
+          <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Nuova Anagrafica</span>
+          <span className="sm:hidden">Nuova</span>
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Cerca per denominazione o P.IVA..."
@@ -259,7 +276,7 @@ export function AnagraficheContent() {
           />
         </div>
         <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filtra per tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -272,16 +289,16 @@ export function AnagraficheContent() {
       </div>
 
       {/* Table */}
-      <div className="border rounded-md">
+      <div className="border rounded-md table-responsive">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Denominazione</TableHead>
-              <TableHead>P.IVA</TableHead>
+              <TableHead className="hidden sm:table-cell">P.IVA</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Soggetto</TableHead>
-              <TableHead>Regime</TableHead>
-              <TableHead>Ritenuta</TableHead>
+              <TableHead className="hidden md:table-cell">Soggetto</TableHead>
+              <TableHead className="hidden md:table-cell">Regime</TableHead>
+              <TableHead className="hidden md:table-cell">Ritenuta</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
@@ -309,7 +326,7 @@ export function AnagraficheContent() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-sm hidden sm:table-cell">
                     {a.partitaIva || "\u2014"}
                   </TableCell>
                   <TableCell>
@@ -317,19 +334,19 @@ export function AnagraficheContent() {
                       {a.tipo}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="secondary">
                       {SOGGETTO_LABELS[a.tipoSoggetto] || a.tipoSoggetto}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {a.regimeForfettario && (
                       <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
                         Forfettario
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {a.soggettoARitenuta && (
                       <Check className="h-4 w-4 text-green-600" />
                     )}
@@ -469,7 +486,9 @@ export function AnagraficheContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="provincia">Provincia</Label>
+                <Label htmlFor="provincia">
+                  Provincia{form.nazione === "IT" ? "" : " (opzionale)"}
+                </Label>
                 <Input
                   id="provincia"
                   value={form.provincia}
@@ -478,6 +497,38 @@ export function AnagraficheContent() {
                   maxLength={2}
                 />
               </div>
+            </div>
+
+            {/* Nazione */}
+            <div className="space-y-2">
+              <Label>Nazione</Label>
+              <Select
+                value={form.nazione}
+                onValueChange={(v) => updateForm("nazione", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona nazione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IT">Italia</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>Unione Europea</SelectLabel>
+                    {EU_COUNTRY_LIST.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Extra-UE</SelectLabel>
+                    {EXTRA_UE_COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Soggetto a Ritenuta */}
