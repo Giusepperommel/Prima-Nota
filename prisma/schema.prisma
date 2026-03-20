@@ -34,6 +34,7 @@ model Societa {
   rateiRisconti      RateoRisconto[]
   chiusureEsercizio  ChiusuraEsercizio[]
   liquidazioniIva    LiquidazioneIva[]
+  plafond            Plafond[]
 
   @@map("societa")
 }
@@ -158,6 +159,15 @@ model Operazione {
   registroIva            RegistroIva?           @map("registro_iva")
   dataRegistrazione      DateTime?              @map("data_registrazione") @db.Date
   splitPayment           Boolean?               @map("split_payment")
+
+  // IVA engine
+  tipoMerce              TipoMerce?    @map("tipo_merce")
+  doppiaRegistrazione    Boolean       @default(false) @map("doppia_registrazione")
+  protocolloIvaVendite   String?       @map("protocollo_iva_vendite") @db.VarChar(20)
+  operazioneOrigineId    Int?          @map("operazione_origine_id")
+  operazioneOrigine      Operazione?   @relation("AutofatturaLink", fields: [operazioneOrigineId], references: [id], onDelete: SetNull)
+  autofatture            Operazione[]  @relation("AutofatturaLink")
+  movimentiPlafond       MovimentoPlafond[]
 
   // Ritenuta d'acconto
   soggettoARitenuta      Boolean?               @map("soggetto_a_ritenuta") @default(false)
@@ -725,6 +735,16 @@ enum TipoLiquidazione {
   TRIMESTRALE
 }
 
+enum TipoMerce {
+  BENI
+  SERVIZI
+}
+
+enum MetodoPlafond {
+  FISSO
+  MOBILE
+}
+
 // ─── Modelli modalità avanzata ───
 
 model Anagrafica {
@@ -889,4 +909,33 @@ model LiquidazioneIva {
 
   @@unique([societaId, tipo, periodo, anno])
   @@map("liquidazioni_iva")
+}
+
+model Plafond {
+  id                 Int              @id @default(autoincrement())
+  societaId          Int              @map("societa_id")
+  anno               Int
+  metodo             MetodoPlafond    @default(FISSO)
+  importoDisponibile Decimal          @db.Decimal(12, 2)
+  importoUtilizzato  Decimal          @db.Decimal(12, 2) @default(0)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  societa            Societa          @relation(fields: [societaId], references: [id])
+  movimenti          MovimentoPlafond[]
+
+  @@unique([societaId, anno])
+  @@map("plafond")
+}
+
+model MovimentoPlafond {
+  id             Int        @id @default(autoincrement())
+  plafondId      Int        @map("plafond_id")
+  operazioneId   Int        @map("operazione_id")
+  importo        Decimal    @db.Decimal(12, 2)
+  dataOperazione DateTime   @db.Date @map("data_operazione")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  plafond        Plafond    @relation(fields: [plafondId], references: [id])
+  operazione     Operazione @relation(fields: [operazioneId], references: [id])
+
+  @@map("movimento_plafond")
 }
