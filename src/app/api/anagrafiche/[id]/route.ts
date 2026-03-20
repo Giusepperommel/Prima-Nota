@@ -121,7 +121,21 @@ export async function PATCH(request: Request, context: RouteContext) {
       data: updateData,
     });
 
-    return NextResponse.json(updated);
+    // Check if nazione changed — warn about existing operations
+    let warning: string | undefined;
+    if (body.nazione && body.nazione !== existing.nazione) {
+      const count = await prisma.operazione.count({
+        where: {
+          OR: [{ fornitoreId: id }, { clienteId: id }],
+          eliminato: false,
+        },
+      });
+      if (count > 0) {
+        warning = `Attenzione: la nazione è stata modificata da "${existing.nazione || "N/A"}" a "${body.nazione}". Ci sono ${count} operazioni collegate che potrebbero richiedere una rielaborazione IVA.`;
+      }
+    }
+
+    return NextResponse.json({ ...updated, warning });
   } catch (error) {
     console.error("Errore nell'aggiornamento dell'anagrafica:", error);
     return NextResponse.json(
