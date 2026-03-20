@@ -10,4 +10,6 @@ export type SessionUser = {
   societaId: number | null;
   quotaPercentuale: number;
   emailVerificata: boolean;
+  modalitaAvanzata: boolean;
+  modalitaCommercialista: boolean;
 };

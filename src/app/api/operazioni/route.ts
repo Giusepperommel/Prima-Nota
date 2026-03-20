@@ -117,6 +117,15 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // countOnly mode: return just counts without fetching full data
+    if (searchParams.get("countOnly") === "true") {
+      const [total, conDatiContabili] = await Promise.all([
+        prisma.operazione.count({ where }),
+        prisma.operazione.count({ where: { ...where, codiceContoId: { not: null } } }),
+      ]);
+      return NextResponse.json({ total, conDatiContabili });
+    }
+
     const skip = (page - 1) * perPage;
 
     const [data, total] = await Promise.all([
@@ -146,6 +155,9 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          fornitore: { select: { id: true, denominazione: true } },
+          cliente: { select: { id: true, denominazione: true } },
+          codiceConto: { select: { id: true, codice: true, descrizione: true } },
         },
         orderBy: [{ dataOperazione: "desc" }, { createdAt: "desc" }],
         skip,
@@ -165,6 +177,10 @@ export async function GET(request: NextRequest) {
       ivaDetraibile: op.ivaDetraibile != null ? Number(op.ivaDetraibile) : null,
       ivaIndetraibile: op.ivaIndetraibile != null ? Number(op.ivaIndetraibile) : null,
       opzioneUso: op.opzioneUso,
+      importoRitenuta: op.importoRitenuta ? Number(op.importoRitenuta) : null,
+      importoNettoRitenuta: op.importoNettoRitenuta ? Number(op.importoNettoRitenuta) : null,
+      importoPagato: op.importoPagato ? Number(op.importoPagato) : null,
+      importoBollo: op.importoBollo ? Number(op.importoBollo) : null,
       importoDeducibile: Number(op.importoDeducibile),
       percentualeDeducibilita: Number(op.percentualeDeducibilita),
       dataOperazione: op.dataOperazione.toISOString(),

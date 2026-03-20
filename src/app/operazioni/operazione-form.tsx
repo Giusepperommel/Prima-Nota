@@ -46,6 +46,9 @@ import {
   LIMITI_NLT_ANNUO,
 } from "@/lib/calcoli-ricorrenze";
 import { Save, X, Loader2, AlertTriangle, RepeatIcon, Car } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DatiContabiliTab } from "@/components/operazioni/dati-contabili-tab";
+import { useSession } from "next-auth/react";
 import {
   getLimiteFiscale,
   getPercentualiUso,
@@ -209,7 +212,11 @@ export function OperazioneForm({
   presets = [],
 }: Props) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const modalitaAvanzata = !!(session?.user as any)?.modalitaAvanzata;
   const isEditing = !!operazione;
+  const showDatiContabili = isEditing && modalitaAvanzata;
+  const [activeTab, setActiveTab] = useState("generale");
   const [saving, setSaving] = useState(false);
   const [duplicateMatch, setDuplicateMatch] = useState<{
     pagamentoId: number;
@@ -1017,6 +1024,28 @@ export function OperazioneForm({
       <div className="relative max-w-4xl mx-auto space-y-6">
         <OcrOverlay status={ocrStatus} />
 
+        {showDatiContabili && (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="generale">Generale</TabsTrigger>
+              <TabsTrigger value="dati-contabili">Dati Contabili</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
+        {activeTab === "dati-contabili" && showDatiContabili ? (
+          <DatiContabiliTab
+            operazioneId={operazione!.id}
+            tipoOperazione={tipoOperazione}
+            importoTotale={parseFloat(importoTotale) || 0}
+            importoIva={operazione!.importoIva ?? 0}
+            categoriaName={selectedCategoria?.nome}
+            hasPianoPagamento={!!operazione!.pianoPagamento}
+            initialData={operazione}
+            onSaved={() => router.refresh()}
+          />
+        ) : (
+        <>
         {/* OCR Queue Progress Banner */}
         {ocrQueue.length > 0 && (
           <Card className="border-amber-500/50 bg-amber-500/5">
@@ -2300,6 +2329,8 @@ export function OperazioneForm({
           </Button>
         </div>
       )}
+        </>
+        )}
       </div>
     </GlobalDropZone>
   );

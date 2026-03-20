@@ -44,6 +44,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           societaId: utente.socio.societaId,
           quotaPercentuale: Number(utente.socio.quotaPercentuale),
           emailVerificata: utente.emailVerificata,
+          modalitaAvanzata: utente.modalitaAvanzata,
+          modalitaCommercialista: utente.modalitaCommercialista,
         };
       },
     }),
@@ -59,11 +61,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.societaId = (user as any).societaId;
         token.quotaPercentuale = (user as any).quotaPercentuale;
         token.emailVerificata = (user as any).emailVerificata;
+        token.modalitaAvanzata = (user as any).modalitaAvanzata;
+        token.modalitaCommercialista = (user as any).modalitaCommercialista;
       }
       // Aggiorna il token quando il client chiama update()
       if (trigger === "update" && session) {
         if (session.societaId !== undefined) token.societaId = session.societaId;
         if (session.ruolo !== undefined) token.ruolo = session.ruolo;
+        if (session.modalitaAvanzata !== undefined) token.modalitaAvanzata = session.modalitaAvanzata;
+        if (session.modalitaCommercialista !== undefined) token.modalitaCommercialista = session.modalitaCommercialista;
       }
       return token;
     },
@@ -77,6 +83,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         (session.user as any).societaId = token.societaId;
         (session.user as any).quotaPercentuale = token.quotaPercentuale;
         (session.user as any).emailVerificata = token.emailVerificata;
+        (session.user as any).modalitaAvanzata = token.modalitaAvanzata;
+        (session.user as any).modalitaCommercialista = token.modalitaCommercialista;
       }
       return session;
     },

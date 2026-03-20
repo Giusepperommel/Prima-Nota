@@ -28,6 +28,12 @@ model Societa {
   operazioniRicorrenti OperazioneRicorrente[]
   presetRipartizioni PresetRipartizione[]
   pianiPagamento     PianoPagamento[]
+  anagrafiche        Anagrafica[]
+  pianoDeiConti      PianoDeiConti[]
+  ritenute           Ritenuta[]
+  rateiRisconti      RateoRisconto[]
+  chiusureEsercizio  ChiusuraEsercizio[]
+  liquidazioniIva    LiquidazioneIva[]
 
   @@map("societa")
 }
@@ -69,6 +75,8 @@ model Utente {
   logAttivita   LogAttivita[]
   preferenzeUso PreferenzaUsoCategoria[]
   operazioniRicorrenti OperazioneRicorrente[]
+  modalitaAvanzata       Boolean  @default(false) @map("modalita_avanzata")
+  modalitaCommercialista Boolean  @default(false) @map("modalita_commercialista")
 
   @@map("utenti")
 }
@@ -127,9 +135,50 @@ model Operazione {
   createdAt               DateTime         @default(now()) @map("created_at")
   updatedAt               DateTime         @updatedAt @map("updated_at")
 
+  // Modalità avanzata — Anagrafica
+  fornitoreId            Int?                   @map("fornitore_id")
+  clienteId              Int?                   @map("cliente_id")
+
+  // Competenza economica
+  dataCompetenzaInizio   DateTime?              @map("data_competenza_inizio") @db.Date
+  dataCompetenzaFine     DateTime?              @map("data_competenza_fine") @db.Date
+
+  // Stato pagamento fattura
+  statoPagamentoFattura  StatoPagamentoFattura? @map("stato_pagamento_fattura")
+  dataPagamento          DateTime?              @map("data_pagamento") @db.Date
+  importoPagato          Decimal?               @map("importo_pagato") @db.Decimal(10, 2)
+
+  // Piano dei conti
+  codiceContoId          Int?                   @map("codice_conto_id")
+
+  // IVA avanzata
+  naturaOperazioneIva    NaturaIva?             @map("natura_operazione_iva")
+  tipoDocumentoSdi       TipoDocumentoSdi?      @map("tipo_documento_sdi")
+  protocolloIva          String?                @map("protocollo_iva") @db.VarChar(20)
+  registroIva            RegistroIva?           @map("registro_iva")
+  dataRegistrazione      DateTime?              @map("data_registrazione") @db.Date
+  splitPayment           Boolean?               @map("split_payment")
+
+  // Ritenuta d'acconto
+  soggettoARitenuta      Boolean?               @map("soggetto_a_ritenuta") @default(false)
+  importoRitenuta        Decimal?               @map("importo_ritenuta") @db.Decimal(10, 2)
+  importoNettoRitenuta   Decimal?               @map("importo_netto_ritenuta") @db.Decimal(10, 2)
+
+  // Bollo virtuale
+  bolloVirtuale          Boolean?               @map("bollo_virtuale") @default(false)
+  importoBollo           Decimal?               @map("importo_bollo") @db.Decimal(5, 2)
+
+  // Rateo/risconto
+  rateoRiscontoId        Int?                   @map("rateo_risconto_id")
+
   societa      Societa                  @relation(fields: [societaId], references: [id])
   categoria    CategoriaSpesa?          @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
+  fornitore    Anagrafica?              @relation("FornitoreOperazioni", fields: [fornitoreId], references: [id])
+  cliente      Anagrafica?              @relation("ClienteOperazioni", fields: [clienteId], references: [id])
+  codiceConto  PianoDeiConti?           @relation(fields: [codiceContoId], references: [id])
+  rateoRisconto RateoRisconto?          @relation(fields: [rateoRiscontoId], references: [id])
+  ritenuta     Ritenuta?
   ripartizioni RipartizioneOperazione[]
   cespite      Cespite?
   pianoPagamento PianoPagamento?
@@ -139,6 +188,7 @@ model Operazione {
   @@index([categoriaId])
   @@index([createdByUserId])
   @@index([operazioneRicorrenteId])
+  @@unique([societaId, protocolloIva])
   @@map("operazioni")
 }
 
@@ -553,4 +603,290 @@ model Pagamento {
   @@index([pianoPagamentoId, data, stato])
   @@index([data, stato])
   @@map("pagamenti")
+}
+
+// ─── Enums modalità avanzata ───
+
+enum StatoPagamentoFattura {
+  NON_PAGATO
+  PAGATO
+  PARZIALMENTE_PAGATO
+}
+
+enum NaturaIva {
+  N1
+  N2_1
+  N2_2
+  N3_1
+  N3_2
+  N3_3
+  N3_4
+  N3_5
+  N3_6
+  N4
+  N5
+  N6_1
+  N6_2
+  N6_3
+  N6_4
+  N6_5
+  N6_6
+  N6_7
+  N6_8
+  N6_9
+  N7
+}
+
+enum TipoDocumentoSdi {
+  TD01
+  TD02
+  TD03
+  TD04
+  TD05
+  TD06
+  TD07
+  TD08
+  TD09
+  TD16
+  TD17
+  TD18
+  TD19
+  TD20
+  TD21
+  TD22
+  TD23
+  TD24
+  TD25
+  TD26
+  TD27
+  TD28
+  TD29
+}
+
+enum RegistroIva {
+  VENDITE
+  ACQUISTI
+  CORRISPETTIVI
+}
+
+enum TipoSoggetto {
+  AZIENDA
+  PERSONA_FISICA
+  PROFESSIONISTA
+}
+
+enum TipoAnagrafica {
+  FORNITORE
+  CLIENTE
+  ENTRAMBI
+}
+
+enum TipoRitenuta {
+  LAVORO_AUTONOMO
+  PROVVIGIONI
+  OCCASIONALE
+  DIRITTI_AUTORE
+}
+
+enum StatoVersamento {
+  DA_VERSARE
+  VERSATO
+  SCADUTO
+}
+
+enum TipoConto {
+  PATRIMONIALE_ATTIVO
+  PATRIMONIALE_PASSIVO
+  ECONOMICO_COSTO
+  ECONOMICO_RICAVO
+  ORDINE
+}
+
+enum NaturaSaldo {
+  DARE
+  AVERE
+}
+
+enum TipoRateoRisconto {
+  RATEO_ATTIVO
+  RATEO_PASSIVO
+  RISCONTO_ATTIVO
+  RISCONTO_PASSIVO
+}
+
+enum StatoChiusura {
+  IN_CORSO
+  CHIUSO
+  APPROVATO
+}
+
+enum TipoLiquidazione {
+  MENSILE
+  TRIMESTRALE
+}
+
+// ─── Modelli modalità avanzata ───
+
+model Anagrafica {
+  id                 Int            @id @default(autoincrement())
+  societaId          Int            @map("societa_id")
+  denominazione      String         @map("denominazione") @db.VarChar(255)
+  partitaIva         String?        @map("partita_iva") @db.VarChar(11)
+  codiceFiscale      String?        @map("codice_fiscale") @db.VarChar(16)
+  tipoSoggetto       TipoSoggetto   @map("tipo_soggetto")
+  tipo               TipoAnagrafica @map("tipo")
+  indirizzo          String?        @map("indirizzo") @db.VarChar(255)
+  cap                String?        @map("cap") @db.VarChar(10)
+  citta              String?        @map("citta") @db.VarChar(100)
+  provincia          String?        @map("provincia") @db.VarChar(2)
+  nazione            String?        @map("nazione") @db.VarChar(2) @default("IT")
+  codiceDestinatario String?        @map("codice_destinatario") @db.VarChar(7)
+  pec                String?        @map("pec") @db.VarChar(255)
+  regimeFiscale      String?        @map("regime_fiscale") @db.VarChar(4)
+  soggettoARitenuta  Boolean        @default(false) @map("soggetto_a_ritenuta")
+  regimeForfettario  Boolean        @default(false) @map("regime_forfettario")
+  tipoRitenuta       TipoRitenuta?  @map("tipo_ritenuta")
+  autoCreataOcr      Boolean        @default(false) @map("auto_creata_ocr")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  societa             Societa      @relation(fields: [societaId], references: [id])
+  operazioniFornitore Operazione[] @relation("FornitoreOperazioni")
+  operazioniCliente   Operazione[] @relation("ClienteOperazioni")
+  ritenute            Ritenuta[]
+
+  @@unique([societaId, partitaIva])
+  @@map("anagrafiche")
+}
+
+model PianoDeiConti {
+  id             Int         @id @default(autoincrement())
+  societaId      Int         @map("societa_id")
+  codice         String      @map("codice") @db.VarChar(10)
+  descrizione    String      @map("descrizione") @db.VarChar(255)
+  tipo           TipoConto   @map("tipo")
+  voceSp         String?     @map("voce_sp") @db.VarChar(20)
+  voceCe         String?     @map("voce_ce") @db.VarChar(20)
+  naturaSaldo    NaturaSaldo @map("natura_saldo")
+  attivo         Boolean     @default(true) @map("attivo")
+  preConfigurato Boolean     @default(true) @map("pre_configurato")
+  modificabile   Boolean     @default(false) @map("modificabile")
+
+  societa    Societa      @relation(fields: [societaId], references: [id])
+  operazioni Operazione[]
+
+  @@unique([societaId, codice])
+  @@map("piano_dei_conti")
+}
+
+model Ritenuta {
+  id                    Int             @id @default(autoincrement())
+  societaId             Int             @map("societa_id")
+  operazioneId          Int             @unique @map("operazione_id")
+  anagraficaId          Int             @map("anagrafica_id")
+  tipoRitenuta          TipoRitenuta    @map("tipo_ritenuta")
+  aliquota              Decimal         @map("aliquota") @db.Decimal(5, 2)
+  percentualeImponibile Decimal         @map("percentuale_imponibile") @db.Decimal(5, 2)
+  importoLordo          Decimal         @map("importo_lordo") @db.Decimal(10, 2)
+  baseImponibile        Decimal         @map("base_imponibile") @db.Decimal(10, 2)
+  importoRitenuta       Decimal         @map("importo_ritenuta") @db.Decimal(10, 2)
+  importoNetto          Decimal         @map("importo_netto") @db.Decimal(10, 2)
+  rivalsaInps           Decimal?        @map("rivalsa_inps") @db.Decimal(10, 2)
+  cassaPrevidenza       Decimal?        @map("cassa_previdenza") @db.Decimal(10, 2)
+  meseCompetenza        Int             @map("mese_competenza")
+  annoCompetenza        Int             @map("anno_competenza")
+  codiceTributo         String          @map("codice_tributo") @db.VarChar(4)
+  dataVersamento        DateTime?       @map("data_versamento")
+  importoVersato        Decimal?        @map("importo_versato") @db.Decimal(10, 2)
+  statoVersamento       StatoVersamento @default(DA_VERSARE) @map("stato_versamento")
+  cuEmessa              Boolean         @default(false) @map("cu_emessa")
+  cuDataEmissione       DateTime?       @map("cu_data_emissione")
+  createdAt             DateTime        @default(now()) @map("created_at")
+
+  societa    Societa    @relation(fields: [societaId], references: [id])
+  operazione Operazione @relation(fields: [operazioneId], references: [id])
+  anagrafica Anagrafica @relation(fields: [anagraficaId], references: [id])
+
+  @@map("ritenute")
+}
+
+model RateoRisconto {
+  id                    Int               @id @default(autoincrement())
+  societaId             Int               @map("societa_id")
+  chiusuraEsercizioId   Int               @map("chiusura_esercizio_id")
+  tipo                  TipoRateoRisconto @map("tipo")
+  descrizione           String            @map("descrizione") @db.VarChar(255)
+  importoOriginario     Decimal           @map("importo_originario") @db.Decimal(10, 2)
+  dataInizioCompetenza  DateTime          @map("data_inizio_competenza") @db.Date
+  dataFineCompetenza    DateTime          @map("data_fine_competenza") @db.Date
+  dataManifestazioneFin DateTime          @map("data_manifestazione_fin") @db.Date
+  importoCalcolato      Decimal           @map("importo_calcolato") @db.Decimal(10, 2)
+  esercizioRiferimento  Int               @map("esercizio_riferimento")
+  voceSp                String?           @map("voce_sp") @db.VarChar(10)
+  contoCeCollegato      String?           @map("conto_ce_collegato") @db.VarChar(10)
+  automatico            Boolean           @default(true) @map("automatico")
+  stornato              Boolean           @default(false) @map("stornato")
+  stornoEsercizio       Int?              @map("storno_esercizio")
+  createdAt             DateTime          @default(now()) @map("created_at")
+
+  societa           Societa           @relation(fields: [societaId], references: [id])
+  chiusuraEsercizio ChiusuraEsercizio @relation(fields: [chiusuraEsercizioId], references: [id])
+  operazioni        Operazione[]
+
+  @@map("ratei_risconti")
+}
+
+model ChiusuraEsercizio {
+  id                        Int           @id @default(autoincrement())
+  societaId                 Int           @map("societa_id")
+  anno                      Int           @map("anno")
+  dataApertura              DateTime      @map("data_apertura") @db.Date
+  dataChiusura              DateTime      @map("data_chiusura") @db.Date
+  stato                     StatoChiusura @default(IN_CORSO) @map("stato")
+  saldoBancaIniziale        Decimal?      @map("saldo_banca_iniziale") @db.Decimal(12, 2)
+  saldoCassaIniziale        Decimal?      @map("saldo_cassa_iniziale") @db.Decimal(12, 2)
+  capitaleSociale           Decimal?      @map("capitale_sociale") @db.Decimal(12, 2)
+  riservaLegale             Decimal?      @map("riserva_legale") @db.Decimal(12, 2)
+  riservaStatutaria         Decimal?      @map("riserva_statutaria") @db.Decimal(12, 2)
+  riservaEstraordinaria     Decimal?      @map("riserva_straordinaria") @db.Decimal(12, 2)
+  utiliPerditePortatiANuovo Decimal?      @map("utili_perdite_portati_a_nuovo") @db.Decimal(12, 2)
+  saldoBancaFinale          Decimal?      @map("saldo_banca_finale") @db.Decimal(12, 2)
+  saldoCassaFinale          Decimal?      @map("saldo_cassa_finale") @db.Decimal(12, 2)
+  risultatoEsercizio        Decimal?      @map("risultato_esercizio") @db.Decimal(12, 2)
+  dataCreazione             DateTime      @default(now()) @map("data_creazione")
+  dataChiusuraEffettiva     DateTime?     @map("data_chiusura_effettiva")
+
+  societa         Societa           @relation(fields: [societaId], references: [id])
+  rateiRisconti   RateoRisconto[]
+  liquidazioniIva LiquidazioneIva[]
+
+  @@unique([societaId, anno])
+  @@map("chiusure_esercizio")
+}
+
+model LiquidazioneIva {
+  id                       Int              @id @default(autoincrement())
+  societaId                Int              @map("societa_id")
+  chiusuraEsercizioId      Int?             @map("chiusura_esercizio_id")
+  tipo                     TipoLiquidazione @map("tipo")
+  periodo                  Int              @map("periodo")
+  anno                     Int              @map("anno")
+  ivaEsigibile             Decimal          @map("iva_esigibile") @db.Decimal(12, 2)
+  ivaDetraibile            Decimal          @map("iva_detraibile") @db.Decimal(12, 2)
+  saldo                    Decimal          @map("saldo") @db.Decimal(12, 2)
+  creditoPeriodoPrecedente Decimal          @default(0) @map("credito_periodo_precedente") @db.Decimal(12, 2)
+  accontoVersato           Decimal          @default(0) @map("acconto_versato") @db.Decimal(12, 2)
+  importoVersato           Decimal?         @map("importo_versato") @db.Decimal(12, 2)
+  codiceTributo            String?          @map("codice_tributo") @db.VarChar(4)
+  dataVersamento           DateTime?        @map("data_versamento")
+  statoVersamento          StatoVersamento  @default(DA_VERSARE) @map("stato_versamento")
+  lipeInviata              Boolean          @default(false) @map("lipe_inviata")
+  lipeDataInvio            DateTime?        @map("lipe_data_invio")
+  createdAt                DateTime         @default(now()) @map("created_at")
+
+  societa           Societa            @relation(fields: [societaId], references: [id])
+  chiusuraEsercizio ChiusuraEsercizio? @relation(fields: [chiusuraEsercizioId], references: [id])
+
+  @@unique([societaId, tipo, periodo, anno])
+  @@map("liquidazioni_iva")
 }

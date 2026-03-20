@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
+import { parseFatturaXml } from "@/lib/ocr/xml-parser";
+import type { ParsedDocument } from "@/lib/ocr/types";
 
 const client = new Anthropic();
 
@@ -65,13 +67,36 @@ export async function POST(request: NextRequest) {
 
     const user = session.user as any;
     const societaId = user.societaId as number;
+    const modalitaAvanzata = user.modalitaAvanzata === true;
 
     const formData = await request.formData();
     const file = formData.get("image") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "Nessuna immagine fornita" }, { status: 400 });
+      return NextResponse.json({ error: "Nessun file fornito" }, { status: 400 });
     }
+
+    // --- Handle XML (FatturaPA) ---
+    const isXml = file.type === "text/xml" ||
+      file.type === "application/xml" ||
+      file.name?.toLowerCase().endsWith(".xml");
+
+    if (isXml) {
+      const xmlContent = await file.text();
+      const document = parseFatturaXml(xmlContent);
+
+      // Auto-create/link Anagrafica only in advanced mode
+      if (modalitaAvanzata && document.cedentePrestatore?.partitaIva) {
+        document.fornitoreId = await findOrCreateAnagrafica(
+          societaId,
+          document.cedentePrestatore,
+        );
+      }
+
+      return NextResponse.json({ type: "single", document });
+    }
+
+    // --- Handle image (existing Vision-based OCR) ---
 
     // Load categories for this società
     const categorie = await prisma.categoriaSpesa.findMany({
@@ -124,8 +149,54 @@ export async function POST(request: NextRequest) {
     const parsed = JSON.parse(jsonText);
     return NextResponse.json(parsed);
   } catch (error: any) {
-    console.error("Errore OCR Vision:", error);
-    const message = error?.message || "Errore durante l'analisi dell'immagine";
+    console.error("Errore OCR:", error);
+    const message = error?.message || "Errore durante l'analisi del file";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Finds an existing Anagrafica by partitaIva or creates a new one.
+ * Returns the anagrafica ID.
+ */
+async function findOrCreateAnagrafica(
+  societaId: number,
+  cedente: NonNullable<ParsedDocument["cedentePrestatore"]>,
+): Promise<number> {
+  const { partitaIva, denominazione, codiceFiscale, regimeFiscale } = cedente;
+
+  // Search by unique constraint [societaId, partitaIva]
+  const existing = await prisma.anagrafica.findUnique({
+    where: {
+      societaId_partitaIva: {
+        societaId,
+        partitaIva: partitaIva!,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  // Create new Anagrafica
+  const regimeForfettario = regimeFiscale === "RF19" || regimeFiscale === "RF20";
+
+  const created = await prisma.anagrafica.create({
+    data: {
+      societaId,
+      denominazione: denominazione || partitaIva || "Fornitore sconosciuto",
+      partitaIva: partitaIva!,
+      codiceFiscale: codiceFiscale || null,
+      regimeFiscale: regimeFiscale || null,
+      tipoSoggetto: "AZIENDA",
+      tipo: "FORNITORE",
+      autoCreataOcr: true,
+      regimeForfettario,
+    },
+    select: { id: true },
+  });
+
+  return created.id;
 }

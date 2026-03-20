@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   FileText,
@@ -17,6 +17,11 @@ import {
   Landmark,
   RepeatIcon,
   Percent,
+  BookOpen,
+  ListTree,
+  Scissors,
+  CalendarCheck,
+  ChevronDown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +37,8 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type NavItem = {
   title: string;
@@ -47,6 +54,15 @@ const mainNavItems: NavItem[] = [
   { title: "Report", href: "/report", icon: BarChart3 },
 ];
 
+const bilancioNavItems: NavItem[] = [
+  { title: "Bilancio", href: "/bilancio", icon: BarChart3 },
+  { title: "Anagrafiche", href: "/bilancio/anagrafiche", icon: Users },
+  { title: "Piano dei Conti", href: "/bilancio/piano-dei-conti", icon: ListTree },
+  { title: "Registri IVA", href: "/bilancio/registri-iva", icon: FileText },
+  { title: "Ritenute", href: "/bilancio/ritenute", icon: Scissors },
+  { title: "Chiusura Esercizio", href: "/bilancio/chiusura-esercizio", icon: CalendarCheck },
+];
+
 const adminNavItems: NavItem[] = [
   { title: "Societa", href: "/configurazione/societa", icon: Building2 },
   { title: "Soci", href: "/configurazione/soci", icon: Users },
@@ -58,7 +74,18 @@ const adminNavItems: NavItem[] = [
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
   const pathname = usePathname();
+  const { data: session, update } = useSession();
   const isAdmin = ruolo === "ADMIN";
+  const modalitaAvanzata = (session?.user as any)?.modalitaAvanzata ?? false;
+
+  const handleToggleAvanzata = async (checked: boolean) => {
+    await fetch("/api/utente/preferenze", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modalitaAvanzata: checked }),
+    });
+    await update({ modalitaAvanzata: checked });
+  };
 
   return (
     <Sidebar>
@@ -97,6 +124,36 @@ export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: stri
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {modalitaAvanzata && (
+          <SidebarGroup>
+            <Collapsible defaultOpen className="group/collapsible">
+              <SidebarGroupLabel asChild>
+                <CollapsibleTrigger className="flex w-full items-center">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Bilancio
+                  <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {bilancioNavItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={pathname === item.href}>
+                          <Link href={item.href}>
+                            <item.icon className="mr-2 h-4 w-4" />
+                            {item.title}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        )}
+
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Configurazione</SidebarGroupLabel>
@@ -119,19 +176,44 @@ export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: stri
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-4">
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-xs text-muted-foreground">Avanzata</span>
+          <Switch
+            checked={modalitaAvanzata}
+            onCheckedChange={handleToggleAvanzata}
+            className="scale-75"
+          />
+        </div>
+        {modalitaAvanzata && (
+          <div className="px-2 pb-1">
+            <span className="text-xs text-green-500 font-medium">● AVANZATA</span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-sm font-medium">{nome} {cognome}</span>
             <span className="text-xs text-muted-foreground capitalize">{ruolo.toLowerCase()}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Esci"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              title="Impostazioni"
+            >
+              <Link href="/impostazioni/account">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              title="Esci"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
