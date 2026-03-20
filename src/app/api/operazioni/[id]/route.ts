@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { calcolaRipartizione, calcolaPianoAmmortamento } from "@/lib/business-utils";
 import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 import { logAttivita } from "@/lib/log-helper";
+import { processIva } from "@/lib/iva/engine";
+import { getNextProtocollo, formatProtocollo } from "@/lib/iva/doppia-registrazione";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -205,6 +207,11 @@ export async function PUT(request: Request, context: RouteContext) {
       modalitaPagamento,
       pianoPagamentoData,
       pagamentiCustom,
+      fornitoreId,
+      clienteId,
+      tipoMerce,
+      sanMarinoConIva,
+      isReverseChargeInterno,
     } = body;
 
     // --- Validations ---
@@ -434,6 +441,9 @@ export async function PUT(request: Request, context: RouteContext) {
           tipoRipartizione: tipoRipartizione as any,
           note: note || null,
           bozza: false,
+          fornitoreId: fornitoreId ? parseInt(String(fornitoreId), 10) : null,
+          clienteId: clienteId ? parseInt(String(clienteId), 10) : null,
+          tipoMerce: tipoMerce || null,
         },
       });
 
@@ -595,6 +605,172 @@ export async function PUT(request: Request, context: RouteContext) {
                 stato: "PREVISTO",
                 note: p.note || null,
               })),
+            });
+          }
+        }
+      }
+
+      // --- IVA Engine: delete old autofatture and re-create if needed ---
+      // Soft-delete any existing autofatture linked to this operation
+      await tx.operazione.updateMany({
+        where: { operazioneOrigineId: operazioneId, eliminato: false },
+        data: { eliminato: true },
+      });
+
+      if (tipoMerce) {
+        // Fetch anagrafica nazione if fornitore or cliente is set
+        let nazioneFornitore: string | null = null;
+        const anagraficaId = fornitoreId || clienteId;
+        if (anagraficaId) {
+          const anagrafica = await tx.anagrafica.findUnique({
+            where: { id: parseInt(String(anagraficaId), 10) },
+            select: { nazione: true },
+          });
+          nazioneFornitore = anagrafica?.nazione ?? null;
+        }
+
+        const shouldProcess = nazioneFornitore !== "IT" || isReverseChargeInterno;
+
+        if (shouldProcess) {
+          const ivaResult = processIva({
+            nazioneFornitore,
+            tipoMerce,
+            tipoOperazione: tipoOperazione as "COSTO" | "FATTURA_ATTIVA",
+            descrizione,
+            importoImponibile: importoImponibile != null ? parseFloat(String(importoImponibile)) : importo,
+            aliquotaIva: aliquotaIva != null ? parseFloat(String(aliquotaIva)) : null,
+            isReverseChargeInterno: Boolean(isReverseChargeInterno),
+            sanMarinoConIva: Boolean(sanMarinoConIva),
+          });
+
+          // Create autofattura if required
+          if (ivaResult.classification.richiedeAutofattura && ivaResult.autofattura) {
+            const af = ivaResult.autofattura;
+            const year = new Date(dataOperazione).getFullYear();
+
+            // Get last protocollo for ACQUISTI register
+            const lastAcquisti = await tx.operazione.findFirst({
+              where: {
+                societaId,
+                registroIva: "ACQUISTI",
+                protocolloIva: { not: null },
+                dataOperazione: {
+                  gte: new Date(`${year}-01-01`),
+                  lte: new Date(`${year}-12-31`),
+                },
+              },
+              orderBy: { protocolloIva: "desc" },
+              select: { protocolloIva: true },
+            });
+
+            // Get last protocollo for VENDITE register (needed for doppia registrazione)
+            const lastVendite = await tx.operazione.findFirst({
+              where: {
+                societaId,
+                OR: [
+                  { registroIva: "VENDITE" },
+                  { protocolloIvaVendite: { not: null } },
+                ],
+                dataOperazione: {
+                  gte: new Date(`${year}-01-01`),
+                  lte: new Date(`${year}-12-31`),
+                },
+              },
+              orderBy: { protocolloIvaVendite: "desc" },
+              select: { protocolloIvaVendite: true },
+            });
+
+            const protocolloAcquisti = formatProtocollo(
+              getNextProtocollo(lastAcquisti?.protocolloIva),
+              year
+            );
+            const protocolloVendite = af.doppiaRegistrazione
+              ? formatProtocollo(
+                  getNextProtocollo(lastVendite?.protocolloIvaVendite),
+                  year
+                )
+              : null;
+
+            await tx.operazione.create({
+              data: {
+                societaId,
+                tipoOperazione: tipoOperazione as any,
+                dataOperazione: new Date(dataOperazione),
+                dataRegistrazione: new Date(),
+                descrizione: af.descrizione,
+                importoTotale: af.importoImponibile + af.importoIva,
+                importoImponibile: af.importoImponibile,
+                aliquotaIva: af.aliquotaIva,
+                importoIva: af.importoIva,
+                tipoDocumentoSdi: af.tipoDocumentoSdi,
+                tipoMerce: af.tipoMerce,
+                doppiaRegistrazione: af.doppiaRegistrazione,
+                registroIva: af.registroIva,
+                naturaOperazioneIva: af.naturaOperazioneIva,
+                protocolloIva: protocolloAcquisti,
+                protocolloIvaVendite: protocolloVendite,
+                operazioneOrigineId: op.id,
+                fornitoreId: fornitoreId ? parseInt(String(fornitoreId), 10) : null,
+                clienteId: clienteId ? parseInt(String(clienteId), 10) : null,
+                importoDeducibile: 0,
+                percentualeDeducibilita: 0,
+                deducibilitaCustom: false,
+                tipoRipartizione: tipoRipartizione as any,
+                createdByUserId: userId,
+              },
+            });
+          }
+
+          // Create splafonamento autofattura (TD21) if present
+          if (ivaResult.splafonamentoAutofattura) {
+            const sf = ivaResult.splafonamentoAutofattura;
+            const year = new Date(dataOperazione).getFullYear();
+
+            const lastAcquistiSplaf = await tx.operazione.findFirst({
+              where: {
+                societaId,
+                registroIva: "ACQUISTI",
+                protocolloIva: { not: null },
+                dataOperazione: {
+                  gte: new Date(`${year}-01-01`),
+                  lte: new Date(`${year}-12-31`),
+                },
+              },
+              orderBy: { protocolloIva: "desc" },
+              select: { protocolloIva: true },
+            });
+
+            const protocolloSplaf = formatProtocollo(
+              getNextProtocollo(lastAcquistiSplaf?.protocolloIva),
+              year
+            );
+
+            await tx.operazione.create({
+              data: {
+                societaId,
+                tipoOperazione: tipoOperazione as any,
+                dataOperazione: new Date(dataOperazione),
+                dataRegistrazione: new Date(),
+                descrizione: sf.descrizione,
+                importoTotale: sf.importoImponibile + sf.importoIva,
+                importoImponibile: sf.importoImponibile,
+                aliquotaIva: sf.aliquotaIva,
+                importoIva: sf.importoIva,
+                tipoDocumentoSdi: sf.tipoDocumentoSdi,
+                tipoMerce: sf.tipoMerce,
+                doppiaRegistrazione: sf.doppiaRegistrazione,
+                registroIva: sf.registroIva,
+                naturaOperazioneIva: sf.naturaOperazioneIva,
+                protocolloIva: protocolloSplaf,
+                operazioneOrigineId: op.id,
+                fornitoreId: fornitoreId ? parseInt(String(fornitoreId), 10) : null,
+                clienteId: clienteId ? parseInt(String(clienteId), 10) : null,
+                importoDeducibile: 0,
+                percentualeDeducibilita: 0,
+                deducibilitaCustom: false,
+                tipoRipartizione: tipoRipartizione as any,
+                createdByUserId: userId,
+              },
             });
           }
         }
