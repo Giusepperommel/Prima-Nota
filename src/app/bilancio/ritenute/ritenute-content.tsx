@@ -185,7 +185,7 @@ export function RitenuteContent() {
   );
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Scissors className="h-6 w-6" />
@@ -234,16 +234,16 @@ export function RitenuteContent() {
       </div>
 
       {/* Data Table */}
-      <div className="border rounded-md">
+      <div className="border rounded-md table-responsive">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Percipiente</TableHead>
-              <TableHead>Data Operazione</TableHead>
-              <TableHead className="text-right">Lordo</TableHead>
+              <TableHead className="hidden sm:table-cell">Data</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Lordo</TableHead>
               <TableHead className="text-right">Ritenuta</TableHead>
-              <TableHead className="text-right">Netto</TableHead>
-              <TableHead>Scadenza F24</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Netto</TableHead>
+              <TableHead className="hidden sm:table-cell">Scadenza F24</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
@@ -269,17 +269,17 @@ export function RitenuteContent() {
                     <TableCell className="font-medium">
                       {r.anagrafica?.denominazione ?? "N/D"}
                     </TableCell>
-                    <TableCell>{formatDate(r.operazione.dataOperazione)}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="hidden sm:table-cell">{formatDate(r.operazione.dataOperazione)}</TableCell>
+                    <TableCell className="text-right font-mono hidden md:table-cell">
                       {formatCurrency(r.importoLordo)}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {formatCurrency(r.importoRitenuta)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono hidden md:table-cell">
                       {formatCurrency(r.importoNetto)}
                     </TableCell>
-                    <TableCell>{scadenza.toLocaleDateString("it-IT")}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{scadenza.toLocaleDateString("it-IT")}</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -312,14 +312,14 @@ export function RitenuteContent() {
       {Object.keys(monthlySummary).length > 0 && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Riepilogo per Codice Tributo</h2>
-          <div className="border rounded-md">
+          <div className="border rounded-md table-responsive">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Codice Tributo</TableHead>
-                  <TableHead className="text-right">N. Ritenute</TableHead>
-                  <TableHead className="text-right">Totale Ritenuta</TableHead>
-                  <TableHead className="text-right">Totale Versato</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">N.</TableHead>
+                  <TableHead className="text-right">Ritenuta</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Versato</TableHead>
                   <TableHead className="text-right">Da Versare</TableHead>
                 </TableRow>
               </TableHeader>
@@ -327,11 +327,11 @@ export function RitenuteContent() {
                 {Object.values(monthlySummary).map((row) => (
                   <TableRow key={row.codiceTributo}>
                     <TableCell className="font-mono font-medium">{row.codiceTributo}</TableCell>
-                    <TableCell className="text-right">{row.count}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">{row.count}</TableCell>
                     <TableCell className="text-right font-mono">
                       {formatCurrency(row.totaleRitenuta)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono hidden sm:table-cell">
                       {formatCurrency(row.totaleVersato)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
@@ -343,13 +343,13 @@ export function RitenuteContent() {
               <TableFooter>
                 <TableRow>
                   <TableCell className="font-semibold">Totale</TableCell>
-                  <TableCell className="text-right font-semibold">
+                  <TableCell className="text-right font-semibold hidden sm:table-cell">
                     {Object.values(monthlySummary).reduce((s, r) => s + r.count, 0)}
                   </TableCell>
                   <TableCell className="text-right font-mono font-semibold">
                     {formatCurrency(Object.values(monthlySummary).reduce((s, r) => s + r.totaleRitenuta, 0))}
                   </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
+                  <TableCell className="text-right font-mono font-semibold hidden sm:table-cell">
                     {formatCurrency(Object.values(monthlySummary).reduce((s, r) => s + r.totaleVersato, 0))}
                   </TableCell>
                   <TableCell className="text-right font-mono font-semibold">

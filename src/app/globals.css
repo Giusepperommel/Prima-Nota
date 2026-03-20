@@ -139,6 +139,22 @@ html {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
+}
+
+/* Mobile-friendly scrollable tables */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+}
+
+/* Mobile-friendly scrollable tabs */
+.tabs-scrollable {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs-scrollable::-webkit-scrollbar {
+  display: none;
 }

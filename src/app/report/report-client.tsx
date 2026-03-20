@@ -376,13 +376,15 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
 
   return (
     <Tabs defaultValue="rendiconto" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="rendiconto">Rendiconto Societario</TabsTrigger>
-        <TabsTrigger value="socio">Report per Socio</TabsTrigger>
-        <TabsTrigger value="stima-societa">Stima Fiscale Societa</TabsTrigger>
-        <TabsTrigger value="stima-socio">Stima Fiscale Socio</TabsTrigger>
-        <TabsTrigger value="iva">Riepilogo IVA</TabsTrigger>
-      </TabsList>
+      <div className="tabs-scrollable">
+        <TabsList className="w-max">
+          <TabsTrigger value="rendiconto">Rendiconto Societario</TabsTrigger>
+          <TabsTrigger value="socio">Report per Socio</TabsTrigger>
+          <TabsTrigger value="stima-societa">Stima Fiscale Societa</TabsTrigger>
+          <TabsTrigger value="stima-socio">Stima Fiscale Socio</TabsTrigger>
+          <TabsTrigger value="iva">Riepilogo IVA</TabsTrigger>
+        </TabsList>
+      </div>
 
       {/* ================================================================= */}
       {/* TAB: Rendiconto Societario                                        */}
@@ -819,7 +821,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
         <h4 className="mb-3 text-sm font-semibold">
           Dettaglio per Categoria
         </h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Categoria</TableHead>
@@ -854,7 +856,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
               ))
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
 
       {/* Ammortamento Cespiti */}
@@ -863,7 +865,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
           <h4 className="mb-3 text-sm font-semibold">
             Ammortamento Cespiti ({formatCurrency(riepilogo.ammortamento ?? 0)})
           </h4>
-          <Table>
+          <div className="table-responsive"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cespite</TableHead>
@@ -894,7 +896,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></div>
         </div>
       )}
 
@@ -903,7 +905,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
         <h4 className="mb-3 text-sm font-semibold">
           Ripartizione tra i Soci
         </h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Socio</TableHead>
@@ -948,7 +950,7 @@ function RendicontoPreview({ data }: { data: RendicontoData }) {
               ))
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
     </div>
   );
@@ -996,7 +998,7 @@ function SocioReportPreview({ data }: { data: SocioReportData }) {
         <h4 className="mb-3 text-sm font-semibold">
           Dettaglio Operazioni ({dettaglioOperazioni.length})
         </h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
@@ -1041,7 +1043,7 @@ function SocioReportPreview({ data }: { data: SocioReportData }) {
               ))
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
 
       {/* Dettaglio Ammortamento Socio */}
@@ -1050,7 +1052,7 @@ function SocioReportPreview({ data }: { data: SocioReportData }) {
           <h4 className="mb-3 text-sm font-semibold">
             Ammortamento Cespiti ({formatCurrency(riepilogo.ammortamento ?? 0)})
           </h4>
-          <Table>
+          <div className="table-responsive"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cespite</TableHead>
@@ -1083,7 +1085,7 @@ function SocioReportPreview({ data }: { data: SocioReportData }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></div>
         </div>
       )}
     </div>
@@ -1124,7 +1126,7 @@ function StimaSocietaPreview({ data }: { data: StimaFiscaleSocietaData }) {
       {/* Dettaglio Imposte */}
       <div>
         <h4 className="mb-3 text-sm font-semibold">Dettaglio Imposte Societa</h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Voce</TableHead>
@@ -1153,14 +1155,14 @@ function StimaSocietaPreview({ data }: { data: StimaFiscaleSocietaData }) {
               <TableCell className="text-right font-semibold">{formatCurrency(data.irap)}</TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
 
       {/* Carico per Socio */}
       {data.dettaglioSoci.length > 0 && (
         <div>
           <h4 className="mb-3 text-sm font-semibold">Carico Fiscale per Socio</h4>
-          <Table>
+          <div className="table-responsive"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Socio</TableHead>
@@ -1197,7 +1199,7 @@ function StimaSocietaPreview({ data }: { data: StimaFiscaleSocietaData }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></div>
         </div>
       )}
 
@@ -1272,7 +1274,7 @@ function StimaSocioPreview({ data }: { data: StimaFiscaleSocioData }) {
       {/* Dettaglio Imposte */}
       <div>
         <h4 className="mb-3 text-sm font-semibold">Dettaglio Imposte</h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Voce</TableHead>
@@ -1314,14 +1316,14 @@ function StimaSocioPreview({ data }: { data: StimaFiscaleSocioData }) {
               </TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
 
       {/* Dettaglio IRPEF scaglioni (solo trasparenza) */}
       {data.regime === "TRASPARENZA" && data.dettaglioIrpef && data.dettaglioIrpef.length > 0 && (
         <div>
           <h4 className="mb-3 text-sm font-semibold">Dettaglio Scaglioni IRPEF</h4>
-          <Table>
+          <div className="table-responsive"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Scaglione</TableHead>
@@ -1340,7 +1342,7 @@ function StimaSocioPreview({ data }: { data: StimaFiscaleSocioData }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></div>
         </div>
       )}
 
@@ -1433,7 +1435,7 @@ function RiepilogoIvaPreview({ data }: { data: RiepilogoIvaData }) {
       {/* Detail table */}
       <div>
         <h4 className="mb-3 text-sm font-semibold">Dettaglio</h4>
-        <Table>
+        <div className="table-responsive"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Voce</TableHead>
@@ -1460,7 +1462,7 @@ function RiepilogoIvaPreview({ data }: { data: RiepilogoIvaData }) {
               </TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
     </div>
   );

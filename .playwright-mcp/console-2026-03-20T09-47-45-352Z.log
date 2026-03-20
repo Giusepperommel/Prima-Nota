@@ -1,0 +1,5 @@
+[     212ms] [WARNING] landscape-link has .ready() defined @ https://www.gstatic.com/patent-search/frontend/patent-search.search_20250707_RC00/scs/compiled_dir/search-app-vulcanized.js:3849
+[     488ms] [ERROR] Framing 'https://feedback-pa.clients6.google.com/' violates the following report-only Content Security Policy directive: "frame-src 'none'". The violation has been logged, but no further action has been taken.
+ @ https://apis.google.com/:0
+[     611ms] [ERROR] Framing 'https://feedback-pa.clients6.google.com/' violates the following report-only Content Security Policy directive: "frame-src 'none'". The violation has been logged, but no further action has been taken.
+ @ https://apis.google.com/:0

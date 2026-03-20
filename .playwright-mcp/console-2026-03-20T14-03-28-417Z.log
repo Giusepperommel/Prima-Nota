@@ -1,0 +1,745 @@
+[     142ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[     214ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[    3201ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  177625ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  177657ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  177827ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  177903ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  180908ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  201745ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  201775ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  201844ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  201940ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  204944ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  207910ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  208024ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  208110ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  211113ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  214150ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:768:9
+Parsing ecmascript source code failed
+  766 |             )}
+  767 |           </CardContent>
+> 768 |         </Card>
+      |         ^
+  769 |       )}
+  770 |
+  771 |       {/* ── Simulazione Cassa ────────────────────────────────────────────────── */}
+
+Expression expected
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  214150ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:766:14
+Parsing ecmascript source code failed
+  764 |                 </TableBody>
+  765 |               </Table>
+> 766 |             )}
+      |              ^
+  767 |           </CardContent>
+  768 |         </Card>
+  769 |       )}
+
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  214150ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:768:10
+Parsing ecmascript source code failed
+  766 |             )}
+  767 |           </CardContent>
+> 768 |         </Card>
+      |          ^^^^^^
+  769 |       )}
+  770 |
+  771 |       {/* ── Simulazione Cassa ────────────────────────────────────────────────── */}
+
+Unterminated regexp literal
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  217158ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  224800ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  225008ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  225085ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  228088ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  234210ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:954:7
+Parsing ecmascript source code failed
+  952 |           )}
+  953 |         </CardContent>
+> 954 |       </Card>
+      |       ^
+  955 |     </div>
+  956 |   );
+  957 | }
+
+Expression expected
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  234211ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:952:12
+Parsing ecmascript source code failed
+  950 |               </TableBody>
+  951 |             </Table>
+> 952 |           )}
+      |            ^
+  953 |         </CardContent>
+  954 |       </Card>
+  955 |     </div>
+
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  234211ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:954:8
+Parsing ecmascript source code failed
+  952 |           )}
+  953 |         </CardContent>
+> 954 |       </Card>
+      |        ^^^^^^
+  955 |     </div>
+  956 |   );
+  957 | }
+
+Unterminated regexp literal
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  237218ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  241517ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:954:7
+Parsing ecmascript source code failed
+  952 |           )}
+  953 |         </CardContent>
+> 954 |       </Card>
+      |       ^
+  955 |     </div>
+  956 |   );
+  957 | }
+
+Expression expected
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  241517ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:952:12
+Parsing ecmascript source code failed
+  950 |               </TableBody>
+  951 |             </Table>
+> 952 |           )}
+      |            ^
+  953 |         </CardContent>
+  954 |       </Card>
+  955 |     </div>
+
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  241517ms] [ERROR] ./src/app/dashboard/dashboard-content.tsx:954:8
+Parsing ecmascript source code failed
+  952 |           )}
+  953 |         </CardContent>
+> 954 |       </Card>
+      |        ^^^^^^
+  955 |     </div>
+  956 |   );
+  957 | }
+
+Unterminated regexp literal
+
+Import trace:
+  Server Component:
+    ./src/app/dashboard/dashboard-content.tsx
+    ./src/app/dashboard/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  254329ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  254361ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  254522ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  254613ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  257616ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  272853ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  272885ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  272952ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  273019ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  276022ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  296130ms] [ERROR] ./src/app/report/report-client.tsx:957:1
+Parsing ecmascript source code failed
+  955 |     </div>
+  956 |   );
+> 957 | }
+      | ^
+  958 |
+  959 | // ---------------------------------------------------------------------------
+  960 | // Socio Report Preview
+
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+Import trace:
+  Server Component:
+    ./src/app/report/report-client.tsx
+    ./src/app/report/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[  299137ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  306977ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  307047ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  310052ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  344969ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  344999ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  345056ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  345125ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  348129ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  354793ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  354825ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  354879ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  354944ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  357947ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  387974ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  388005ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  388059ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  388122ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  391127ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0
+[  472301ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  472334ms] Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css
+    at http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1801:28
+    at new Promise (<anonymous>)
+    at Object.reloadChunk (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1793:20)
+    at applyChunkListUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1174:46)
+    at applyUpdate (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1148:13)
+    at handleApply (http://localhost:3000/_next/static/chunks/turbopack-_23a915ee._.js:1368:17)
+    at triggerUpdate (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:452:9)
+    at applyAggregatedUpdates (http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:98:9)
+    at http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js:32:21
+    at processTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10950:13)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11591:17)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52)
+[  472390ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/configurazione/categorie:0
+[  472457ms] PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany()` invocation in
+/Users/giuseppeantonacci/Desktop/Prima Nota/.next/dev/server/chunks/ssr/[root-of-the-server]__9ee89406._.js:276:171
+
+  273 ;
+  274 async function CategorieSpesaPage() {
+  275     const user = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$session$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["requireAdmin"])();
+→ 276     const categorie = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].categoriaSpesa.findMany({
+            where: {
+          +   societaId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[],
+          +     notIn: Int[],
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: [
+              {
+                attiva: "desc"
+              },
+              {
+                nome: "asc"
+              }
+            ]
+          })
+
+Argument `societaId` must not be null.
+    at  CategorieSpesaPage (about://React/Server/file:///Users/giuseppeantonacci/Desktop/Prima%20Nota/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__9ee89406._.js?11:276:23)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:1894:148)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2402:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2361:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2470:221)
+    at progress (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_9212ccad._.js:2640:13)
+[  475462ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0f0ba101._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/configurazione/categorie:0

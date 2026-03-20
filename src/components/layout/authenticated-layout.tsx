@@ -26,7 +26,7 @@ export function AuthenticatedLayout({ children, user, pageTitle }: Props) {
             <Separator orientation="vertical" className="mr-2 !h-4" />
             {pageTitle && <h1 className="text-sm font-medium">{pageTitle}</h1>}
           </header>
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-3 sm:p-6 overflow-x-hidden">
             {children}
           </main>
         </SidebarInset>

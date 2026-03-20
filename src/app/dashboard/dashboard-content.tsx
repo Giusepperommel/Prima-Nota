@@ -431,15 +431,15 @@ export function DashboardContent({ ruolo, nome }: Props) {
           <CardContent>
             <div className="space-y-2">
               {bozze.map((bozza) => (
-                <div key={bozza.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div key={bozza.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 border-b last:border-0 gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">
                       {formatDataItaliana(bozza.dataOperazione)}
                     </span>
                     <span className="text-sm font-medium truncate">{bozza.descrizione}</span>
                     <Badge variant="outline" className="text-xs shrink-0">{bozza.categoria?.nome ?? "—"}</Badge>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <div className="flex items-center gap-2 shrink-0">
                     {editingBozza === bozza.id ? (
                       <>
                         <Input
@@ -510,7 +510,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={periodo === "mese" ? "default" : "outline"}
                 size="sm"
@@ -684,7 +684,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
             <ResponsiveContainer width="100%" height={350}>
               <BarChart
                 data={chartData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="name" className="text-xs" />
@@ -726,6 +726,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                 Nessun dato disponibile per il periodo selezionato.
               </p>
             ) : (
+              <div className="table-responsive">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -762,6 +763,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -900,13 +902,14 @@ export function DashboardContent({ ruolo, nome }: Props) {
               Nessuna operazione registrata.
             </p>
           ) : (
+            <div className="table-responsive">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Descrizione</TableHead>
-                  <TableHead>N. Documento</TableHead>
+                  <TableHead className="hidden sm:table-cell">Descrizione</TableHead>
+                  <TableHead className="hidden sm:table-cell">N. Documento</TableHead>
                   <TableHead className="text-right">Importo</TableHead>
                   <TableHead className="text-right">Pagato</TableHead>
                 </TableRow>
@@ -922,10 +925,10 @@ export function DashboardContent({ ruolo, nome }: Props) {
                         {TIPO_LABELS[op.tipoOperazione] ?? op.tipoOperazione}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-[300px] truncate">
+                    <TableCell className="max-w-[300px] truncate hidden sm:table-cell">
                       {op.descrizione}
                     </TableCell>
-                    <TableCell>{op.numeroDocumento ?? "-"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{op.numeroDocumento ?? "-"}</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(
                         typeof op.importoTotale === "number"
@@ -946,6 +949,7 @@ export function DashboardContent({ ruolo, nome }: Props) {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

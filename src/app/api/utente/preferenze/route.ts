@@ -24,10 +24,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Nessun campo da aggiornare" }, { status: 400 });
   }
 
-  await prisma.utente.update({
-    where: { id: user.id },
-    data: updateData,
-  });
-
-  return NextResponse.json({ success: true });
+  try {
+    await prisma.utente.update({
+      where: { id: user.id },
+      data: updateData,
+    });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Errore aggiornamento preferenze:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

@@ -83,6 +83,9 @@ Target: Attività che vendono prodotti fisici (commercio, produzione, ristorazio
 12. [Documenti Giustificativi](#12-documenti-giustificativi)
 13. [Registri IVA Obbligatori](#13-registri-iva-obbligatori)
 14. [Gap Analysis — Cosa Manca](#14-gap-analysis--cosa-manca)
+15. [Liquidazione IVA Periodica — Regole 2025](#15-liquidazione-iva-periodica--regole-2025)
+16. [Ritenute d'Acconto — Regole 2025](#16-ritenute-dacconto--regole-2025)
+17. [Anagrafica Fornitori e Clienti — Dati Obbligatori](#17-anagrafica-fornitori-e-clienti--dati-obbligatori)
 
 ---
 
@@ -1002,15 +1005,364 @@ Per commercianti al minuto e attività simili. Registra i totali giornalieri.
 
 ---
 
+## 15. Liquidazione IVA Periodica — Regole 2025
+
+> **ATTENZIONE — Riforma Fiscale in corso**: Il **D.Lgs. 19 gennaio 2026, n. 10** ha approvato il Testo Unico IVA che abroga e ricodifica l'intera disciplina IVA (incluso l'art. 27 DPR 633/1972 e l'art. 6 L. 405/1990), con **efficacia dal 1° gennaio 2027**. Fino al 31 dicembre 2026 continuano ad applicarsi le regole descritte di seguito, basate sulla normativa previgente.
+
+### 15.1 Liquidazione Mensile vs Trimestrale — Soglie
+
+| Regime | Soglia Volume d'Affari | Scadenza Versamento | Maggiorazione |
+|--------|------------------------|---------------------|---------------|
+| **Mensile** (obbligatorio) | > €400.000 (servizi) o > €700.000 (beni) | Entro il **16** del mese successivo | — |
+| **Trimestrale** (opzionale) | ≤ €400.000 (servizi) o ≤ €700.000 (beni) | Entro il **16** del 2° mese dopo il trimestre | **+1% di maggiorazione** a titolo di interessi |
+
+**Riferimenti normativi soglie**: Art. 7 DPR 542/1999 e Art. 11 DPR 435/2001. Le soglie originali erano 600 milioni di lire (servizi) e 1 miliardo di lire (beni), convertite in euro con la transizione al 2002. I valori correntemente usati in prassi sono €400.000 e €700.000, ma si raccomanda verifica aggiornata per ogni esercizio fiscale.
+
+**Basi di calcolo**:
+- Mensile: differenza tra IVA esigibile (vendite) e IVA detraibile (acquisti) del mese precedente
+- Versamento minimo: se l'importo è ≤ €100, si può differire al mese successivo (entro il 16 dicembre per il mese di novembre)
+
+**Scadenze versamenti mensili (codici tributo F24)**:
+| Mese di riferimento | Scadenza | Codice Tributo |
+|---------------------|----------|---------------|
+| Gennaio | 16 febbraio | 6001 |
+| Febbraio | 16 marzo | 6002 |
+| Marzo | 16 aprile | 6003 |
+| Aprile | 16 maggio | 6004 |
+| Maggio | 16 giugno | 6005 |
+| Giugno | 16 luglio | 6006 |
+| Luglio | 16 agosto | 6007 |
+| Agosto | 16 settembre | 6008 |
+| Settembre | 16 ottobre | 6009 |
+| Ottobre | 16 novembre | 6010 |
+| Novembre | 16 dicembre | 6011 |
+| Dicembre | 16 gennaio | 6012 |
+
+**Scadenze versamenti trimestrali (codici tributo F24)**:
+| Trimestre | Scadenza | Codice Tributo |
+|-----------|----------|---------------|
+| I trimestre (gen-mar) | 16 maggio | 6031 |
+| II trimestre (apr-giu) | 16 agosto | 6032 |
+| III trimestre (lug-set) | 16 novembre | 6033 |
+| IV trimestre (ott-dic) | 16 febbraio | 6034 |
+
+> La maggiorazione dell'1% è già inclusa nell'importo da versare per i contribuenti trimestrali.
+
+### 15.2 Acconto IVA Dicembre
+
+Disciplinato dall'**Art. 6 L. 405/1990** (in vigore fino al 31/12/2026, poi ricodificato in D.Lgs. 10/2026).
+
+**Scadenza**: **27 dicembre** di ogni anno.
+
+**Codice tributo F24**: **6013** (acconto IVA).
+
+**Chi deve versare**: tutti i contribuenti IVA (mensili e trimestrali), tranne:
+- Chi ha IVA a credito nel periodo di riferimento (acconto risultante ≤ 0)
+- Chi ha cessato l'attività
+- Contribuenti in regime forfettario (esenti IVA)
+- Chi esercita attività in base a regime speciale (agricoltura, agenzie viaggi, ecc.)
+- Neofornitori che hanno iniziato l'attività nell'anno corrente (non c'è base storica)
+
+**Tre metodi di calcolo** (il contribuente sceglie quello più favorevole):
+
+| Metodo | Descrizione | Percentuale |
+|--------|-------------|-------------|
+| **Storico** | 88% dell'IVA versata (o dovuta) nel mese/trimestre di dicembre dell'anno precedente | **88%** |
+| **Previsionale** | 88% dell'IVA che si prevede di dover versare per dicembre/IV trimestre dell'anno corrente | **88%** |
+| **Analitico** | IVA risultante dalla liquidazione sulle operazioni registrate dall'1 al 20 dicembre (mensili) o dall'1 ottobre al 20 dicembre (trimestrali), meno l'IVA detraibile nello stesso periodo | 100% del saldo effettivo |
+
+**Soglia di esonero**: se l'acconto calcolato è inferiore a **€103,29**, non è dovuto il versamento.
+
+**Penalty**: soprattassa del 30% sull'importo non versato (riducibile con ravvedimento operoso).
+
+### 15.3 Dichiarazione IVA Annuale
+
+**Scadenza**: tra il **1° febbraio** e il **30 aprile** di ciascun anno (per l'anno precedente).
+
+**Base normativa**: Art. 8 DPR 322/1998 (come modificato).
+
+**Codice tributo F24 saldo IVA annuale**: **6099**.
+
+**Versamento saldo IVA annuale**: entro il **16 marzo** dell'anno successivo (oppure entro il 30 giugno con maggiorazione dello 0,40% mensile).
+
+**Codice tributo prima rata acconto**: **6034** (per trimestrali) o acconto tramite **6013** (dicembre).
+
+### 15.4 LIPE — Comunicazione Liquidazioni Periodiche IVA Elettroniche
+
+Introdotta dal **D.L. 193/2016** (art. 4), convertito in L. 225/2016, che ha inserito l'art. 21-bis nel corpo delle norme IVA.
+
+**Scopo**: comunicazione telematica dei dati di riepilogo di ogni liquidazione periodica IVA.
+
+**Dati comunicati** (per ogni periodo):
+- IVA esigibile (totale IVA su vendite)
+- IVA detraibile (totale IVA su acquisti)
+- IVA dovuta o a credito del periodo
+- Debito o credito precedente riportato
+- Acconto versato (per IV trimestre)
+- Importo versato
+- Flag: contribuente mensile o trimestrale
+- Eventuali rettifiche rispetto a periodi precedenti
+
+**Scadenze per anno (4 comunicazioni annuali)**:
+
+| Trimestre | Periodo coperto | Scadenza |
+|-----------|-----------------|----------|
+| I trimestre | gen-mar | **31 maggio** |
+| II trimestre | apr-giu | **16 settembre** |
+| III trimestre | lug-set | **30 novembre** |
+| IV trimestre | ott-dic | **Incluso nella dichiarazione IVA annuale** (non c'è comunicazione separata) |
+
+> **Nota**: il IV trimestre non richiede una LIPE separata; i dati confluiscono direttamente nella dichiarazione IVA annuale.
+
+**Chi è esonerato dalla LIPE**:
+- Soggetti che non presentano la dichiarazione IVA annuale
+- Soggetti che non effettuano liquidazioni periodiche (es. contribuenti forfettari esenti IVA)
+- Produttori agricoli in regime di esonero (art. 34, c. 6 DPR 633/1972)
+
+**Sanzione per omessa o tardiva LIPE**: da **€500 a €2.000** per periodo (riducibile a metà se corretta entro 15 giorni dalla scadenza). Ravvedimento operoso applicabile.
+
+**Trasmissione**: telematica tramite portale "Fatture e Corrispettivi" o software abilitati.
+
+### 15.5 Variazioni 2024-2025 alla disciplina IVA
+
+| Novità | Descrizione | Efficacia |
+|--------|-------------|-----------|
+| **D.Lgs. 10/2026 (Testo Unico IVA)** | Ricodifica e razionalizza l'intera disciplina IVA in un unico testo. Non introduce modifiche sostanziali alle aliquote o ai meccanismi, ma riordina le fonti normative. Abroga DPR 633/1972 e le leggi satellite. | **Dal 1° gennaio 2027** |
+| **Soglia minima versamento periodico** | Il versamento periodico IVA può essere omesso (e rinviato al periodo successivo) se l'importo dovuto non supera **€100** (novità rispetto al precedente limite di €25,82 ex lire 50.000) | In vigore |
+| **Acconto IVA — conferma regole** | Nessuna modifica per il 2024 e 2025: deadline 27 dicembre, percentuale 88%, tre metodi invariati. | Invariato |
+
+---
+
+## 16. Ritenute d'Acconto — Regole 2025
+
+> **ATTENZIONE — Riforma Fiscale**: Il **D.Lgs. 24 marzo 2025, n. 33** (Testo Unico Versamenti e Riscossione, in vigore dal 27 marzo 2025) ha ricodificato in un testo unico la disciplina del versamento delle ritenute, abrogando gli artt. 23-25-bis del DPR 600/1973 con efficacia **dal 1° gennaio 2027** (proroga con D.L. 31 dicembre 2025, n. 200). Fino al 31/12/2026 continuano ad applicarsi le regole descritte di seguito.
+
+### 16.1 Aliquote Ritenuta — Quadro Completo 2025
+
+| Tipo Reddito | Aliquota | Base Imponibile | Riferimento |
+|--------------|----------|----------------|-------------|
+| **Lavoro autonomo abituale** | **20%** | 100% del compenso | Art. 25 DPR 600/73 (vigente fino al 31/12/2026) |
+| **Lavoro autonomo occasionale** | **20%** | 100% del compenso | Art. 25 DPR 600/73 |
+| **Provvigioni (agenti con struttura)** | 23% applicata su **20%** della provvigione | 20% dell'ammontare | Art. 25-bis DPR 600/73 |
+| **Provvigioni (agenti senza struttura)** | 23% applicata su **50%** della provvigione | 50% dell'ammontare | Art. 25-bis DPR 600/73 |
+| **Venditori porta a porta** | 23% su 78% | 78% dell'ammontare | Art. 25-bis DPR 600/73 |
+| **Diritti d'autore (≥ 35 anni)** | 20% | 75% dell'importo | Art. 25 DPR 600/73 (25% deduzione forfettaria) |
+| **Diritti d'autore (< 35 anni)** | 20% | 60% dell'importo | Art. 25 DPR 600/73 (40% deduzione forfettaria) |
+| **Non residenti (lavoro autonomo)** | **30%** (imposta definitiva) | 100% del compenso | Art. 25 DPR 600/73 |
+
+> **Aliquota invariata**: La ritenuta del 20% per lavoro autonomo residente è rimasta invariata nel 2024 e 2025, confermata dall'Art. 25 DPR 600/73 in vigore al 31/12/2025.
+
+### 16.2 Regime Forfettario — Esenzione Ritenute
+
+**Base normativa**: Art. 1, comma 67, L. 190/2014 (Legge di Stabilità 2015).
+
+> "I ricavi e i compensi relativi al reddito oggetto del regime forfetario non sono assoggettati a ritenuta d'acconto da parte del sostituto d'imposta."
+
+**Regole operative**:
+- Il contribuente forfettario **NON subisce** la ritenuta del 20% sulle proprie prestazioni
+- Il contribuente forfettario **NON applica** ritenute sui compensi che eroga a professionisti autonomi
+- Obbligo dichiarativo: il forfettario deve indicare in fattura la dicitura "Operazione effettuata ai sensi dell'art. 1, commi 54-89, della Legge n. 190/2014 – Regime forfetario"
+- Il sostituto d'imposta (cliente) deve verificare la dichiarazione del forfettario
+
+**Rivalsa INPS Gestione Separata (4%)**:
+- Rientra nella base imponibile della ritenuta d'acconto per lavoratori autonomi NON forfettari
+- NON rientra nella base imponibile la rivalsa delle Casse di previdenza professionali (es. CNPADC per commercialisti, INARCASSA, ecc.)
+
+### 16.3 Versamento F24 Ritenute
+
+**Scadenza**: entro il **16 del mese successivo** a quello in cui le somme sono state corrisposte.
+**Base normativa**: Art. 18, D.Lgs. 241/1997.
+
+**Codici tributo F24 principali per ritenute**:
+
+| Codice Tributo | Descrizione |
+|---------------|-------------|
+| **1001** | Ritenute su redditi di lavoro dipendente e assimilati |
+| **1002** | Ritenute su redditi da pensione |
+| **1012** | Ritenute su redditi da lavoro dipendente corrisposti da terzi |
+| **1019** | Ritenute su compensi per avviamento commerciale |
+| **1020** | Ritenute su contributi, indennità ed emolumenti vari corrisposti da enti pubblici |
+| **1030** | Ritenute su redditi di capitale diversi da dividendi |
+| **1038** | Ritenute su provvigioni (agenti, rappresentanti, mediatori, procacciatori d'affari) |
+| **1040** | Ritenute su redditi di **lavoro autonomo** (professionisti, art. 25 DPR 600/73) |
+| **1045** | Ritenute su provvigioni pagate da condomini per attività di intermediazione immobiliare |
+
+> Il codice **1040** è quello di uso più frequente per le SRL di servizi che pagano compensi a professionisti e consulenti autonomi.
+
+### 16.4 Certificazione Unica (CU)
+
+Il sostituto d'imposta deve rilasciare la CU al percipiente per attestare le ritenute operate nell'anno.
+
+| Adempimento | Scadenza | Riferimento |
+|-------------|----------|-------------|
+| Consegna CU al percipiente | **16 marzo** dell'anno successivo | Art. 4, c. 6-quater, DPR 322/1998 |
+| Trasmissione telematica CU all'Agenzia delle Entrate | **16 marzo** dell'anno successivo | Art. 4, c. 6-quinquies, DPR 322/1998 |
+| CU con soli redditi da lavoro autonomo / professionale | **31 marzo** (proroga) — e dal 2026 **30 aprile** | Prassi consolidata + DPR 322/1998 |
+
+> La CU va emessa anche per importi molto piccoli. Non esiste una soglia minima di esonero.
+
+### 16.5 Modello 770
+
+Il Modello 770 è la dichiarazione annuale del sostituto d'imposta che riepiloga tutte le ritenute operate nell'anno.
+
+| Adempimento | Scadenza |
+|-------------|----------|
+| Presentazione Modello 770 | Tra il **1° aprile** e il **31 ottobre** di ciascun anno |
+
+**Riferimento**: Art. 4, c. 4-bis, DPR 322/1998.
+
+> Il 770 riepiloga tutte le ritenute operate (lavoro dipendente, lavoro autonomo, provvigioni, dividendi, ecc.) nell'anno precedente.
+
+### 16.6 Variazioni 2024-2025 alle Ritenute
+
+| Novità | Descrizione | Efficacia |
+|--------|-------------|-----------|
+| **D.Lgs. 33/2025 (Testo Unico Versamenti)** | Ricodifica la disciplina del versamento delle ritenute. Non modifica le aliquote: il 20% per lavoro autonomo rimane invariato. | Dal 27/03/2025, efficacia piena dal 01/01/2027 |
+| **Aliquota 20%** | Confermata invariata per lavoro autonomo residente in tutti i provvedimenti 2024-2025. | Invariata |
+| **CU 2025 (redditi 2024)** | Scadenza confermata: 16 marzo 2025 per la consegna, 31 marzo 2025 (proroga) per soli redditi autonomi. | Applicato per CU 2025 |
+
+---
+
+## 17. Anagrafica Fornitori e Clienti — Dati Obbligatori
+
+### 17.1 Dati Minimi Obbligatori per Legge (fattura elettronica SDI)
+
+**Per i soggetti IVA italiani** (art. 21 DPR 633/1972):
+
+```
+Dati identificativi obbligatori (cedente/prestatore e cessionario/committente):
+  ✅ denominazione / ragione sociale (o nome e cognome per persone fisiche)
+  ✅ sede legale (indirizzo completo: via, numero civico, CAP, comune, provincia, nazione)
+  ✅ partita IVA (11 cifre per soggetti italiani)
+  ✅ codice fiscale (16 caratteri per persone fisiche, o uguale a P.IVA per enti)
+
+Dati aggiuntivi per completezza anagrafica fiscale:
+  ✅ regime fiscale (RF01 = Ordinario, RF02 = Minimi, RF19 = Forfettario, ecc.)
+  ✅ tipo soggetto (persona fisica / persona giuridica / ente non commerciale)
+  ✅ codice destinatario SDI (vedi §17.2)
+  ✅ PEC (alternativa al codice destinatario SDI per ricevere fatture elettroniche)
+
+Per i soggetti NON residenti in Italia:
+  ✅ numero di identificazione IVA del paese UE (es. DE12345678)
+  ✅ paese di stabilimento (codice ISO 2 lettere)
+```
+
+**Per le ritenute d'acconto** (sostituto d'imposta):
+```
+  ✅ codice fiscale del percipiente (obbligatorio per F24 e CU)
+  ✅ tipo reddito (A = lavoro autonomo abituale, M = autonomo occasionale, ecc.)
+  ✅ regime forfettario: flag booleano (esonero dalla ritenuta se true)
+  ✅ cassa previdenziale professionale (CNPADC, INARCASSA, ecc.) + rivalsa 4%
+```
+
+### 17.2 Codice Destinatario SDI
+
+Il codice destinatario SDI identifica il canale di ricezione delle fatture elettroniche nel Sistema di Interscambio.
+
+**Formato**: **7 caratteri alfanumerici** (lettere maiuscole A-Z e cifre 0-9).
+
+| Valore | Significato |
+|--------|-------------|
+| Codice di 7 caratteri univoco | Canale dedicato: intermediari, software house, grandi aziende |
+| **0000000** (sette zeri) | Destinatario che **non è in grado di ricevere la fattura elettronicamente** → la fattura viene resa disponibile nell'area riservata del portale, ma non viene recapitata. Uso: B2C consumatori finali senza P.IVA, o soggetti che non hanno attivato la ricezione SDI. |
+| **XXXXXXX** (sette X maiuscole) | Usato per fatture verso **soggetti non stabiliti in Italia** (UE ed extra-UE) e, per prassi, verso B2C senza P.IVA italiana |
+
+> **Nota**: i contribuenti in regime forfettario **hanno l'obbligo di ricevere fatture elettroniche** (da gennaio 2024), quindi devono comunicare il proprio codice destinatario o PEC, NON usare 0000000.
+
+**Come si ottiene il codice destinatario**:
+- Registrandosi al portale "Fatture e Corrispettivi" dell'Agenzia delle Entrate
+- Tramite un intermediario (commercialista, software house) che crea un canale SDI accreditato
+
+**Alternativa**: in luogo del codice destinatario, il cedente può usare la **PEC del destinatario**. L'SDI recapita la fattura alla PEC indicata.
+
+### 17.3 Partita IVA — Formato e Validazione
+
+**Struttura** (11 cifre numeriche):
+
+```
+[NNNNNNN][PPP][C]
+   7 cifre    3 cifre  1 cifra
+  (numero   (codice   (cifra di
+  progressivo) ufficio)  controllo)
+```
+
+| Campo | Posizioni | Descrizione |
+|-------|-----------|-------------|
+| Numero progressivo | 1-7 | Numero d'ordine assegnato dall'Agenzia delle Entrate |
+| Codice ufficio | 8-10 | Codice della sede di competenza (es. 001 = sede centrale) |
+| Cifra di controllo | 11 | Calcolata con algoritmo di controllo su cifre 1-10 |
+
+**Algoritmo di validazione della cifra di controllo**:
+
+```
+1. Somma le cifre in posizione DISPARI (1, 3, 5, 7, 9): S1
+2. Per le cifre in posizione PARI (2, 4, 6, 8, 10):
+   - Moltiplica ciascuna per 2
+   - Se il risultato > 9, sottrai 9
+   - Somma i risultati: S2
+3. Somma totale = S1 + S2
+4. Cifra di controllo = (10 - (S1 + S2) mod 10) mod 10
+5. La cifra all'11° posto deve uguagliare la cifra di controllo
+```
+
+**Formato EU/VIES**: `IT` + 11 cifre numeriche (es. `IT01234567890`).
+
+**Regole di validazione aggiuntive**:
+- Deve essere composta **esclusivamente da cifre** (no lettere)
+- Lunghezza esatta: **11 caratteri**
+- Le prime 7 cifre devono essere comprese tra `0000001` e `9999999`
+- Le cifre 8-10 (codice ufficio) non devono essere `000`
+- L'Agenzia delle Entrate mette a disposizione un servizio di verifica online: `https://telematici.agenziaentrate.gov.it/VerificaPIVA/`
+
+**Distinzione P.IVA vs Codice Fiscale**:
+- Per persone giuridiche e ditte individuali: il CF coincide con la P.IVA (11 cifre)
+- Per persone fisiche: il CF è alfanumerico a 16 caratteri (diverso dalla P.IVA se hanno aperto P.IVA)
+
+### 17.4 Codici Regime Fiscale SDI (campo RegimeFiscale)
+
+Da inserire nel file XML della fattura elettronica nel blocco `CedentePrestatore`:
+
+| Codice | Regime |
+|--------|--------|
+| **RF01** | Regime ordinario |
+| **RF02** | Contribuenti minimi (art. 1, cc. 96-117, L. 244/2007) |
+| **RF04** | Agricoltura e attività connesse e pesca |
+| **RF05** | Vendita sali e tabacchi |
+| **RF06** | Commercio fiammiferi |
+| **RF07** | EDITORIA |
+| **RF08** | Gestione servizi telefonia pubblica |
+| **RF09** | Rivendita documenti di trasporto pubblico e di sosta |
+| **RF10** | Intrattenimenti, giochi e altre attività di cui alla tariffa allegata al DPR 640/72 |
+| **RF11** | Agenzie viaggi e turismo (art. 74-ter, DPR 633/72) |
+| **RF12** | Agriturismo (art. 5, c. 2, L. 413/91) |
+| **RF13** | Vendite a domicilio (art. 25-bis, c. 6, DPR 600/73) |
+| **RF14** | Rivendita beni usati, oggetti d'arte, d'antiquariato o da collezione |
+| **RF15** | Agenzie di vendite all'asta di oggetti d'arte, d'antiquariato o da collezione |
+| **RF16** | IVA per cassa P.A. (art. 6, c. 5, DPR 633/72) |
+| **RF17** | IVA per cassa (art. 32-bis, D.L. 83/2012) |
+| **RF18** | Altro |
+| **RF19** | **Regime forfettario** (art. 1, cc. 54-89, L. 190/2014) |
+
+---
+
 ## Fonti Normative
 
 - Art. 2423-2435-ter Codice Civile — Bilancio d'esercizio
 - Art. 102 TUIR — Ammortamento beni materiali
 - Art. 164 TUIR — Limiti fiscali veicoli
-- DPR 633/1972 — Disciplina IVA
-- DPR 600/1973 — Accertamento imposte sui redditi (ritenute)
+- DPR 633/1972 — Disciplina IVA (in vigore fino al 31/12/2026)
+- DPR 600/1973 — Accertamento imposte sui redditi (ritenute; artt. 25, 25-bis in vigore fino al 31/12/2026)
 - DM 31/12/1988 — Coefficienti di ammortamento
+- DPR 100/1998 — Liquidazioni periodiche IVA mensili (art. 1) e trimestrali (art. 4)
+- DPR 542/1999 — Semplificazioni dichiarazioni; soglie trimestrali IVA (art. 7)
+- DPR 322/1998 — Dichiarazioni sostituti d'imposta; CU e Modello 770 (art. 4)
+- L. 405/1990, art. 6 — Acconto IVA dicembre (in vigore fino al 31/12/2026)
+- D.Lgs. 241/1997, art. 17-18 — Versamento unitario F24; scadenza 16 del mese
+- D.L. 193/2016, art. 4 — Introduzione LIPE (comunicazione liquidazioni periodiche IVA)
+- L. 190/2014, art. 1, c. 67 — Esonero ritenute per contribuenti forfettari
 - D.Lgs. 125/2024 — Aggiornamento soglie bilancio abbreviato/micro
+- D.Lgs. 33/2025 — Testo Unico Versamenti e Riscossione (efficacia piena 01/01/2027)
+- D.Lgs. 10/2026 — Testo Unico IVA (efficacia 01/01/2027)
 - OIC 16 — Immobilizzazioni materiali
 - OIC 24 — Immobilizzazioni immateriali
 - OIC 10 — Rendiconto finanziario

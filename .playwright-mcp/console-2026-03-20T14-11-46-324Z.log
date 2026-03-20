@@ -1,0 +1,12 @@
+[     358ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/kpi?da=2026-02-28&a=2026-03-30:0
+[     412ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/trend?anno=2026:0
+[     459ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/operazioni?da=2026-02-28&a=2026-03-30&perPage=100:0
+[     525ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/operazioni-ricorrenti/genera:0
+[     581ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/cassa?anno=2026:0
+[     639ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/bozze:0
+[   13243ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/kpi?da=2026-02-28&a=2026-03-30:0
+[   13294ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/trend?anno=2026:0
+[   13363ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/operazioni?da=2026-02-28&a=2026-03-30&perPage=100:0
+[   13415ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/operazioni-ricorrenti/genera:0
+[   13464ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/dashboard/cassa?anno=2026:0
+[   13541ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/bozze:0
