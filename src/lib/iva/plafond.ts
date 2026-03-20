@@ -16,3 +16,13 @@ export function checkPlafond(input: PlafondCheckInput): PlafondCheckResult {
 export function calculateSforamento(disponibile: number, utilizzato: number, importoOperazione: number): number {
   return Math.max(0, (utilizzato + importoOperazione) - disponibile);
 }
+
+type EsportazioneRecord = { importo: number; data: Date; };
+
+export function calculateMobilePlafond(esportazioni: EsportazioneRecord[], dataRiferimento: Date): number {
+  const twelveMonthsAgo = new Date(dataRiferimento);
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  return esportazioni
+    .filter(e => e.data >= twelveMonthsAgo && e.data <= dataRiferimento)
+    .reduce((sum, e) => sum + e.importo, 0);
+}
