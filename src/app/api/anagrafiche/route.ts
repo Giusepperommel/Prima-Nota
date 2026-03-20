@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { denominazione: { contains: search, mode: "insensitive" } },
-        { partitaIva: { contains: search, mode: "insensitive" } },
+        { denominazione: { contains: search } },
+        { partitaIva: { contains: search } },
       ];
     }
 

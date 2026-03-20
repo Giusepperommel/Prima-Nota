@@ -200,17 +200,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         });
       }
 
-      // Deactivate financing recurring operation if exists
-      const finanziamento = await tx.finanziamento.findUnique({
-        where: { veicoloId: cespite.veicolo!.id },
-      });
-      if (finanziamento?.operazioneRicorrenteId) {
-        await tx.operazioneRicorrente.update({
-          where: { id: finanziamento.operazioneRicorrenteId },
-          data: { attiva: false },
-        });
-      }
-
       return { cessione, operazioneVendita };
     });
 

@@ -53,11 +53,6 @@ export async function GET(request: NextRequest) {
         },
         veicolo: {
           include: {
-            finanziamento: {
-              include: {
-                operazioneRicorrente: { select: { id: true, attiva: true, rateRimanenti: true } },
-              },
-            },
             cessione: true,
           },
         },
@@ -100,16 +95,6 @@ export async function GET(request: NextRequest) {
         limiteFiscale: Number(c.veicolo.limiteFiscale),
         percentualeDeducibilita: Number(c.veicolo.percentualeDeducibilita),
         percentualeDetraibilitaIva: Number(c.veicolo.percentualeDetraibilitaIva),
-        finanziamento: c.veicolo.finanziamento ? {
-          ...c.veicolo.finanziamento,
-          importoFinanziato: Number(c.veicolo.finanziamento.importoFinanziato),
-          anticipo: Number(c.veicolo.finanziamento.anticipo),
-          importoRata: Number(c.veicolo.finanziamento.importoRata),
-          tan: c.veicolo.finanziamento.tan != null ? Number(c.veicolo.finanziamento.tan) : null,
-          dataPrimaRata: c.veicolo.finanziamento.dataPrimaRata.toISOString(),
-          createdAt: c.veicolo.finanziamento.createdAt.toISOString(),
-          updatedAt: c.veicolo.finanziamento.updatedAt.toISOString(),
-        } : null,
         cessione: c.veicolo.cessione ? {
           ...c.veicolo.cessione,
           prezzoVendita: Number(c.veicolo.cessione.prezzoVendita),

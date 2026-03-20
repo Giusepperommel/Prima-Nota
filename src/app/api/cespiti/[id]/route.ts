@@ -57,11 +57,6 @@ export async function GET(request: Request, context: RouteContext) {
         },
         veicolo: {
           include: {
-            finanziamento: {
-              include: {
-                operazioneRicorrente: { select: { id: true, attiva: true, rateRimanenti: true } },
-              },
-            },
             cessione: true,
           },
         },
@@ -130,16 +125,6 @@ export async function GET(request: Request, context: RouteContext) {
         limiteFiscale: Number(cespite.veicolo.limiteFiscale),
         percentualeDeducibilita: Number(cespite.veicolo.percentualeDeducibilita),
         percentualeDetraibilitaIva: Number(cespite.veicolo.percentualeDetraibilitaIva),
-        finanziamento: cespite.veicolo.finanziamento ? {
-          ...cespite.veicolo.finanziamento,
-          importoFinanziato: Number(cespite.veicolo.finanziamento.importoFinanziato),
-          anticipo: Number(cespite.veicolo.finanziamento.anticipo),
-          importoRata: Number(cespite.veicolo.finanziamento.importoRata),
-          tan: cespite.veicolo.finanziamento.tan != null ? Number(cespite.veicolo.finanziamento.tan) : null,
-          dataPrimaRata: cespite.veicolo.finanziamento.dataPrimaRata.toISOString(),
-          createdAt: cespite.veicolo.finanziamento.createdAt.toISOString(),
-          updatedAt: cespite.veicolo.finanziamento.updatedAt.toISOString(),
-        } : null,
         cessione: cespite.veicolo.cessione ? {
           ...cespite.veicolo.cessione,
           prezzoVendita: Number(cespite.veicolo.cessione.prezzoVendita),
