@@ -51,32 +51,40 @@ export async function GET(request: NextRequest) {
       dataFine = new Date(anno, 11, 31);
     }
 
+    // For VENDITE register, also include doppia registrazione entries (reverse charge / autofattura)
+    const registroFilter = registroIva === "VENDITE"
+      ? { OR: [{ registroIva: "VENDITE" as any }, { doppiaRegistrazione: true }] }
+      : { registroIva: registroIva as any };
+
     const operazioni = await prisma.operazione.findMany({
       where: {
         societaId,
         eliminato: false,
-        registroIva: registroIva as any,
+        ...registroFilter,
         dataRegistrazione: {
           gte: dataInizio,
           lte: dataFine,
         },
       },
       include: {
-        fornitore: { select: { id: true, denominazione: true, partitaIva: true } },
-        cliente: { select: { id: true, denominazione: true, partitaIva: true } },
+        fornitore: { select: { id: true, denominazione: true, partitaIva: true, nazione: true } },
+        cliente: { select: { id: true, denominazione: true, partitaIva: true, nazione: true } },
       },
       orderBy: [{ dataRegistrazione: "asc" }, { protocolloIva: "asc" }],
     });
 
     const serialized = operazioni.map((op) => ({
       id: op.id,
-      protocolloIva: op.protocolloIva,
+      // For doppia registrazione entries in VENDITE, use protocolloIvaVendite
+      protocolloIva: (op.doppiaRegistrazione && registroIva === "VENDITE" && op.protocolloIvaVendite)
+        ? op.protocolloIvaVendite
+        : op.protocolloIva,
       dataRegistrazione: op.dataRegistrazione?.toISOString() ?? null,
       fornitore: op.fornitore
-        ? { id: op.fornitore.id, denominazione: op.fornitore.denominazione, partitaIva: op.fornitore.partitaIva }
+        ? { id: op.fornitore.id, denominazione: op.fornitore.denominazione, partitaIva: op.fornitore.partitaIva, nazione: op.fornitore.nazione }
         : null,
       cliente: op.cliente
-        ? { id: op.cliente.id, denominazione: op.cliente.denominazione, partitaIva: op.cliente.partitaIva }
+        ? { id: op.cliente.id, denominazione: op.cliente.denominazione, partitaIva: op.cliente.partitaIva, nazione: op.cliente.nazione }
         : null,
       descrizione: op.descrizione,
       importoImponibile: op.importoImponibile != null ? Number(op.importoImponibile) : null,
@@ -84,6 +92,7 @@ export async function GET(request: NextRequest) {
       importoIva: op.importoIva != null ? Number(op.importoIva) : null,
       naturaOperazioneIva: op.naturaOperazioneIva,
       tipoDocumentoSdi: op.tipoDocumentoSdi,
+      doppiaRegistrazione: op.doppiaRegistrazione,
     }));
 
     return NextResponse.json({ data: serialized });
