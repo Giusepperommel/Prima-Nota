@@ -865,10 +865,26 @@ export async function DELETE(request: Request, context: RouteContext) {
       );
     }
 
-    // Soft delete
-    await prisma.operazione.update({
-      where: { id: operazioneId },
-      data: { eliminato: true },
+    // Check for linked autofatture and cascade soft-delete them
+    const autofatture = await prisma.operazione.findMany({
+      where: { operazioneOrigineId: operazioneId, eliminato: false },
+    });
+
+    // Soft delete the operation and its linked autofatture in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Soft delete the main operation
+      await tx.operazione.update({
+        where: { id: operazioneId },
+        data: { eliminato: true },
+      });
+
+      // Soft delete linked autofatture (protocolli IVA remain as gaps / "annullato")
+      if (autofatture.length > 0) {
+        await tx.operazione.updateMany({
+          where: { operazioneOrigineId: operazioneId, eliminato: false },
+          data: { eliminato: true },
+        });
+      }
     });
 
     // Log the deletion
@@ -887,7 +903,10 @@ export async function DELETE(request: Request, context: RouteContext) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      autofattureEliminate: autofatture.length,
+    });
   } catch (error) {
     console.error("Errore nell'eliminazione dell'operazione:", error);
     return NextResponse.json(
