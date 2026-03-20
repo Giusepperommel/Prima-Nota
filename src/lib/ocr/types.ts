@@ -25,6 +25,7 @@ export type ParsedDocument = {
     partitaIva?: string;
     codiceFiscale?: string;
     regimeFiscale?: string;
+    nazione?: string;
   };
   datiRitenuta?: {
     tipoRitenuta?: string;

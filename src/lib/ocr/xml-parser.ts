@@ -94,6 +94,10 @@ export function parseFatturaXml(xmlContent: string): ParsedDocument {
     ? String(cedente.RegimeFiscale)
     : undefined;
 
+  // --- Nazione cedente ---
+  const sede = header?.CedentePrestatore?.Sede || {};
+  const nazione = sede?.Nazione ? String(sede.Nazione) : undefined;
+
   // --- Tipo documento SDI ---
   const tipoDocumentoSdi = datiGeneraliDoc?.TipoDocumento
     ? String(datiGeneraliDoc.TipoDocumento)
@@ -185,8 +189,8 @@ export function parseFatturaXml(xmlContent: string): ParsedDocument {
     tipoDocumentoSdi,
     naturaIva,
     splitPayment,
-    cedentePrestatore: (denominazione || partitaIva || codiceFiscale || regimeFiscale)
-      ? { denominazione, partitaIva, codiceFiscale, regimeFiscale }
+    cedentePrestatore: (denominazione || partitaIva || codiceFiscale || regimeFiscale || nazione)
+      ? { denominazione, partitaIva, codiceFiscale, regimeFiscale, nazione }
       : undefined,
     datiRitenuta,
     cassaPrevidenziale,
