@@ -14,7 +14,7 @@
 src/lib/iva/
   engine.ts                  — orchestratore principale
   classifier.ts              — determina trattamento IVA dato fornitore + operazione
-  autofattura.ts             — genera integrazione/autofattura (TD16-TD19)
+  autofattura.ts             — genera integrazione/autofattura (TD16-TD19, TD28)
   doppia-registrazione.ts    — crea le due scritture acquisti+vendite
   plafond.ts                 — tracking e calcolo plafond esportatori
   countries.ts               — lista paesi UE/extra-UE (ISO 3166-1 alpha-2)
@@ -29,7 +29,7 @@ Operazione salvata (API/OCR)
        │
        ▼
   IVA Classifier
-  (nazione fornitore + tipo operazione → trattamento)
+  (nazione fornitore + tipo operazione + direzione → trattamento)
        │
        ├─ IT → nessuna azione speciale (IVA ordinaria o natura scelta)
        │
@@ -39,14 +39,16 @@ Operazione salvata (API/OCR)
        │
        ├─ Extra-UE → autofattura automatica
        │    ├─ Servizi → TD17, doppia registrazione
-       │    └─ Beni (già in IT) → TD19, doppia registrazione
+       │    └─ Beni (già in IT, post-dogana) → TD19, doppia registrazione
+       │
+       ├─ San Marino → in base a IVA esposta o meno
        │
        └─ Reverse charge interno → TD16, doppia registrazione
               (basato su natura N6.x selezionata)
        │
        ▼
   Plafond Check
-  (se operazione N3.5, verifica disponibilità plafond)
+  (se acquisto con dichiarazione d'intento N3.5, verifica disponibilità)
        │
        ▼
   Validation
@@ -57,6 +59,12 @@ Operazione salvata (API/OCR)
 
 L'engine lavora sempre — in modalità semplice compila automaticamente tutti i campi IVA senza mostrarli; in avanzata li mostra e permette override; la validazione avvisa in caso di override incoerente.
 
+### Integrazione API
+
+L'IVA engine viene invocato all'interno della `POST /api/operazioni` e `PATCH /api/operazioni/[id]` come step nel flusso di salvataggio, dentro la stessa transazione Prisma. La creazione dell'autofattura è **atomica** con il salvataggio dell'operazione originale.
+
+Endpoint aggiuntivo `POST /api/iva/preview` per ottenere l'anteprima della classificazione prima del salvataggio (usato dalla UI avanzata per mostrare i campi pre-compilati).
+
 ---
 
 ## 2. Modello Dati — Modifiche allo Schema
@@ -66,12 +74,17 @@ L'engine lavora sempre — in modalità semplice compila automaticamente tutti i
 ```prisma
 // Nuovi campi
 operazioneOrigineId    Int?          @map("operazione_origine_id")
-operazioneOrigine      Operazione?   @relation("AutofatturaLink", fields: [operazioneOrigineId], references: [id])
+operazioneOrigine      Operazione?   @relation("AutofatturaLink", fields: [operazioneOrigineId], references: [id], onDelete: SetNull)
 autofatture            Operazione[]  @relation("AutofatturaLink")
 tipoMerce              TipoMerce?    @map("tipo_merce")
 doppiaRegistrazione    Boolean       @default(false) @map("doppia_registrazione")
 protocolloIvaVendite   String?       @map("protocollo_iva_vendite") @db.VarChar(20)
+movimentiPlafond       MovimentoPlafond[]
 ```
+
+**Note sulle relazioni**: `onDelete: SetNull` sulla relazione autofattura — la cancellazione cascade è gestita in application code con conferma utente, non a livello DB. Quando si cancella un'operazione con autofatture collegate, il codice applicativo cancella prima le autofatture (con conferma), poi l'operazione.
+
+**Note su `tipoMerce`**: viene impostato sia sull'operazione originale che sull'autofattura generata (copiato dall'originale), perché il tipo documento dell'autofattura dipende da questo campo.
 
 ### Nuovo enum TipoMerce
 
@@ -92,8 +105,8 @@ model Plafond {
   societaId          Int              @map("societa_id")
   anno               Int
   metodo             MetodoPlafond    @default(FISSO)
-  importoDisponibile Decimal          @db.Decimal(12, 2)
-  importoUtilizzato  Decimal          @db.Decimal(12, 2) @default(0)
+  importoDisponibile Decimal          @db.Decimal(12, 2)  // tetto massimo (per FISSO: fisso annuale; per MOBILE: ricalcolato)
+  importoUtilizzato  Decimal          @db.Decimal(12, 2) @default(0)  // somma movimenti attivi
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
   societa            Societa          @relation(fields: [societaId], references: [id])
@@ -122,6 +135,22 @@ enum MetodoPlafond {
 }
 ```
 
+### Relazioni inverse da aggiungere ai modelli esistenti
+
+```prisma
+// In Societa model — aggiungere:
+plafond  Plafond[]
+
+// In Operazione model — aggiungere:
+// (vedi sezione "Modifiche al modello Operazione" sopra per tutti i campi)
+```
+
+### Vincoli di unicità per protocolli IVA
+
+Il protocollo IVA deve essere unico per società + anno + registro. Le operazioni con doppia registrazione hanno due protocolli distinti (uno per acquisti, uno per vendite).
+
+**Nota**: il vincolo di unicità sui protocolli IVA è gestito a livello applicativo (non DB constraint) perché `protocolloIva` è nullable e condiviso tra operazioni con e senza IVA. L'engine assegna i protocolli sequenzialmente con lock ottimistico per evitare collisioni.
+
 ### Modifiche ad Anagrafica
 
 Nessuna modifica schema — il campo `nazione` esiste già con default "IT". Serve solo esporlo nella UI.
@@ -134,11 +163,13 @@ Nessuna modifica schema — il campo `nazione` esiste già con default "IT". Ser
 
 ```typescript
 type ClassifierInput = {
-  nazioneFornitore: string        // "IT", "DE", "US", etc.
+  nazioneFornitore: string          // "IT", "DE", "US", etc.
   tipoMerce: "BENI" | "SERVIZI"
-  naturaIvaManuale?: NaturaIva    // override utente (modalità avanzata)
-  aliquotaIva?: number            // aliquota se presente sulla fattura
-  isReverseChargeInterno?: boolean
+  tipoOperazione: "COSTO" | "FATTURA_ATTIVA"  // direzione: acquisto o vendita
+  naturaIvaManuale?: NaturaIva      // override utente (modalità avanzata)
+  aliquotaIva?: number              // aliquota se presente sulla fattura
+  isReverseChargeInterno?: boolean  // flag esplicito per RC interno
+  sanMarinoConIva?: boolean         // per distinguere SM con/senza IVA
 }
 ```
 
@@ -157,18 +188,40 @@ type ClassifierOutput = {
 }
 ```
 
-### Matrice delle regole
+### Matrice delle regole — Acquisti (COSTO)
 
-| Nazione | Tipo Merce | → Tipo Doc Autofattura | → Natura | → Doppia Reg. |
+| Nazione | Tipo Merce | → Tipo Doc Autofattura | → Natura autofattura | → Doppia Reg. |
 |---------|-----------|----------------------|----------|---------------|
 | IT | qualsiasi | nessuna | da aliquota/natura manuale | No |
-| IT + N6.x | qualsiasi | TD16 | N6.x (dal fornitore) | Sì |
+| IT + N6.x | qualsiasi | TD16 | imponibile (aliquota IT) | Sì |
 | UE | BENI | TD18 | imponibile (aliquota IT) | Sì |
 | UE | SERVIZI | TD17 | imponibile (aliquota IT) | Sì |
 | Extra-UE | SERVIZI | TD17 | imponibile (aliquota IT) | Sì |
-| Extra-UE | BENI (in IT) | TD19 | imponibile (aliquota IT) | Sì |
-| San Marino con IVA | qualsiasi | TD28 | da fattura | No |
-| San Marino senza IVA | qualsiasi | TD17/TD19 | imponibile (aliquota IT) | Sì |
+| Extra-UE | BENI (post-dogana) | TD19 | imponibile (aliquota IT) | Sì |
+| San Marino con IVA | qualsiasi | TD28 (comunicazione) | da fattura | No |
+| San Marino senza IVA | BENI | TD19 | imponibile (aliquota IT) | Sì |
+| San Marino senza IVA | SERVIZI | TD19 | imponibile (aliquota IT) | Sì |
+| N7 (OSS) | qualsiasi | nessuna | N7 | No |
+
+### Matrice delle regole — Vendite (FATTURA_ATTIVA)
+
+| Nazione cliente | Tipo Merce | → Natura | → Note |
+|----------------|-----------|----------|--------|
+| IT | qualsiasi | da aliquota/natura manuale | Fatturazione ordinaria |
+| UE (B2B) | BENI | N3.2 (cessione intra) | Non imponibile |
+| UE (B2B) | SERVIZI | N2.1 (fuori campo, art. 7-ter) | Servizi generici |
+| Extra-UE | BENI | N3.1 (esportazione) | Non imponibile |
+| Extra-UE | SERVIZI | N2.1 (fuori campo) | Servizi generici |
+
+### Note su importazioni con bolletta doganale
+
+L'importazione di beni extra-UE con sdoganamento è **fuori scope** per l'autofattura: l'IVA viene versata in dogana e la bolletta doganale viene registrata direttamente nel registro acquisti. Il caso TD19 si applica solo a beni extra-UE **già in libera circolazione** in Italia (es. da deposito IVA). In modalità avanzata, l'utente può registrare manualmente la bolletta doganale come operazione ordinaria.
+
+### Note su San Marino
+
+Per acquisti da San Marino, il trattamento dipende dalla presenza di IVA in fattura:
+- **Con IVA esposta**: il compratore italiano invia TD28 a SDI come comunicazione. Non è un'autofattura ma una segnalazione. Il sistema la genera come operazione collegata con `tipoDocumentoSdi: TD28`.
+- **Senza IVA**: il compratore italiano emette autofattura con TD19 (sia per beni che servizi, per le specifiche AdE).
 
 ### Logica di override (modalità avanzata)
 
@@ -183,7 +236,7 @@ Se l'utente sovrascrive la natura o il tipo documento, il classifier:
 
 ### Generazione Autofattura
 
-Quando il classifier restituisce `richiedeAutofattura: true`, il modulo `autofattura.ts` crea una nuova Operazione collegata via `operazioneOrigineId`:
+Quando il classifier restituisce `richiedeAutofattura: true`, il modulo `autofattura.ts` crea una nuova Operazione collegata via `operazioneOrigineId`, all'interno della stessa transazione Prisma:
 
 ```typescript
 {
@@ -193,7 +246,8 @@ Quando il classifier restituisce `richiedeAutofattura: true`, il modulo `autofat
   importoImponibile,                 // stesso imponibile
   aliquotaIva: 22,                   // aliquota italiana applicabile
   importoIva,                        // calcolato: imponibile × aliquota
-  tipoDocumentoSdi,                  // TD16/17/18/19
+  tipoDocumentoSdi,                  // TD16/17/18/19/TD28
+  tipoMerce,                         // copiato dall'operazione originale
   operazioneOrigineId,               // link alla fattura originale
   doppiaRegistrazione: true,
   registroIva: "ACQUISTI",           // registro primario
@@ -214,20 +268,28 @@ L'API registri IVA, quando filtra per VENDITE, include anche le operazioni con `
 
 ### Protocollo IVA automatico
 
-Il sistema assegna automaticamente il prossimo numero progressivo per registro + anno. Il protocollo è per anno solare, progressivo senza buchi.
+Il sistema assegna automaticamente il prossimo numero progressivo per registro + anno. Il protocollo è per anno solare. In caso di cancellazione di un'operazione, il protocollo **non viene riassegnato** — i buchi sono ammessi e vengono annotati come "annullato" nel registro (prassi fiscale italiana: i numeri di protocollo non possono essere riutilizzati).
 
 ---
 
 ## 5. Plafond Esportatori Abituali
 
-### Flusso
+### Due flussi distinti
+
+Il plafond ha due lati:
+
+1. **Costruzione del plafond**: le operazioni di esportazione/cessione intra-UE (N3.1, N3.2, N3.4, art. 8/8-bis/9) generano il plafond disponibile per l'anno successivo (metodo fisso) o per i 12 mesi successivi (metodo mobile).
+
+2. **Utilizzo del plafond**: gli acquisti effettuati con dichiarazione d'intento (N3.5 sulla fattura del fornitore) consumano il plafond disponibile. Questo è il flusso tracciato da `MovimentoPlafond`.
+
+### Flusso utilizzo
 
 ```
 Configurazione (una tantum, modalità avanzata)
   └─ L'utente attiva il plafond per l'anno
      imposta: metodo (fisso/mobile), importo disponibile
 
-Operazione con natura N3.5 salvata
+Acquisto con natura N3.5 salvato
        │
        ▼
   Plafond Engine
@@ -243,15 +305,15 @@ Operazione con natura N3.5 salvata
        └─ Modalità avanzata: warning + proposta TD21
 ```
 
+### Ricalcolo plafond mobile
+
+Per il metodo mobile, `importoDisponibile` viene **ricalcolato on-demand** ogni volta che si salva un'operazione N3.5, sommando le esportazioni (N3.1, N3.2, N3.4) dei 12 mesi precedenti alla data dell'operazione. Il valore su `Plafond.importoDisponibile` è un **cache/snapshot** aggiornato ad ogni ricalcolo. Se il plafond si riduce e `importoUtilizzato > importoDisponibile`, il sistema genera un warning di splafonamento retroattivo.
+
 ### UI (solo modalità avanzata)
 
 - Widget nel dashboard/bilancio: barra progresso plafond (utilizzato/disponibile)
 - Alert visivo quando si supera l'80%
 - Storico movimenti plafond consultabile
-
-### Metodo mobile
-
-Per il plafond mobile, il calcolo è rolling 12 mesi — ogni mese si ricalcola il plafond disponibile sommando le esportazioni dei 12 mesi precedenti.
 
 ### Opt-in
 
@@ -303,28 +365,32 @@ Aggiungere al prompt di Haiku la classificazione BENI/SERVIZI dalle righe del do
 
 ### Regole di validazione
 
-| Regola | Condizione | Azione |
-|--------|-----------|--------|
-| Natura vs Aliquota | naturaIva presente ma aliquotaIva > 0 | Warning: "Natura IVA implica aliquota 0%" |
-| Natura vs Nazione | N6.x con fornitore estero | Warning: "RC interno (N6.x) non compatibile con fornitore estero" |
-| TD vs Nazione | TD18 con fornitore extra-UE | Errore: "TD18 è solo per beni intra-UE, usare TD19" |
-| TD vs Tipo Merce | TD18 con SERVIZI | Warning: "TD18 è per beni, servizi usano TD17" |
-| Split + RC | splitPayment true + natura N6.x | Warning: "Reverse charge ha priorità su split payment" |
-| Plafond N3.5 | N3.5 senza plafond attivo | Warning: "Operazione N3.5 senza plafond configurato" |
-| Nazione mancante | Fornitore senza nazione + operazione con natura estera | Errore: "Impostare la nazione del fornitore" |
+| Regola | Condizione | Azione | Note |
+|--------|-----------|--------|------|
+| Natura vs Aliquota | naturaIva presente (escluso N6.x) e aliquotaIva > 0 sull'operazione originale | Warning: "Natura IVA implica aliquota 0%" | Non si applica alle autofatture generate, che hanno sia natura (ereditata) che aliquota > 0 |
+| Natura vs Nazione | N6.x con fornitore estero | Warning: "RC interno (N6.x) non compatibile con fornitore estero" | |
+| TD vs Nazione | TD18 con fornitore extra-UE | Errore: "TD18 è solo per beni intra-UE, usare TD19" | |
+| TD vs Tipo Merce | TD18 con SERVIZI | Warning: "TD18 è per beni, servizi usano TD17" | |
+| Split + RC | splitPayment true + natura N6.x | Warning: "Reverse charge ha priorità su split payment" | |
+| Plafond N3.5 | N3.5 senza plafond attivo | Warning: "Operazione N3.5 senza plafond configurato" | |
+| Nazione mancante | Fornitore senza nazione + operazione con natura estera | Errore: "Impostare la nazione del fornitore" | |
 
 ### Casi limite gestiti
 
 1. **Fattura mista beni+servizi da fornitore UE**: si usa il tipo prevalente per importo. In avanzata l'utente può splittare in due operazioni.
 
-2. **Fornitore San Marino con IVA**: TD28, nessuna doppia registrazione (l'IVA è già esposta dal fornitore).
+2. **Fornitore San Marino con IVA**: TD28 (comunicazione a SDI), nessuna doppia registrazione. Il sistema genera un'operazione collegata con TD28 per la comunicazione.
 
-3. **Fornitore San Marino senza IVA**: come extra-UE, autofattura TD17/TD19.
+3. **Fornitore San Marino senza IVA**: autofattura TD19 (sia beni che servizi, come da specifiche AdE), con doppia registrazione.
 
-4. **Modifica nazione fornitore dopo registrazione operazioni**: le operazioni esistenti NON vengono ricalcolate automaticamente — warning all'utente "Ci sono X operazioni registrate con il precedente trattamento IVA".
+4. **Importazione beni extra-UE con bolletta doganale**: fuori scope autofattura. L'utente registra la bolletta doganale come operazione ordinaria nel registro acquisti. In modalità avanzata un hint ricorda questa possibilità.
 
-5. **Cancellazione operazione con autofattura collegata**: cancella anche l'autofattura (cascade logico, con conferma).
+5. **Modifica nazione fornitore dopo registrazione operazioni**: le operazioni esistenti NON vengono ricalcolate automaticamente — warning all'utente "Ci sono X operazioni registrate con il precedente trattamento IVA".
 
-6. **Modifica operazione con autofattura collegata**: rigenera l'autofattura con i nuovi importi.
+6. **Cancellazione operazione con autofattura collegata**: il codice applicativo cancella prima le autofatture (con conferma utente), poi l'operazione. I protocolli IVA restano assegnati (annotati come "annullato").
 
-7. **N7 — IVA assolta in altro stato UE (OSS)**: nessuna autofattura, nessuna doppia registrazione. Solo annotazione nel registro vendite.
+7. **Modifica operazione con autofattura collegata**: rigenera l'autofattura con i nuovi importi nella stessa transazione.
+
+8. **N7 — IVA assolta in altro stato UE (OSS)**: nessuna autofattura, nessuna doppia registrazione. Solo annotazione nel registro vendite. Presente nella matrice del classifier.
+
+9. **Protocolli IVA dopo cancellazione**: i numeri non vengono riutilizzati. I buchi nel registro vengono annotati come "annullato" (conforme alla prassi fiscale italiana).
