@@ -28,7 +28,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Save, Loader2, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Save, Loader2, Plus, FileCheck2 } from "lucide-react";
 import { calcolaRitenuta } from "@/lib/calcoli-ritenuta";
 import { suggerisciConto } from "@/lib/mapping-categoria-conto";
 import { formatCurrency } from "@/lib/business-utils";
@@ -38,6 +39,7 @@ type Anagrafica = {
   denominazione: string;
   partitaIva: string | null;
   tipo: string;
+  nazione?: string | null;
   regimeForfettario: boolean;
   soggettoARitenuta: boolean;
   tipoRitenuta: string | null;
@@ -72,6 +74,7 @@ export type DatiContabiliTabProps = {
   categoriaName?: string;
   hasPianoPagamento: boolean;
   initialData?: any;
+  modalitaAvanzata?: boolean;
   onSaved?: () => void;
 };
 
@@ -131,6 +134,11 @@ const REGISTRO_IVA_OPTIONS = [
   { value: "CORRISPETTIVI", label: "Registro corrispettivi" },
 ];
 
+const TIPO_MERCE_OPTIONS = [
+  { value: "BENI", label: "Beni" },
+  { value: "SERVIZI", label: "Servizi" },
+];
+
 const TIPO_RITENUTA_OPTIONS = [
   { value: "LAVORO_AUTONOMO", label: "Lavoro autonomo (20%)" },
   { value: "PROVVIGIONI", label: "Provvigioni (23% su 50%)" },
@@ -146,6 +154,7 @@ export function DatiContabiliTab({
   categoriaName,
   hasPianoPagamento,
   initialData,
+  modalitaAvanzata = false,
   onSaved,
 }: DatiContabiliTabProps) {
   const [saving, setSaving] = useState(false);
@@ -174,6 +183,9 @@ export function DatiContabiliTab({
   const [conti, setConti] = useState<Conto[]>([]);
   const [contoId, setContoId] = useState<string>("");
   const [contoSuggested, setContoSuggested] = useState(false);
+
+  // Tipo merce (for extra-IT suppliers)
+  const [tipoMerce, setTipoMerce] = useState<string>("");
 
   // IVA avanzata
   const [naturaIva, setNaturaIva] = useState<string>("");
@@ -278,6 +290,7 @@ export function DatiContabiliTab({
       setContoId(String(initialData.codiceContoId));
       setContoSuggested(true); // don't auto-suggest if already set
     }
+    if (initialData.tipoMerce) setTipoMerce(initialData.tipoMerce);
     if (initialData.naturaOperazioneIva) setNaturaIva(initialData.naturaOperazioneIva);
     if (initialData.tipoDocumentoSdi) setTipoDocumentoSdi(initialData.tipoDocumentoSdi);
     if (initialData.registroIva) setRegistroIva(initialData.registroIva);
@@ -378,6 +391,7 @@ export function DatiContabiliTab({
         dataPagamento: dataPagamento || null,
         importoPagato: importoPagato ? parseFloat(importoPagato) : null,
         codiceContoId: contoId ? parseInt(contoId) : null,
+        tipoMerce: tipoMerce || null,
         naturaOperazioneIva: naturaIva || null,
         tipoDocumentoSdi: tipoDocumentoSdi || null,
         protocolloIva: protocolloIva || null,
@@ -580,6 +594,50 @@ export function DatiContabiliTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Tipo Merce (visible for non-IT suppliers or when already set) */}
+      {(selectedFornitore?.nazione && selectedFornitore.nazione !== "IT" || tipoMerce) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tipo merce</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label>Beni o servizi</Label>
+            <Select value={tipoMerce} onValueChange={setTipoMerce}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona tipo merce..." />
+              </SelectTrigger>
+              <SelectContent>
+                {TIPO_MERCE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Autofattura badge */}
+      {initialData?.autofatture && initialData.autofatture.length > 0 && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-blue-600" />
+              {modalitaAvanzata ? (
+                <span className="text-sm text-blue-700 font-medium cursor-pointer hover:underline">
+                  Vedi autofattura
+                </span>
+              ) : (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Integrazione IVA generata automaticamente
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 2. Competenza economica */}
       <Card>
