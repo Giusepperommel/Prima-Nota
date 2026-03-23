@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, SessionProvider } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -677,12 +678,18 @@ function CreaSocietaWizard({ onBack }: { onBack: () => void }) {
 // ---- Main Page ----
 
 function CreaSocietaContent() {
+  const { data: session } = useSession();
   const [view, setView] = useState<ViewMode>("choice");
+
+  const numeroAziende = (session?.user as any)?.numeroAziende ?? 0;
+  const hasExistingCompanies = numeroAziende > 0;
 
   const titles: Record<ViewMode, { title: string; desc: string }> = {
     choice: {
-      title: "Benvenuto su Prima Nota",
-      desc: "Il tuo account e' pronto. Come vuoi procedere?",
+      title: hasExistingCompanies ? "Crea una nuova societa" : "Benvenuto su Prima Nota",
+      desc: hasExistingCompanies
+        ? "Aggiungi un'altra societa al tuo account."
+        : "Il tuo account e' pronto. Come vuoi procedere?",
     },
     wizard: {
       title: "Configura la tua Societa",
@@ -707,6 +714,17 @@ function CreaSocietaContent() {
           <CardDescription>{current.desc}</CardDescription>
         </CardHeader>
         <CardContent>
+          {hasExistingCompanies && view === "choice" && (
+            <div className="mb-4">
+              <Link
+                href="/aziende"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Torna a Le mie aziende
+              </Link>
+            </div>
+          )}
           {view === "choice" && (
             <ChoiceView
               onCreateNew={() => setView("wizard")}
