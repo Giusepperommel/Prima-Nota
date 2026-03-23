@@ -35,6 +35,8 @@ model Societa {
   chiusureEsercizio  ChiusuraEsercizio[]
   liquidazioniIva    LiquidazioneIva[]
   plafond            Plafond[]
+  scrittureContabili  ScritturaContabile[]
+  movimentiContabili  MovimentoContabile[]
 
   @@map("societa")
 }
@@ -78,6 +80,7 @@ model Utente {
   operazioniRicorrenti OperazioneRicorrente[]
   modalitaAvanzata       Boolean  @default(false) @map("modalita_avanzata")
   modalitaCommercialista Boolean  @default(false) @map("modalita_commercialista")
+  scrittureCreate     ScritturaContabile[] @relation("ScrittureCreateByUser")
 
   @@map("utenti")
 }
@@ -97,7 +100,10 @@ model CategoriaSpesa {
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
+  contoDefaultId    Int?            @map("conto_default_id")
+
   societa       Societa      @relation(fields: [societaId], references: [id])
+  contoDefault      PianoDeiConti?  @relation("ContoDefaultCategoria", fields: [contoDefaultId], references: [id])
   operazioni    Operazione[]
   preferenzeUso PreferenzaUsoCategoria[]
   operazioniRicorrenti OperazioneRicorrente[]
@@ -193,6 +199,7 @@ model Operazione {
   cespite      Cespite?
   pianoPagamento PianoPagamento?
   operazioneRicorrente OperazioneRicorrente? @relation(fields: [operazioneRicorrenteId], references: [id])
+  scrittureContabili  ScritturaContabile[]
 
   @@index([societaId, dataOperazione])
   @@index([categoriaId])
@@ -745,6 +752,22 @@ enum MetodoPlafond {
   MOBILE
 }
 
+enum TipoScrittura {
+  AUTO
+  MANUALE
+  RETTIFICA
+  STORNO
+  CHIUSURA
+  APERTURA
+  @@map("tipo_scrittura")
+}
+
+enum StatoScrittura {
+  DEFINITIVA
+  PROVVISORIA
+  @@map("stato_scrittura")
+}
+
 // ─── Modelli modalità avanzata ───
 
 model Anagrafica {
@@ -794,6 +817,8 @@ model PianoDeiConti {
 
   societa    Societa      @relation(fields: [societaId], references: [id])
   operazioni Operazione[]
+  movimentiContabili  MovimentoContabile[]
+  categorieSpesaDefault CategoriaSpesa[] @relation("ContoDefaultCategoria")
 
   @@unique([societaId, codice])
   @@map("piano_dei_conti")
@@ -938,4 +963,69 @@ model MovimentoPlafond {
   operazione     Operazione @relation(fields: [operazioneId], references: [id])
 
   @@map("movimento_plafond")
+}
+
+model ScritturaContabile {
+  id                  Int              @id @default(autoincrement()) @map("scrittura_id")
+  societaId           Int              @map("societa_id")
+  operazioneId        Int?             @map("operazione_id")
+  dataRegistrazione   DateTime         @db.Date @map("data_registrazione")
+  dataCompetenza      DateTime         @db.Date @map("data_competenza")
+  numeroProtocollo    Int              @map("numero_protocollo")
+  anno                Int
+  descrizione         String           @db.VarChar(500)
+  causale             String           @db.VarChar(10)
+  tipoScrittura       TipoScrittura    @map("tipo_scrittura")
+  stato               StatoScrittura
+  eliminato           Boolean          @default(false)
+  protocolloIva       Int?             @map("protocollo_iva")
+  registroIvaSezionale String?         @db.VarChar(10) @map("registro_iva_sezionale")
+  totaleDare          Decimal          @db.Decimal(12, 2) @map("totale_dare")
+  totaleAvere         Decimal          @db.Decimal(12, 2) @map("totale_avere")
+  createdByUserId     Int?             @map("created_by_user_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  societa             Societa          @relation(fields: [societaId], references: [id])
+  operazione          Operazione?      @relation(fields: [operazioneId], references: [id])
+  createdByUser       Utente?          @relation("ScrittureCreateByUser", fields: [createdByUserId], references: [id])
+  movimenti           MovimentoContabile[]
+
+  @@unique([societaId, anno, numeroProtocollo])
+  @@index([societaId, dataRegistrazione])
+  @@index([operazioneId])
+  @@index([societaId, anno, causale])
+  @@map("scritture_contabili")
+}
+
+model MovimentoContabile {
+  id            Int              @id @default(autoincrement()) @map("movimento_id")
+  scritturaId   Int              @map("scrittura_id")
+  societaId     Int              @map("societa_id")
+  contoId       Int              @map("conto_id")
+  importoDare   Decimal          @default(0) @db.Decimal(12, 2) @map("importo_dare")
+  importoAvere  Decimal          @default(0) @db.Decimal(12, 2) @map("importo_avere")
+  descrizione   String?          @db.VarChar(255)
+  ordine        Int
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  scrittura     ScritturaContabile @relation(fields: [scritturaId], references: [id], onDelete: Cascade)
+  societa       Societa            @relation(fields: [societaId], references: [id])
+  conto         PianoDeiConti      @relation(fields: [contoId], references: [id])
+
+  @@index([scritturaId])
+  @@index([contoId])
+  @@index([societaId, contoId])
+  @@map("movimenti_contabili")
+}
+
+model CausaleContabile {
+  codice          String    @id @db.VarChar(10)
+  descrizione     String    @db.VarChar(100)
+  tipoOperazione  String?   @db.VarChar(50) @map("tipo_operazione")
+  registroIva     RegistroIva?  @map("registro_iva")
+  attivo          Boolean   @default(true)
+
+  @@map("causali_contabili")
 }
