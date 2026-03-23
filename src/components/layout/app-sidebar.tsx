@@ -41,6 +41,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CompanySwitcher } from "@/components/layout/company-switcher";
 
 type NavItem = {
   title: string;
@@ -101,6 +102,7 @@ export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: stri
           </div>
           <span className="font-semibold text-lg">Prima<span className="text-primary">Nota</span></span>
         </Link>
+        <CompanySwitcher />
       </SidebarHeader>
       <SidebarSeparator />
       <SidebarContent>
