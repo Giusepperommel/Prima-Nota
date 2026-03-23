@@ -37,6 +37,11 @@ model Societa {
   plafond            Plafond[]
   scrittureContabili  ScritturaContabile[]
   movimentiContabili  MovimentoContabile[]
+  utentiAzienda       UtenteAzienda[]
+  scadenze            ScadenzaAzienda[]
+  alert               AlertAzienda[]
+  inviti              InvitoAzienda[]
+  logAttivita         LogAttivita[]
 
   @@map("societa")
 }
@@ -47,20 +52,23 @@ model Socio {
   nome              String   @db.VarChar(100)
   cognome           String   @db.VarChar(100)
   codiceFiscale     String   @map("codice_fiscale") @db.VarChar(16)
-  email             String   @unique @db.VarChar(255)
+  email             String   @db.VarChar(255)
   quotaPercentuale  Decimal  @map("quota_percentuale") @db.Decimal(5, 2)
   ruolo             RuoloUtente @default(STANDARD)
   dataIngresso      DateTime? @map("data_ingresso") @db.Date
   attivo            Boolean  @default(true)
   socioLavoratore   Boolean  @default(false) @map("socio_lavoratore")
+  utenteId          Int?     @map("utente_id")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   societa              Societa? @relation(fields: [societaId], references: [id])
   utente               Utente?
+  utenteCollegato      Utente?  @relation("SocioUtente", fields: [utenteId], references: [id])
   ripartizioniOperazione RipartizioneOperazione[]
   presetRipartizioni PresetRipartizioneSocio[]
 
+  @@unique([societaId, email])
   @@map("soci")
 }
 
@@ -71,6 +79,9 @@ model Utente {
   passwordHash  String    @map("password_hash") @db.VarChar(255)
   emailVerificata Boolean @default(false) @map("email_verificata")
   ultimoAccesso DateTime? @map("ultimo_accesso")
+  nome          String?   @db.VarChar(100)
+  cognome       String?   @db.VarChar(100)
+  isSuperAdmin  Boolean   @default(false) @map("is_super_admin")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   socio         Socio @relation(fields: [socioId], references: [id])
@@ -81,6 +92,10 @@ model Utente {
   modalitaAvanzata       Boolean  @default(false) @map("modalita_avanzata")
   modalitaCommercialista Boolean  @default(false) @map("modalita_commercialista")
   scrittureCreate     ScritturaContabile[] @relation("ScrittureCreateByUser")
+  aziende             UtenteAzienda[]
+  scadenzeCreate      ScadenzaAzienda[] @relation("ScadenzeCreate")
+  invitiCreate        InvitoAzienda[]   @relation("InvitiCreate")
+  sociCollegati       Socio[]           @relation("SocioUtente")
 
   @@map("utenti")
 }
@@ -257,6 +272,7 @@ model PresetRipartizioneSocio {
 model LogAttivita {
   id          Int           @id @default(autoincrement())
   userId      Int           @map("user_id")
+  societaId   Int?          @map("societa_id")
   azione      AzioneLog
   tabella     String        @db.VarChar(50)
   recordId    Int           @map("record_id")
@@ -265,11 +281,13 @@ model LogAttivita {
   ipAddress   String?       @map("ip_address") @db.VarChar(45)
   timestamp   DateTime      @default(now())
 
-  utente Utente @relation(fields: [userId], references: [id])
+  utente  Utente   @relation(fields: [userId], references: [id])
+  societa Societa? @relation(fields: [societaId], references: [id])
 
   @@index([userId])
   @@index([tabella, recordId])
   @@index([timestamp])
+  @@index([societaId, timestamp])
   @@map("log_attivita")
 }
 
@@ -1028,4 +1046,133 @@ model CausaleContabile {
   attivo          Boolean   @default(true)
 
   @@map("causali_contabili")
+}
+
+// ─── Multi-azienda ───
+
+enum RuoloAzienda {
+  ADMIN
+  STANDARD
+  COMMERCIALISTA
+  @@map("ruolo_azienda")
+}
+
+enum TipoScadenza {
+  FISCALE
+  CONTABILE
+  GENERICA
+  @@map("tipo_scadenza")
+}
+
+enum PrioritaScadenza {
+  ALTA
+  MEDIA
+  BASSA
+  @@map("priorita_scadenza")
+}
+
+enum TipoAlert {
+  SCADENZA_IMMINENTE
+  SCRITTURA_PROVVISORIA
+  IVA_DA_LIQUIDARE
+  BILANCIO_NON_QUADRA
+  GENERICO
+  @@map("tipo_alert")
+}
+
+enum LivelloAlert {
+  INFO
+  WARNING
+  ERRORE
+  @@map("livello_alert")
+}
+
+model UtenteAzienda {
+  id              Int           @id @default(autoincrement())
+  utenteId        Int           @map("utente_id")
+  societaId       Int           @map("societa_id")
+  ruolo           RuoloAzienda
+  attivo          Boolean       @default(true)
+  ultimoAccesso   DateTime?     @map("ultimo_accesso")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  utente          Utente        @relation(fields: [utenteId], references: [id])
+  societa         Societa       @relation(fields: [societaId], references: [id])
+  note            NotaAzienda[]
+
+  @@unique([utenteId, societaId])
+  @@index([utenteId])
+  @@index([societaId])
+  @@map("utenti_azienda")
+}
+
+model NotaAzienda {
+  id                Int           @id @default(autoincrement())
+  utenteAziendaId   Int           @map("utente_azienda_id")
+  testo             String        @db.Text
+  colore            String?       @db.VarChar(20)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  utenteAzienda     UtenteAzienda @relation(fields: [utenteAziendaId], references: [id], onDelete: Cascade)
+
+  @@index([utenteAziendaId])
+  @@map("note_azienda")
+}
+
+model ScadenzaAzienda {
+  id                  Int              @id @default(autoincrement())
+  societaId           Int              @map("societa_id")
+  createdByUtenteId   Int              @map("created_by_utente_id")
+  descrizione         String           @db.VarChar(500)
+  dataScadenza        DateTime         @db.Date @map("data_scadenza")
+  completata          Boolean          @default(false)
+  dataCompletamento   DateTime?        @map("data_completamento")
+  tipoScadenza        TipoScadenza     @map("tipo_scadenza")
+  priorita            PrioritaScadenza
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  societa             Societa          @relation(fields: [societaId], references: [id])
+  createdBy           Utente           @relation("ScadenzeCreate", fields: [createdByUtenteId], references: [id])
+
+  @@index([societaId, dataScadenza])
+  @@index([societaId, completata])
+  @@map("scadenze_azienda")
+}
+
+model AlertAzienda {
+  id          Int           @id @default(autoincrement())
+  societaId   Int           @map("societa_id")
+  tipo        TipoAlert     @map("tipo")
+  messaggio   String        @db.VarChar(500)
+  livello     LivelloAlert
+  letto       Boolean       @default(false)
+  link        String?       @db.VarChar(255)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  societa     Societa       @relation(fields: [societaId], references: [id])
+
+  @@index([societaId, letto])
+  @@index([societaId, createdAt])
+  @@map("alert_azienda")
+}
+
+model InvitoAzienda {
+  id                  Int           @id @default(autoincrement())
+  societaId           Int           @map("societa_id")
+  email               String        @db.VarChar(255)
+  ruolo               RuoloAzienda
+  token               String        @unique @db.VarChar(255)
+  scadenza            DateTime
+  accettato           Boolean       @default(false)
+  createdByUtenteId   Int           @map("created_by_utente_id")
+  createdAt           DateTime      @default(now()) @map("created_at")
+
+  societa             Societa       @relation(fields: [societaId], references: [id])
+  createdBy           Utente        @relation("InvitiCreate", fields: [createdByUtenteId], references: [id])
+
+  @@unique([societaId, email])
+  @@map("inviti_azienda")
 }
