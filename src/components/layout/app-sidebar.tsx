@@ -56,6 +56,7 @@ const mainNavItems: NavItem[] = [
 
 const bilancioNavItems: NavItem[] = [
   { title: "Bilancio", href: "/bilancio", icon: BarChart3 },
+  { title: "Libro Giornale", href: "/bilancio/libro-giornale", icon: ScrollText },
   { title: "Anagrafiche", href: "/bilancio/anagrafiche", icon: Users },
   { title: "Piano dei Conti", href: "/bilancio/piano-dei-conti", icon: ListTree },
   { title: "Registri IVA", href: "/bilancio/registri-iva", icon: FileText },
