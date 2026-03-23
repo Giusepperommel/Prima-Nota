@@ -6,6 +6,7 @@ import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 import { logAttivita } from "@/lib/log-helper";
 import { processIva } from "@/lib/iva/engine";
 import { getNextProtocollo, formatProtocollo } from "@/lib/iva/doppia-registrazione";
+import { generaScritturaPerOperazione } from "@/lib/contabilita/db-scrittura";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -776,6 +777,46 @@ export async function PUT(request: Request, context: RouteContext) {
         }
       }
 
+      // --- Regenerate scrittura contabile ---
+      try {
+        // Delete old scritture (cascades to movimenti via onDelete: Cascade)
+        await tx.scritturaContabile.deleteMany({
+          where: { operazioneId: operazioneId },
+        });
+
+        // Regenerate scrittura with updated data
+        await generaScritturaPerOperazione({
+          tx,
+          operazioneId,
+          societaId,
+          operazione: {
+            tipoOperazione,
+            dataOperazione: new Date(dataOperazione),
+            descrizione,
+            importoTotale: importo,
+            importoImponibile: importoImponibile ? parseFloat(String(importoImponibile)) : undefined,
+            importoIva: importoIva ? parseFloat(String(importoIva)) : undefined,
+            aliquotaIva: aliquotaIva ? parseFloat(String(aliquotaIva)) : undefined,
+            ivaDetraibile: ivaDetraibile ? parseFloat(String(ivaDetraibile)) : undefined,
+            ivaIndetraibile: ivaIndetraibile ? parseFloat(String(ivaIndetraibile)) : undefined,
+            numeroDocumento: numeroDocumento || undefined,
+          },
+          categoriaContoId: categoria?.contoDefaultId ?? null,
+          anagraficaDenominazione: undefined,
+          userId,
+          isCespite: tipoOperazione === "CESPITE",
+          isReverseCharge: Boolean(isReverseChargeInterno),
+          isNotaCredito: false,
+          isSplitPayment: false,
+        });
+      } catch (scritturaError) {
+        // Non-blocking: log the error but don't fail the operation
+        console.error(
+          "[Scritture] Errore rigenerazione scrittura contabile su PUT:",
+          scritturaError
+        );
+      }
+
       return op;
     });
 
@@ -885,6 +926,12 @@ export async function DELETE(request: Request, context: RouteContext) {
           data: { eliminato: true },
         });
       }
+
+      // Soft-delete linked scritture contabili
+      await tx.scritturaContabile.updateMany({
+        where: { operazioneId: operazioneId, eliminato: false },
+        data: { eliminato: true },
+      });
     });
 
     // Log the deletion
