@@ -37,6 +37,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { FormScritturaManuale } from "@/components/contabilita/form-scrittura-manuale";
 
 type Movimento = {
   id: number;
@@ -182,6 +183,9 @@ export function LibroGiornaleContent({ isCommercialista }: Props) {
 
   // Expanded rows
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  // Nuova scrittura dialog
+  const [nuovaOpen, setNuovaOpen] = useState(false);
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -357,11 +361,9 @@ export function LibroGiornaleContent({ isCommercialista }: Props) {
             <div className="flex-1" />
 
             {isCommercialista && (
-              <Button asChild>
-                <a href="/bilancio/libro-giornale/nuova">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuova scrittura
-                </a>
+              <Button onClick={() => setNuovaOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuova scrittura
               </Button>
             )}
           </div>
@@ -467,6 +469,15 @@ export function LibroGiornaleContent({ isCommercialista }: Props) {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+      )}
+
+      {/* Nuova Scrittura Dialog */}
+      {isCommercialista && (
+        <FormScritturaManuale
+          open={nuovaOpen}
+          onOpenChange={setNuovaOpen}
+          onSuccess={fetchScritture}
+        />
       )}
 
       {/* Delete Dialog */}
