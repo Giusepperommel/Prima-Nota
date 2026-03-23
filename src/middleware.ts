@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 
 const publicPaths = ["/login", "/registrazione", "/verifica-email", "/reset-password", "/api/auth"];
-const noSocietaRequiredPaths = ["/crea-societa", "/api/societa"];
+const noSocietaRequiredPaths = ["/crea-societa", "/api/societa", "/aziende", "/api/auth/switch-societa", "/api/aziende"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -32,14 +32,19 @@ export default auth((req) => {
     return Response.redirect(verificaUrl);
   }
 
-  // Se l'utente non ha una societa associata, redirect a creazione societa
-  // (SUPER_ADMIN puo' navigare senza societa)
+  // Se l'utente non ha una societa associata, redirect in base al numero di aziende
   if (
     user &&
     user.societaId == null &&
-    user.ruolo !== "SUPER_ADMIN" &&
+    !user.isSuperAdmin &&
     !noSocietaRequiredPaths.some((path) => pathname.startsWith(path))
   ) {
+    const numeroAziende = user.numeroAziende ?? 0;
+    if (numeroAziende > 1) {
+      const aziendeUrl = new URL("/aziende", req.url);
+      return Response.redirect(aziendeUrl);
+    }
+    // numeroAziende === 0 or 1 (1 shouldn't happen — auto-selected in auth)
     const creaSocietaUrl = new URL("/crea-societa", req.url);
     return Response.redirect(creaSocietaUrl);
   }
