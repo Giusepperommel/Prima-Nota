@@ -12,7 +12,7 @@ export async function getSessionUser(): Promise<SessionUser> {
 
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (user.ruolo !== "ADMIN" && user.ruolo !== "SUPER_ADMIN") {
+  if (user.ruolo !== "ADMIN" && user.ruolo !== "SUPER_ADMIN" && !user.isSuperAdmin) {
     redirect("/dashboard");
   }
   return user;

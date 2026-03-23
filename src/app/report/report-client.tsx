@@ -72,7 +72,7 @@ type SocioOption = {
 
 type Props = {
   ruolo: string;
-  socioId: number;
+  socioId: number | null;
   soci: SocioOption[];
 };
 

@@ -1,15 +1,16 @@
-import type { RuoloUtente } from "@prisma/client";
-
 export type SessionUser = {
   id: number;
   email: string;
   nome: string;
   cognome: string;
-  ruolo: RuoloUtente;
-  socioId: number;
+  ruolo: string;                 // Populated from UtenteAzienda.ruolo via mapRuoloForSession
+  ruoloAzienda: string | null;   // Original role (ADMIN|STANDARD|COMMERCIALISTA)
+  isSuperAdmin: boolean;
+  socioId: number | null;        // null for commercialista
   societaId: number | null;
   quotaPercentuale: number;
   emailVerificata: boolean;
   modalitaAvanzata: boolean;
   modalitaCommercialista: boolean;
+  numeroAziende: number;
 };

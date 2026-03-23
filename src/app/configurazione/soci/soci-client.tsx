@@ -75,7 +75,7 @@ const emptyForm: SocioFormData = {
 type Props = {
   initialSoci: SocioData[];
   initialSommaQuote: number;
-  currentSocioId: number;
+  currentSocioId: number | null;
 };
 
 type InviteFormData = {
