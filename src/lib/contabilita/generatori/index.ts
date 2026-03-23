@@ -9,6 +9,7 @@ import { generaDividendi } from "./dividendi";
 import { generaLiquidazioneIva } from "./liquidazione-iva";
 import { generaPagamento } from "./pagamento";
 import { generaOperazioneGenerica } from "./operazione-generica";
+import { generaChiusuraEsercizio } from "./chiusura-esercizio";
 import type { Generatore } from "../types";
 
 export const GENERATORI: Record<string, Generatore> = {
@@ -30,6 +31,10 @@ export const GENERATORI: Record<string, Generatore> = {
   PG: generaPagamento,
   IN: generaPagamento,
   OG: generaOperazioneGenerica,
+  SC: generaChiusuraEsercizio,
+  SA: generaChiusuraEsercizio,
+  SAS: generaChiusuraEsercizio,
+  ST: generaChiusuraEsercizio,
 };
 
 export {
@@ -44,4 +49,5 @@ export {
   generaLiquidazioneIva,
   generaPagamento,
   generaOperazioneGenerica,
+  generaChiusuraEsercizio,
 };
