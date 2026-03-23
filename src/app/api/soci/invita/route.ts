@@ -40,46 +40,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // Cerca il socio con questa email
-    const socio = await prisma.socio.findUnique({
+    // Cerca l'utente con questa email
+    const utente = await prisma.utente.findUnique({
       where: { email },
-      include: {
-        utente: { select: { emailVerificata: true } },
-      },
+      select: { id: true, emailVerificata: true, socioId: true },
     });
 
-    if (!socio) {
+    if (!utente) {
       return NextResponse.json(
         { error: "Nessun utente registrato con questa email" },
         { status: 404 }
       );
     }
 
-    if (!socio.utente) {
-      return NextResponse.json(
-        { error: "L'utente non ha un account attivo" },
-        { status: 400 }
-      );
-    }
-
-    if (!socio.utente.emailVerificata) {
+    if (!utente.emailVerificata) {
       return NextResponse.json(
         { error: "L'utente non ha ancora verificato la sua email" },
         { status: 400 }
       );
     }
 
-    if (socio.societaId !== null) {
-      return NextResponse.json(
-        { error: "L'utente e' gia associato a una societa" },
-        { status: 409 }
-      );
-    }
+    // Verifica che non abbia gia' accesso a questa azienda
+    const esisteUtenteAzienda = await prisma.utenteAzienda.findUnique({
+      where: { utenteId_societaId: { utenteId: utente.id, societaId } },
+    });
 
-    if (!socio.attivo) {
+    if (esisteUtenteAzienda) {
       return NextResponse.json(
-        { error: "L'utente e' disattivato" },
-        { status: 400 }
+        { error: "L'utente ha gia' accesso a questa azienda" },
+        { status: 409 }
       );
     }
 
@@ -96,16 +85,39 @@ export async function POST(request: Request) {
 
     const nuovaSomma = sommaQuoteAttuali + quotaPercentuale;
 
-    // Associa il socio alla societa
-    const socioAggiornato = await prisma.socio.update({
-      where: { id: socio.id },
-      data: {
-        societaId,
-        ruolo: ruolo || "STANDARD",
-        quotaPercentuale,
-        codiceFiscale: codiceFiscale || socio.codiceFiscale,
-        dataIngresso: dataIngresso ? new Date(dataIngresso) : new Date(),
-      },
+    // Recupera il socio originale per nome/cognome
+    const socioOriginale = await prisma.socio.findUnique({
+      where: { id: utente.socioId },
+      select: { nome: true, cognome: true, codiceFiscale: true },
+    });
+
+    // Crea socio per questa azienda e UtenteAzienda in una transazione
+    const result = await prisma.$transaction(async (tx) => {
+      // Crea (o riusa) il Socio per questa azienda
+      const socioAzienda = await tx.socio.create({
+        data: {
+          societaId,
+          nome: socioOriginale?.nome ?? "",
+          cognome: socioOriginale?.cognome ?? "",
+          email,
+          codiceFiscale: codiceFiscale || socioOriginale?.codiceFiscale || "",
+          ruolo: ruolo || "STANDARD",
+          quotaPercentuale,
+          dataIngresso: dataIngresso ? new Date(dataIngresso) : new Date(),
+          utenteId: utente.id,
+        },
+      });
+
+      // Crea UtenteAzienda
+      await tx.utenteAzienda.create({
+        data: {
+          utenteId: utente.id,
+          societaId,
+          ruolo: ruolo === "ADMIN" ? "ADMIN" : "STANDARD",
+        },
+      });
+
+      return socioAzienda;
     });
 
     const warningQuote =
@@ -114,16 +126,16 @@ export async function POST(request: Request) {
         : null;
 
     return NextResponse.json({
-      id: socioAggiornato.id,
-      nome: socioAggiornato.nome,
-      cognome: socioAggiornato.cognome,
-      email: socioAggiornato.email,
-      codiceFiscale: socioAggiornato.codiceFiscale,
-      quotaPercentuale: Number(socioAggiornato.quotaPercentuale),
-      ruolo: socioAggiornato.ruolo,
-      dataIngresso: socioAggiornato.dataIngresso?.toISOString().split("T")[0] ?? null,
-      attivo: socioAggiornato.attivo,
-      societaId: socioAggiornato.societaId,
+      id: result.id,
+      nome: result.nome,
+      cognome: result.cognome,
+      email: result.email,
+      codiceFiscale: result.codiceFiscale,
+      quotaPercentuale: Number(result.quotaPercentuale),
+      ruolo: result.ruolo,
+      dataIngresso: result.dataIngresso?.toISOString().split("T")[0] ?? null,
+      attivo: result.attivo,
+      societaId: result.societaId,
       warningQuote,
     });
   } catch (error) {
