@@ -24,6 +24,7 @@ import {
   ChevronDown,
   BookText,
   ClipboardCheck,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +77,7 @@ const adminNavItems: NavItem[] = [
   { title: "Ricorrenze", href: "/configurazione/ricorrenze", icon: RepeatIcon },
   { title: "Ripartizioni", href: "/configurazione/ripartizioni", icon: Percent },
   { title: "Log Attivita", href: "/configurazione/log", icon: ScrollText },
+  { title: "Accessi", href: "/configurazione/accessi", icon: ShieldCheck },
 ];
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
