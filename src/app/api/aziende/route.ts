@@ -24,7 +24,6 @@ export async function GET() {
             partitaIva: true,
           },
         },
-        note: { select: { id: true } },
       },
       orderBy: { ultimoAccesso: { sort: "desc", nulls: "last" } },
     });
@@ -38,7 +37,7 @@ export async function GET() {
       utentiAzienda.map(async (ua) => {
         const societaId = ua.societaId;
 
-        const [fatturatoResult, costiResult, alertNonLetti, prossimaScadenza] =
+        const [fatturatoResult, costiResult, alertNonLetti, scadenze, noteAzienda] =
           await Promise.all([
             // Fatturato YTD
             prisma.operazione.aggregate({
@@ -68,16 +67,30 @@ export async function GET() {
             prisma.alertAzienda.count({
               where: { societaId, letto: false },
             }),
-            // Prossima scadenza
-            prisma.scadenzaAzienda.findFirst({
+            // All upcoming scadenze (incomplete)
+            prisma.scadenzaAzienda.findMany({
               where: { societaId, completata: false },
               orderBy: { dataScadenza: "asc" },
+              take: 10,
               select: {
                 id: true,
                 descrizione: true,
                 dataScadenza: true,
                 tipoScadenza: true,
                 priorita: true,
+                completata: true,
+              },
+            }),
+            // All notes for this user-company association
+            prisma.notaAzienda.findMany({
+              where: { utenteAziendaId: ua.id },
+              orderBy: { updatedAt: "desc" },
+              select: {
+                id: true,
+                testo: true,
+                colore: true,
+                createdAt: true,
+                updatedAt: true,
               },
             }),
           ]);
@@ -90,15 +103,15 @@ export async function GET() {
           fatturatoYTD: Number(fatturatoResult._sum.importoTotale ?? 0),
           costiYTD: Number(costiResult._sum.importoTotale ?? 0),
           alertNonLetti,
-          prossimaScadenza: prossimaScadenza
-            ? {
-                ...prossimaScadenza,
-                dataScadenza: prossimaScadenza.dataScadenza
-                  .toISOString()
-                  .split("T")[0],
-              }
-            : null,
-          noteCount: ua.note.length,
+          scadenze: scadenze.map((s) => ({
+            ...s,
+            dataScadenza: s.dataScadenza.toISOString().split("T")[0],
+          })),
+          note: noteAzienda.map((n) => ({
+            ...n,
+            createdAt: n.createdAt.toISOString(),
+            updatedAt: n.updatedAt.toISOString(),
+          })),
         };
       })
     );
