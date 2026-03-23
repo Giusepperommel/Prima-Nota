@@ -13,14 +13,6 @@ export async function POST(request: Request) {
 
     const user = session.user as any;
 
-    // Solo utenti senza societa possono crearne una
-    if (user.societaId !== null && user.societaId !== undefined) {
-      return NextResponse.json(
-        { error: "Sei gia associato a una societa" },
-        { status: 400 }
-      );
-    }
-
     const body = await request.json();
     const {
       ragioneSociale,
@@ -118,7 +110,16 @@ export async function POST(request: Request) {
         },
       });
 
-      // 3. Crea le categorie di spesa standard
+      // 3. Crea associazione UtenteAzienda con ruolo ADMIN
+      await tx.utenteAzienda.create({
+        data: {
+          utenteId: user.id,
+          societaId: nuovaSocieta.id,
+          ruolo: 'ADMIN',
+        },
+      });
+
+      // 4. Crea le categorie di spesa standard
       const categorieDefault = getCategorieDefault(
         tipoAttivita || "SRL",
         regimeFiscale || "ORDINARIO"
