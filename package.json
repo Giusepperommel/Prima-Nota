@@ -14,7 +14,8 @@
     "db:reset": "npx prisma migrate reset",
     "db:studio": "npx prisma studio",
     "seed:contabilita": "npx tsx prisma/seed-contabilita.ts",
-    "seed:scritture": "npx tsx prisma/seed-scritture.ts"
+    "seed:scritture": "npx tsx prisma/seed-scritture.ts",
+    "seed:multi-azienda": "npx tsx prisma/seed-multi-azienda.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
