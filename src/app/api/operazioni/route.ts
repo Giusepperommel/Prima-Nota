@@ -12,6 +12,7 @@ import {
 import { generaPianoPagamento } from "@/lib/calcoli-pagamenti";
 import { processIva } from "@/lib/iva/engine";
 import { getNextProtocollo, formatProtocollo } from "@/lib/iva/doppia-registrazione";
+import { generaScritturaPerOperazione } from "@/lib/contabilita/db-scrittura";
 
 export async function GET(request: NextRequest) {
   try {
@@ -667,6 +668,8 @@ export async function POST(request: NextRequest) {
       }
 
       // --- IVA Engine: autofattura creation for foreign/reverse-charge invoices ---
+      let isReverseChargeDetected = false;
+      let tipoDocumentoSdiDetected: string | undefined;
       if (tipoMerce) {
         // Fetch anagrafica nazione if fornitore or cliente is set
         let nazioneFornitore: string | null = null;
@@ -692,6 +695,9 @@ export async function POST(request: NextRequest) {
             isReverseChargeInterno: Boolean(isReverseChargeInterno),
             sanMarinoConIva: Boolean(sanMarinoConIva),
           });
+
+          isReverseChargeDetected = !!ivaResult.classification.richiedeAutofattura;
+          tipoDocumentoSdiDetected = ivaResult.autofattura?.tipoDocumentoSdi;
 
           // Create autofattura if required
           if (ivaResult.classification.richiedeAutofattura && ivaResult.autofattura) {
@@ -824,6 +830,41 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+      }
+
+      // --- Scrittura contabile generation ---
+      try {
+        await generaScritturaPerOperazione({
+          tx,
+          operazioneId: op.id,
+          societaId,
+          operazione: {
+            tipoOperazione,
+            dataOperazione: new Date(dataOperazione),
+            descrizione,
+            importoTotale: Number(importoTotale),
+            importoImponibile: importoImponibile ? Number(importoImponibile) : undefined,
+            importoIva: importoIva ? Number(importoIva) : undefined,
+            aliquotaIva: aliquotaIva ? Number(aliquotaIva) : undefined,
+            ivaDetraibile: ivaDetraibile ? Number(ivaDetraibile) : undefined,
+            ivaIndetraibile: ivaIndetraibile ? Number(ivaIndetraibile) : undefined,
+            numeroDocumento: numeroDocumento || undefined,
+          },
+          categoriaContoId: categoria?.contoDefaultId ?? null,
+          anagraficaDenominazione: undefined,
+          userId,
+          isCespite: tipoOperazione === "CESPITE",
+          isReverseCharge: isReverseChargeDetected,
+          isNotaCredito: false,
+          isSplitPayment: false,
+          tipoDocumentoSdi: tipoDocumentoSdiDetected,
+        });
+      } catch (scritturaError) {
+        // Non-blocking: log the error but don't fail the operation
+        console.error(
+          "[Scritture] Errore generazione scrittura contabile:",
+          scritturaError
+        );
       }
 
       return op;
