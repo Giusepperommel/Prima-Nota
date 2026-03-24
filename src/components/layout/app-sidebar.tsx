@@ -67,6 +67,7 @@ const bilancioNavItems: NavItem[] = [
   { title: "Anagrafiche", href: "/bilancio/anagrafiche", icon: Users },
   { title: "Piano dei Conti", href: "/bilancio/piano-dei-conti", icon: ListTree },
   { title: "Registri IVA", href: "/bilancio/registri-iva", icon: FileText },
+  { title: "Liquidazioni IVA", href: "/bilancio/liquidazioni-iva", icon: Percent },
   { title: "Ritenute", href: "/bilancio/ritenute", icon: Scissors },
   { title: "Chiusura Esercizio", href: "/bilancio/chiusura-esercizio", icon: CalendarCheck },
   { title: "Fatture Elettroniche", href: "/fatture-elettroniche", icon: Receipt },

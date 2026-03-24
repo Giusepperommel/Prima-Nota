@@ -27,6 +27,16 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+
+interface TotaleAliquota {
+  aliquota: number | null;
+  natura: string | null;
+  totaleImponibile: number;
+  totaleIva: number;
+  count: number;
+}
 
 interface RegistroEntry {
   id: number;
@@ -102,6 +112,9 @@ export function RegistriIvaContent() {
   const [entries, setEntries] = useState<RegistroEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Totali per aliquota from API
+  const [totaliPerAliquota, setTotaliPerAliquota] = useState<TotaleAliquota[]>([]);
+
   // Filters
   const [filtroEstere, setFiltroEstere] = useState(false);
   const [filtroReverseCharge, setFiltroReverseCharge] = useState(false);
@@ -121,6 +134,7 @@ export function RegistriIvaContent() {
       if (!res.ok) throw new Error("Errore nel caricamento");
       const json = await res.json();
       setEntries(json.data);
+      setTotaliPerAliquota(json.totaliPerAliquota ?? []);
     } catch {
       toast.error("Errore nel caricamento del registro IVA");
     } finally {
@@ -364,6 +378,66 @@ export function RegistriIvaContent() {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Riepilogo per aliquota — visible in modalita avanzata */}
+      {modalitaAvanzata && !loading && totaliPerAliquota.length > 0 && (
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors">
+            <span className="text-sm font-semibold">
+              Riepilogo per aliquota {mese === "ALL" ? "(annuale)" : ""}
+            </span>
+            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border rounded-md mt-2 table-responsive">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aliquota / Natura</TableHead>
+                    <TableHead className="text-right">N. operazioni</TableHead>
+                    <TableHead className="text-right">Totale imponibile</TableHead>
+                    <TableHead className="text-right">Totale IVA</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {totaliPerAliquota.map((t, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">
+                        {t.aliquota != null
+                          ? `${t.aliquota}%`
+                          : t.natura
+                            ? `${t.natura}`
+                            : "Altro"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{t.count}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(t.totaleImponibile)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(t.totaleIva)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="font-semibold">Totale</TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      {totaliPerAliquota.reduce((s, t) => s + t.count, 0)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      {formatCurrency(totaliPerAliquota.reduce((s, t) => s + t.totaleImponibile, 0))}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      {formatCurrency(totaliPerAliquota.reduce((s, t) => s + t.totaleIva, 0))}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }
