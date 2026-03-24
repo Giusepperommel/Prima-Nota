@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Receipt,
   Scale,
+  FileCheck2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,6 +73,7 @@ const bilancioNavItems: NavItem[] = [
   { title: "Ritenute", href: "/bilancio/ritenute", icon: Scissors },
   { title: "Bilancio Civilistico", href: "/bilancio/bilancio-civilistico", icon: Scale },
   { title: "Chiusura Esercizio", href: "/bilancio/chiusura-esercizio", icon: CalendarCheck },
+  { title: "Dichiarazioni Fiscali", href: "/dichiarazioni", icon: FileCheck2 },
   { title: "Fatture Elettroniche", href: "/fatture-elettroniche", icon: Receipt },
 ];
 
