@@ -42,6 +42,7 @@ model Societa {
   alert               AlertAzienda[]
   inviti              InvitoAzienda[]
   logAttivita         LogAttivita[]
+  lipeInvii           LipeInvio[]
 
   // Fatturazione elettronica - dati CedentePrestatore
   reaUfficio             String?  @map("rea_ufficio") @db.VarChar(2)
@@ -779,6 +780,13 @@ enum TipoLiquidazione {
   TRIMESTRALE
 }
 
+enum StatoLipe {
+  BOZZA
+  GENERATA
+  INVIATA
+  @@map("stato_lipe")
+}
+
 enum TipoMerce {
   BENI
   SERVIZI
@@ -962,6 +970,16 @@ model LiquidazioneIva {
   codiceTributo            String?          @map("codice_tributo") @db.VarChar(4)
   dataVersamento           DateTime?        @map("data_versamento")
   statoVersamento          StatoVersamento  @default(DA_VERSARE) @map("stato_versamento")
+  totaleOperazioniAttive   Decimal          @default(0) @map("totale_operazioni_attive") @db.Decimal(12, 2)
+  totaleOperazioniPassive  Decimal          @default(0) @map("totale_operazioni_passive") @db.Decimal(12, 2)
+  debitoPeriodoPrecedente  Decimal          @default(0) @map("debito_periodo_precedente") @db.Decimal(12, 2)
+  creditoAnnoPrecedente    Decimal          @default(0) @map("credito_anno_precedente") @db.Decimal(12, 2)
+  versamentiAutoUE         Decimal          @default(0) @map("versamenti_auto_ue") @db.Decimal(12, 2)
+  creditiImposta           Decimal          @default(0) @map("crediti_imposta") @db.Decimal(12, 2)
+  interessiDovuti          Decimal          @default(0) @map("interessi_dovuti") @db.Decimal(12, 2)
+  metodoAcconto            Int?             @map("metodo_acconto")
+  stampaDefinitiva         Boolean          @default(false) @map("stampa_definitiva")
+  dataStampaDefinitiva     DateTime?        @map("data_stampa_definitiva")
   lipeInviata              Boolean          @default(false) @map("lipe_inviata")
   lipeDataInvio            DateTime?        @map("lipe_data_invio")
   createdAt                DateTime         @default(now()) @map("created_at")
@@ -971,6 +989,26 @@ model LiquidazioneIva {
 
   @@unique([societaId, tipo, periodo, anno])
   @@map("liquidazioni_iva")
+}
+
+model LipeInvio {
+  id               Int       @id @default(autoincrement())
+  societaId        Int       @map("societa_id")
+  anno             Int
+  trimestre        Int
+  xmlContent       String    @map("xml_content") @db.LongText
+  nomeFile         String    @map("nome_file") @db.VarChar(50)
+  progressivoFile  String    @map("progressivo_file") @db.VarChar(5)
+  stato            StatoLipe @default(GENERATA)
+  dataGenerazione  DateTime  @default(now()) @map("data_generazione")
+  dataInvio        DateTime? @map("data_invio")
+  scadenzaInvio    DateTime  @map("scadenza_invio") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  societa Societa @relation(fields: [societaId], references: [id])
+
+  @@unique([societaId, anno, trimestre])
+  @@map("lipe_invii")
 }
 
 model Plafond {
