@@ -62,6 +62,11 @@ model Societa {
   sezionaliFattura       SezionaleFattura[]
   configurazioneProvider ConfigurazioneProvider?
 
+  // Relazioni dichiarazioni fiscali
+  f24Versamenti          F24Versamento[]
+  certificazioniUniche   CertificazioneUnica[]
+  dichiarazioniFiscali   DichiarazioneFiscale[]
+
   @@map("societa")
 }
 
@@ -839,10 +844,11 @@ model Anagrafica {
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
-  societa             Societa      @relation(fields: [societaId], references: [id])
-  operazioniFornitore Operazione[] @relation("FornitoreOperazioni")
-  operazioniCliente   Operazione[] @relation("ClienteOperazioni")
+  societa             Societa              @relation(fields: [societaId], references: [id])
+  operazioniFornitore Operazione[]         @relation("FornitoreOperazioni")
+  operazioniCliente   Operazione[]         @relation("ClienteOperazioni")
   ritenute            Ritenuta[]
+  certificazioniUniche CertificazioneUnica[]
 
   @@unique([societaId, partitaIva])
   @@map("anagrafiche")
@@ -1344,4 +1350,127 @@ model ConfigurazioneProvider {
   societa Societa @relation(fields: [societaId], references: [id])
 
   @@map("configurazione_provider")
+}
+
+// ─── Dichiarazioni Fiscali ───
+
+model F24Versamento {
+  id                Int       @id @default(autoincrement())
+  societaId         Int       @map("societa_id")
+  anno              Int
+  mese              Int
+  dataScadenza      DateTime  @map("data_scadenza") @db.Date
+  dataPagamento     DateTime? @map("data_pagamento") @db.Date
+  stato             StatoF24  @default(DA_PAGARE)
+  totaleDebito      Decimal   @map("totale_debito") @db.Decimal(12, 2)
+  totaleCredito     Decimal   @default(0) @map("totale_credito") @db.Decimal(12, 2)
+  totaleVersamento  Decimal   @map("totale_versamento") @db.Decimal(12, 2)
+  note              String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  societa Societa    @relation(fields: [societaId], references: [id])
+  righe   F24Riga[]
+
+  @@index([societaId, anno, mese])
+  @@index([societaId, stato])
+  @@map("f24_versamenti")
+}
+
+model F24Riga {
+  id                  Int        @id @default(autoincrement())
+  f24VersamentoId     Int        @map("f24_versamento_id")
+  sezione             SezioneF24
+  codiceTributo       String     @map("codice_tributo") @db.VarChar(10)
+  rateazione          String?    @db.VarChar(4)
+  annoRiferimento     Int        @map("anno_riferimento")
+  periodoRiferimento  String?    @map("periodo_riferimento") @db.VarChar(4)
+  importoDebito       Decimal    @default(0) @map("importo_debito") @db.Decimal(12, 2)
+  importoCredito      Decimal    @default(0) @map("importo_credito") @db.Decimal(12, 2)
+  descrizione         String?    @db.VarChar(255)
+
+  f24Versamento F24Versamento @relation(fields: [f24VersamentoId], references: [id], onDelete: Cascade)
+
+  @@map("f24_righe")
+}
+
+model CertificazioneUnica {
+  id                Int       @id @default(autoincrement())
+  societaId         Int       @map("societa_id")
+  anno              Int
+  anagraficaId      Int       @map("anagrafica_id")
+  causaleCu         String    @map("causale_cu") @db.VarChar(2)
+  ammontareLordo    Decimal   @map("ammontare_lordo") @db.Decimal(12, 2)
+  imponibile        Decimal   @db.Decimal(12, 2)
+  ritenutaAcconto   Decimal   @map("ritenuta_acconto") @db.Decimal(12, 2)
+  rivalsaInps       Decimal   @default(0) @map("rivalsa_inps") @db.Decimal(12, 2)
+  cassaPrevidenza   Decimal   @default(0) @map("cassa_previdenza") @db.Decimal(12, 2)
+  stato             StatoCU   @default(BOZZA)
+  dataGenerazione   DateTime? @map("data_generazione")
+  dataInvio         DateTime? @map("data_invio")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  societa    Societa    @relation(fields: [societaId], references: [id])
+  anagrafica Anagrafica @relation(fields: [anagraficaId], references: [id])
+
+  @@unique([societaId, anno, anagraficaId])
+  @@index([societaId, anno])
+  @@map("certificazioni_uniche")
+}
+
+model DichiarazioneFiscale {
+  id               Int                @id @default(autoincrement())
+  societaId        Int                @map("societa_id")
+  anno             Int
+  tipo             TipoDichiarazione
+  stato            StatoDichiarazione @default(NON_INIZIATA)
+  datiCalcolo      Json?              @map("dati_calcolo")
+  dataGenerazione  DateTime?          @map("data_generazione")
+  dataInvio        DateTime?          @map("data_invio")
+  note             String?            @db.Text
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  societa Societa @relation(fields: [societaId], references: [id])
+
+  @@unique([societaId, anno, tipo])
+  @@index([societaId, anno])
+  @@map("dichiarazioni_fiscali")
+}
+
+enum StatoF24 {
+  DA_PAGARE
+  PAGATO
+  SCADUTO
+  @@map("stato_f24")
+}
+
+enum SezioneF24 {
+  ERARIO
+  INPS
+  REGIONI_ENTI_LOCALI
+  @@map("sezione_f24")
+}
+
+enum StatoCU {
+  BOZZA
+  GENERATA
+  INVIATA
+  @@map("stato_cu")
+}
+
+enum TipoDichiarazione {
+  REDDITI_SC
+  IRAP
+  MOD_770
+  @@map("tipo_dichiarazione")
+}
+
+enum StatoDichiarazione {
+  NON_INIZIATA
+  IN_PREPARAZIONE
+  GENERATA
+  INVIATA
+  @@map("stato_dichiarazione")
 }
