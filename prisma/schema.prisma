@@ -43,6 +43,7 @@ model Societa {
   inviti              InvitoAzienda[]
   logAttivita         LogAttivita[]
   lipeInvii           LipeInvio[]
+  bilanciGenerati     BilancioGenerato[]
 
   // Fatturazione elettronica - dati CedentePrestatore
   reaUfficio             String?  @map("rea_ufficio") @db.VarChar(2)
@@ -952,6 +953,24 @@ model ChiusuraEsercizio {
 
   @@unique([societaId, anno])
   @@map("chiusure_esercizio")
+}
+
+model BilancioGenerato {
+  id               Int      @id @default(autoincrement())
+  societaId        Int      @map("societa_id")
+  anno             Int
+  dataGenerazione  DateTime @default(now()) @map("data_generazione")
+  tipo             String   @default("ORDINARIO") @db.VarChar(20)
+  datiSp           Json     @map("dati_sp")
+  datiCe           Json     @map("dati_ce")
+  totaleAttivo     Decimal  @map("totale_attivo") @db.Decimal(14, 2)
+  totalePassivo    Decimal  @map("totale_passivo") @db.Decimal(14, 2)
+  utileEsercizio   Decimal  @map("utile_esercizio") @db.Decimal(14, 2)
+
+  societa Societa @relation(fields: [societaId], references: [id])
+
+  @@unique([societaId, anno])
+  @@map("bilanci_generati")
 }
 
 model LiquidazioneIva {
