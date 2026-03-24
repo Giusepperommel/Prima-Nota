@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { OperazioneForm } from "../operazione-form";
 import { SezionePagamenti } from "@/components/pagamenti/sezione-pagamenti";
 import { ScritturaOperazionePanel } from "@/components/contabilita/scrittura-operazione-panel";
+import { GeneraFatturaPanel } from "@/components/fatturazione/genera-fattura-panel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -267,6 +268,15 @@ export default async function DettaglioOperazionePage({ params }: Props) {
           <SezionePagamenti
             pianoPagamento={serializedOperazione.pianoPagamento}
             canEdit={canEdit}
+          />
+        </div>
+      )}
+      {(user.modalitaAvanzata || user.modalitaCommercialista) &&
+        operazione.tipoOperazione === "FATTURA_ATTIVA" && (
+        <div className="max-w-4xl mx-auto px-4 mt-6">
+          <GeneraFatturaPanel
+            operazioneId={operazione.id}
+            tipoOperazione={operazione.tipoOperazione}
           />
         </div>
       )}

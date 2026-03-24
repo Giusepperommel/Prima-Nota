@@ -25,6 +25,7 @@ import {
   BookText,
   ClipboardCheck,
   ShieldCheck,
+  Receipt,
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,7 @@ const bilancioNavItems: NavItem[] = [
   { title: "Registri IVA", href: "/bilancio/registri-iva", icon: FileText },
   { title: "Ritenute", href: "/bilancio/ritenute", icon: Scissors },
   { title: "Chiusura Esercizio", href: "/bilancio/chiusura-esercizio", icon: CalendarCheck },
+  { title: "Fatture Elettroniche", href: "/fatture-elettroniche", icon: Receipt },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -78,6 +80,7 @@ const adminNavItems: NavItem[] = [
   { title: "Ripartizioni", href: "/configurazione/ripartizioni", icon: Percent },
   { title: "Log Attivita", href: "/configurazione/log", icon: ScrollText },
   { title: "Accessi", href: "/configurazione/accessi", icon: ShieldCheck },
+  { title: "Fatturazione", href: "/configurazione/fatturazione", icon: Receipt },
 ];
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
