@@ -95,7 +95,57 @@ export async function GET(request: NextRequest) {
       doppiaRegistrazione: op.doppiaRegistrazione,
     }));
 
-    return NextResponse.json({ data: serialized });
+    // Compute totali per aliquota
+    const totaliMap = new Map<
+      string,
+      { aliquota: number | null; natura: string | null; totaleImponibile: number; totaleIva: number; count: number }
+    >();
+
+    for (const op of operazioni) {
+      const aliquota = op.aliquotaIva != null ? Number(op.aliquotaIva) : null;
+      const natura = op.naturaOperazioneIva ?? null;
+      const key = aliquota != null ? `aliq:${aliquota}` : `nat:${natura ?? "other"}`;
+
+      const existing = totaliMap.get(key);
+      const imponibile = Number(op.importoImponibile ?? 0);
+      const iva = Number(op.importoIva ?? 0);
+
+      if (existing) {
+        existing.totaleImponibile += imponibile;
+        existing.totaleIva += iva;
+        existing.count += 1;
+      } else {
+        totaliMap.set(key, {
+          aliquota,
+          natura,
+          totaleImponibile: imponibile,
+          totaleIva: iva,
+          count: 1,
+        });
+      }
+    }
+
+    const totaliPerAliquota = Array.from(totaliMap.values()).map((t) => ({
+      ...t,
+      totaleImponibile: Math.round(t.totaleImponibile * 100) / 100,
+      totaleIva: Math.round(t.totaleIva * 100) / 100,
+    }));
+
+    // Sort: aliquota entries first (descending), then natura entries
+    totaliPerAliquota.sort((a, b) => {
+      if (a.aliquota != null && b.aliquota != null) return b.aliquota - a.aliquota;
+      if (a.aliquota != null) return -1;
+      if (b.aliquota != null) return 1;
+      return (a.natura ?? "").localeCompare(b.natura ?? "");
+    });
+
+    const totaleGenerale = {
+      imponibile: Math.round(totaliPerAliquota.reduce((s, t) => s + t.totaleImponibile, 0) * 100) / 100,
+      iva: Math.round(totaliPerAliquota.reduce((s, t) => s + t.totaleIva, 0) * 100) / 100,
+      count: totaliPerAliquota.reduce((s, t) => s + t.count, 0),
+    };
+
+    return NextResponse.json({ data: serialized, totaliPerAliquota, totaleGenerale });
   } catch (error) {
     console.error("Errore nel recupero registri IVA:", error);
     return NextResponse.json(
