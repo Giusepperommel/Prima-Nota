@@ -32,10 +32,7 @@ export async function GET(
   });
 
   if (!bilancio) {
-    return NextResponse.json(
-      { error: "Bilancio non ancora generato per questo anno" },
-      { status: 404 }
-    );
+    return NextResponse.json({ bilancio: null });
   }
 
   return NextResponse.json({

@@ -15,10 +15,18 @@ export function generaFatturaAttiva(
   const isSplitPayment = causaleOverride === "FVS";
   const causale = isNotaCredito ? "NCV" : isSplitPayment ? "FVS" : "FV";
 
-  // Resolve ricavo account
+  // Resolve ricavo account — use structural RICAVI_PRESTAZIONI for fatture attive
+  // (categoriaContoId maps to cost accounts, not revenue accounts)
   const ricavoResult = contoEsplicito
     ? resolver.resolveEsplicito(contoEsplicito)
-    : resolver.resolveCategoria(categoriaContoId);
+    : (() => {
+        const strutturale = resolver.getStrutturale("RICAVI_PRESTAZIONI");
+        if (strutturale !== null) {
+          return { contoId: strutturale, warning: null };
+        }
+        // Fallback to categoria if structural not found
+        return resolver.resolveCategoria(categoriaContoId);
+      })();
 
   if (ricavoResult.contoId === null) {
     warnings.push(ricavoResult.warning ?? "Conto ricavo non risolvibile — scrittura provvisoria");

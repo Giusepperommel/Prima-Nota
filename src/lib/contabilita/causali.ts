@@ -40,6 +40,7 @@ export const CONTI_STRUTTURALI = {
   MINUSVALENZE:           '370.010',  // "Minusvalenze da alienazione" — CE B.14
 
   // Ricavi
+  RICAVI_PRESTAZIONI:     '400.001',  // "Ricavi per prestazioni di servizi" — CE A.1
   PLUSVALENZE:             '420.001',  // "Plusvalenze da realizzo cespiti" — CE A.5
   RIMBORSO_BOLLI:         '420.010',  // "Rimborso bolli a clienti" — CE A.5
 

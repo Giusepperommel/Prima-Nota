@@ -498,6 +498,11 @@ export async function POST(request: NextRequest) {
           fornitoreId: fornitoreId ? parseInt(String(fornitoreId), 10) : null,
           clienteId: clienteId ? parseInt(String(clienteId), 10) : null,
           tipoMerce: tipoMerce || null,
+          registroIva: tipoOperazione === "FATTURA_ATTIVA"
+            ? "VENDITE"
+            : (tipoOperazione === "COSTO" || tipoOperazione === "CESPITE")
+              ? "ACQUISTI"
+              : null,
         },
       });
 
