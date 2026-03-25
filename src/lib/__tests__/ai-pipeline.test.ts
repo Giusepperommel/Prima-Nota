@@ -36,7 +36,9 @@ describe("AiPipeline", () => {
     );
 
     expect(result.action).toBe("DETERMINISTIC");
-    expect(result.result).toEqual({ categoriaId: 5, conto: "Telefonia" });
+    if (result.action === "DETERMINISTIC") {
+      expect(result.result).toEqual({ categoriaId: 5, conto: "Telefonia" });
+    }
     expect(mockClassifier).not.toHaveBeenCalled();
   });
 

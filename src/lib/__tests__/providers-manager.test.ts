@@ -26,6 +26,7 @@ const baseConfig: ProviderConfig = {
   stato: "ATTIVO",
   credenziali: null,
   configExtra: null,
+  ultimoSync: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

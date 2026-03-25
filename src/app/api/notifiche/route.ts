@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest) {
     if (body.action === "markAsRead" && body.id) {
       await engine.markAsRead(body.id, userId);
     } else if (body.action === "markAllAsRead" && body.societaId) {
-      await engine.markAllAsRead(userId, body.societaId);
+      await engine.markAllAsRead(userId);
     } else {
       return NextResponse.json({ error: "Azione non valida" }, { status: 400 });
     }
