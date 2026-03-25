@@ -67,6 +67,11 @@ model Societa {
   certificazioniUniche   CertificazioneUnica[]
   dichiarazioniFiscali   DichiarazioneFiscale[]
 
+  // SP8-10 relations
+  pacchettiConservazione PacchettoConservazione[]
+  movimentiBancari       MovimentoBancario[]
+  scadenzePartitario     ScadenzaPartitario[]
+
   @@map("societa")
 }
 
@@ -241,6 +246,8 @@ model Operazione {
   operazioneRicorrente OperazioneRicorrente? @relation(fields: [operazioneRicorrenteId], references: [id])
   scrittureContabili  ScritturaContabile[]
   fatturaElettronica  FatturaElettronica?
+  movimentiBancari    MovimentoBancario[]
+  scadenzePartitario  ScadenzaPartitario[]
 
   @@index([societaId, dataOperazione])
   @@index([categoriaId])
@@ -408,6 +415,8 @@ model QuotaAmmortamento {
   aliquotaApplicata Decimal  @map("aliquota_applicata") @db.Decimal(5, 2)
   importoQuota      Decimal  @map("importo_quota") @db.Decimal(10, 2)
   fondoProgressivo  Decimal  @map("fondo_progressivo") @db.Decimal(10, 2)
+  importoQuotaFiscale    Decimal?  @map("importo_quota_fiscale") @db.Decimal(10, 2)
+  fondoProgressivoFiscale Decimal? @map("fondo_progressivo_fiscale") @db.Decimal(10, 2)
   createdAt         DateTime @default(now()) @map("created_at")
 
   cespite Cespite @relation(fields: [cespiteId], references: [id], onDelete: Cascade)
@@ -849,6 +858,7 @@ model Anagrafica {
   operazioniCliente   Operazione[]         @relation("ClienteOperazioni")
   ritenute            Ritenuta[]
   certificazioniUniche CertificazioneUnica[]
+  scadenzePartitario  ScadenzaPartitario[]
 
   @@unique([societaId, partitaIva])
   @@map("anagrafiche")
@@ -1473,4 +1483,122 @@ enum StatoDichiarazione {
   GENERATA
   INVIATA
   @@map("stato_dichiarazione")
+}
+
+// ============================================================================
+// SP8: Conservazione Sostitutiva
+// ============================================================================
+
+model PacchettoConservazione {
+  id              Int      @id @default(autoincrement())
+  societaId       Int      @map("societa_id")
+  anno            Int
+  tipo            TipoPacchettoConservazione
+  stato           StatoPacchettoConservazione @default(GENERATO)
+  hashSHA256      String   @map("hash_sha256") @db.VarChar(64)
+  marcaTemporale  DateTime? @map("marca_temporale")
+  firmaDigitale   String?  @map("firma_digitale") @db.Text
+  fileContenuto   String?  @map("file_contenuto") @db.LongText
+  metadatiXml     String?  @map("metadati_xml") @db.LongText
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  societa Societa @relation(fields: [societaId], references: [id])
+
+  @@index([societaId, anno])
+  @@map("pacchetti_conservazione")
+}
+
+enum TipoPacchettoConservazione {
+  FATTURE_ATTIVE
+  FATTURE_PASSIVE
+  LIBRO_GIORNALE
+  REGISTRI_IVA
+  @@map("tipo_pacchetto_conservazione")
+}
+
+enum StatoPacchettoConservazione {
+  GENERATO
+  FIRMATO
+  CONSERVATO
+  @@map("stato_pacchetto_conservazione")
+}
+
+// ============================================================================
+// SP9: Riconciliazione Bancaria
+// ============================================================================
+
+model MovimentoBancario {
+  id                         Int      @id @default(autoincrement())
+  societaId                  Int      @map("societa_id")
+  data                       DateTime @db.Date
+  descrizione                String   @db.Text
+  importo                    Decimal  @db.Decimal(12, 2)
+  segno                      SegnoMovimento
+  saldo                      Decimal? @db.Decimal(12, 2)
+  riferimentoEsterno         String?  @map("riferimento_esterno") @db.VarChar(100)
+  riconciliatoConOperazioneId Int?    @map("riconciliato_con_operazione_id")
+  statoRiconciliazione       StatoRiconciliazione @default(NON_RICONCILIATO) @map("stato_riconciliazione")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  societa    Societa     @relation(fields: [societaId], references: [id])
+  operazione Operazione? @relation(fields: [riconciliatoConOperazioneId], references: [id], onDelete: SetNull)
+
+  @@index([societaId, data])
+  @@index([statoRiconciliazione])
+  @@map("movimenti_bancari")
+}
+
+enum SegnoMovimento {
+  DARE
+  AVERE
+  @@map("segno_movimento")
+}
+
+enum StatoRiconciliazione {
+  NON_RICONCILIATO
+  RICONCILIATO
+  PARZIALE
+  @@map("stato_riconciliazione")
+}
+
+// ============================================================================
+// SP10: Partitario Clienti/Fornitori + Scadenziario
+// ============================================================================
+
+model ScadenzaPartitario {
+  id              Int      @id @default(autoincrement())
+  societaId       Int      @map("societa_id")
+  anagraficaId    Int      @map("anagrafica_id")
+  operazioneId    Int?     @map("operazione_id")
+  dataScadenza    DateTime @map("data_scadenza") @db.Date
+  importo         Decimal  @db.Decimal(12, 2)
+  importoPagato   Decimal  @default(0) @map("importo_pagato") @db.Decimal(12, 2)
+  stato           StatoScadenzaPartitario @default(APERTA)
+  tipo            TipoPartitario
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  societa    Societa    @relation(fields: [societaId], references: [id])
+  anagrafica Anagrafica @relation(fields: [anagraficaId], references: [id])
+  operazione Operazione? @relation(fields: [operazioneId], references: [id], onDelete: SetNull)
+
+  @@index([societaId, anagraficaId])
+  @@index([dataScadenza])
+  @@index([stato])
+  @@map("scadenze_partitario")
+}
+
+enum StatoScadenzaPartitario {
+  APERTA
+  PARZIALE
+  CHIUSA
+  @@map("stato_scadenza_partitario")
+}
+
+enum TipoPartitario {
+  CLIENTE
+  FORNITORE
+  @@map("tipo_partitario")
 }
