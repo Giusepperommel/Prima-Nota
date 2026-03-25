@@ -78,9 +78,18 @@ prisma/schema.prisma            # Add 4 new models + enums + Societa/Utente rela
 **Files:**
 - Modify: `prisma/schema.prisma`
 
-- [ ] **Step 1: Add Provider enums and model**
+- [ ] **Step 1: Rename existing ConfigurazioneProvider**
 
-Add after the existing `ConfigurazioneProvider` model:
+The existing `ConfigurazioneProvider` model (for fatturazione elettronica only) must be renamed to avoid confusion with the new generic `ProviderConfig`. Rename the model to `ConfigurazioneProviderFe`:
+
+1. In `prisma/schema.prisma`, rename `model ConfigurazioneProvider` to `model ConfigurazioneProviderFe`
+2. Update the relation on `Societa`: `configurazioneProvider ConfigurazioneProviderFe?`  → `configurazioneProviderFe ConfigurazioneProviderFe?`
+3. Search the codebase for all imports/usages of `ConfigurazioneProvider` or `configurazioneProvider` and update them to `ConfigurazioneProviderFe` / `configurazioneProviderFe`
+4. The `@@map("configurazione_provider")` stays the same — no DB migration needed, only Prisma client rename
+
+- [ ] **Step 2: Add Provider enums and model**
+
+Add after the renamed `ConfigurazioneProviderFe` model:
 
 ```prisma
 // ─── Provider/Adapter System ──────────────────────────────────────────────────
@@ -124,7 +133,7 @@ model ProviderConfig {
 }
 ```
 
-- [ ] **Step 2: Add AI Pipeline enums and model**
+- [ ] **Step 3: Add AI Pipeline enums and model**
 
 ```prisma
 // ─── AI Pipeline ──────────────────────────────────────────────────────────────
@@ -167,7 +176,7 @@ model AiSuggestion {
 }
 ```
 
-- [ ] **Step 3: Add Notification enums and models**
+- [ ] **Step 4: Add Notification enums and models**
 
 ```prisma
 // ─── Notification System ──────────────────────────────────────────────────────
@@ -251,7 +260,7 @@ model PreferenzaNotifica {
 
 **Note:** `Notifica` does NOT include `clienteDestinatarioId` at this stage. The `AccessoCliente` model doesn't exist yet (Sub-project 4). The field will be added when Sub-project 4 is implemented. For now, notifications only target `Utente`.
 
-- [ ] **Step 4: Add relation arrays to Societa**
+- [ ] **Step 5: Add relation arrays to Societa**
 
 Add inside the `Societa` model, after the existing `scadenzePartitario` relation:
 
@@ -262,7 +271,7 @@ Add inside the `Societa` model, after the existing `scadenzePartitario` relation
   notificheAutomazione   Notifica[]
 ```
 
-- [ ] **Step 5: Add relation arrays to Utente**
+- [ ] **Step 6: Add relation arrays to Utente**
 
 Find the `Utente` model and add:
 
@@ -272,7 +281,7 @@ Find the `Utente` model and add:
   preferenzeNotifica     PreferenzaNotifica[]
 ```
 
-- [ ] **Step 6: Run migration**
+- [ ] **Step 7: Run migration**
 
 ```bash
 npx prisma migrate dev --name sp0-architettura-fondazionale
@@ -280,11 +289,11 @@ npx prisma migrate dev --name sp0-architettura-fondazionale
 
 **Verify:** `npx prisma generate` succeeds. New models visible in Prisma client.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add prisma/
-git commit -m "feat(sp0): add schema for ProviderConfig, AiSuggestion, Notifica, PreferenzaNotifica"
+git add prisma/ src/
+git commit -m "feat(sp0): rename ConfigurazioneProvider, add ProviderConfig, AiSuggestion, Notifica, PreferenzaNotifica"
 ```
 
 ---
