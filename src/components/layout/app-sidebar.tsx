@@ -28,6 +28,9 @@ import {
   Receipt,
   Scale,
   FileCheck2,
+  Banknote,
+  BookMarked,
+  Archive,
 } from "lucide-react";
 import {
   Sidebar,
@@ -75,6 +78,8 @@ const bilancioNavItems: NavItem[] = [
   { title: "Chiusura Esercizio", href: "/bilancio/chiusura-esercizio", icon: CalendarCheck },
   { title: "Dichiarazioni Fiscali", href: "/dichiarazioni", icon: FileCheck2 },
   { title: "Fatture Elettroniche", href: "/fatture-elettroniche", icon: Receipt },
+  { title: "Riconciliazione Bancaria", href: "/riconciliazione-bancaria", icon: Banknote },
+  { title: "Partitario", href: "/partitario", icon: BookMarked },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -86,6 +91,7 @@ const adminNavItems: NavItem[] = [
   { title: "Log Attivita", href: "/configurazione/log", icon: ScrollText },
   { title: "Accessi", href: "/configurazione/accessi", icon: ShieldCheck },
   { title: "Fatturazione", href: "/configurazione/fatturazione", icon: Receipt },
+  { title: "Conservazione", href: "/configurazione/conservazione", icon: Archive },
 ];
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
