@@ -51,6 +51,7 @@ redditi/
 /api/dichiarazioni/f24/[id]/paga PATCH — segna come pagato
 /api/dichiarazioni/cu/genera     POST — genera CU per anno
 /api/dichiarazioni/cu            GET  — lista CU
+/api/dichiarazioni/cu/[id]/export GET  — export singola CU come JSON
 /api/dichiarazioni/riepilogo     GET  — dashboard data
 ```
 

@@ -3,7 +3,7 @@
 > Questo file documenta codici tributo F24, struttura CU, scadenze dichiarazioni e riferimenti di legge
 > per il modulo Dichiarazioni Fiscali.
 >
-> Ultimo aggiornamento: 2026-03-24
+> Ultimo aggiornamento: 2026-03-25
 
 ---
 
@@ -208,3 +208,4 @@ Base imponibile = valore della produzione netta (A-B di CE, con rettifiche):
 | Data | Modifica | Motivo |
 |------|----------|--------|
 | 2026-03-24 | Creazione documento | Avvio modulo Dichiarazioni Fiscali |
+| 2026-03-25 | Aggiornamento | Completamento implementazione modulo |
