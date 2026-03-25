@@ -424,6 +424,7 @@ export async function PUT(request: Request, context: RouteContext) {
         data: {
           tipoOperazione: tipoOperazione as any,
           dataOperazione: new Date(dataOperazione),
+          dataRegistrazione: new Date(dataOperazione),
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,

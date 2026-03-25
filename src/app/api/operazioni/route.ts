@@ -477,6 +477,7 @@ export async function POST(request: NextRequest) {
           societaId,
           tipoOperazione: tipoOperazione as any,
           dataOperazione: new Date(dataOperazione),
+          dataRegistrazione: new Date(dataOperazione),
           numeroDocumento: numeroDocumento || null,
           descrizione,
           importoTotale: importo,
