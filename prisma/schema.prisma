@@ -60,7 +60,7 @@ model Societa {
   // Relazioni fatturazione elettronica
   fattureElettroniche    FatturaElettronica[]
   sezionaliFattura       SezionaleFattura[]
-  configurazioneProvider ConfigurazioneProvider?
+  configurazioneProviderFe ConfigurazioneProviderFe?
 
   // Relazioni dichiarazioni fiscali
   f24Versamenti          F24Versamento[]
@@ -71,6 +71,11 @@ model Societa {
   pacchettiConservazione PacchettoConservazione[]
   movimentiBancari       MovimentoBancario[]
   scadenzePartitario     ScadenzaPartitario[]
+
+  // SP0: Architettura fondazionale
+  providerConfigs        ProviderConfig[]
+  aiSuggestions          AiSuggestion[]
+  notificheAutomazione   Notifica[]
 
   @@map("societa")
 }
@@ -126,6 +131,10 @@ model Utente {
   invitiCreate        InvitoAzienda[]   @relation("InvitiCreate")
   sociCollegati       Socio[]           @relation("SocioUtente")
   fattureElettronicheCreate FatturaElettronica[]
+
+  // SP0: Architettura fondazionale
+  notificheRicevute      Notifica[]            @relation("NotificheUtente")
+  preferenzeNotifica     PreferenzaNotifica[]
 
   @@map("utenti")
 }
@@ -1346,7 +1355,7 @@ model SezionaleFattura {
   @@map("sezionali_fattura")
 }
 
-model ConfigurazioneProvider {
+model ConfigurazioneProviderFe {
   id              Int       @id @default(autoincrement()) @map("config_id")
   societaId       Int       @unique @map("societa_id")
   provider        String    @db.VarChar(30) @default("MANUALE")
@@ -1360,6 +1369,163 @@ model ConfigurazioneProvider {
   societa Societa @relation(fields: [societaId], references: [id])
 
   @@map("configurazione_provider")
+}
+
+// ─── Provider/Adapter System ──────────────────────────────────────────────────
+
+enum ProviderTipo {
+  FATTURE
+  BANCA
+}
+
+enum ProviderNome {
+  FILE
+  ARUBA
+  INFOCERT
+  FABRICK
+  NORDIGEN
+}
+
+enum ProviderStato {
+  ATTIVO
+  CONFIGURAZIONE
+  ERRORE
+}
+
+model ProviderConfig {
+  id            Int            @id @default(autoincrement())
+  societaId     Int            @map("societa_id")
+  tipo          ProviderTipo   @map("tipo")
+  provider      ProviderNome   @map("provider")
+  credenziali   Json?          @map("credenziali")
+  stato         ProviderStato  @default(CONFIGURAZIONE) @map("stato")
+  ultimoSync    DateTime?      @map("ultimo_sync")
+  configExtra   Json?          @map("config_extra")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  societa       Societa        @relation(fields: [societaId], references: [id])
+
+  @@unique([societaId, tipo, provider])
+  @@index([societaId, tipo])
+  @@map("provider_config")
+}
+
+// ─── AI Pipeline ──────────────────────────────────────────────────────────────
+
+enum AiSuggestionTipo {
+  CLASSIFICAZIONE
+  ANOMALIA
+  RICONCILIAZIONE
+  NARRATIVA
+}
+
+enum AiSuggestionStato {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_APPLIED
+}
+
+model AiSuggestion {
+  id            Int                @id @default(autoincrement())
+  societaId     Int                @map("societa_id")
+  tipo          AiSuggestionTipo   @map("tipo")
+  entityType    String             @map("entity_type") @db.VarChar(50)
+  entityId      Int                @map("entity_id")
+  suggestion    Json               @map("suggestion")
+  confidence    Float              @map("confidence")
+  stato         AiSuggestionStato  @default(PENDING) @map("stato")
+  motivazione   String?            @map("motivazione") @db.Text
+  tokensUsati   Int?               @map("tokens_usati")
+  reviewedBy    Int?               @map("reviewed_by")
+  reviewedAt    DateTime?          @map("reviewed_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  societa       Societa            @relation(fields: [societaId], references: [id])
+
+  @@index([societaId, stato])
+  @@index([entityType, entityId])
+  @@map("ai_suggestions")
+}
+
+// ─── Notification System ──────────────────────────────────────────────────────
+
+enum NotificaTipo {
+  SCADENZA
+  ANOMALIA
+  DOCUMENTO
+  SYNC
+  ADEMPIMENTO
+  AI_REVIEW
+}
+
+enum NotificaPriorita {
+  CRITICA
+  ALTA
+  MEDIA
+  BASSA
+}
+
+enum NotificaCanale {
+  IN_APP
+  EMAIL
+  PORTALE
+}
+
+enum NotificaStato {
+  NON_LETTA
+  LETTA
+  ARCHIVIATA
+}
+
+enum DigestFrequency {
+  IMMEDIATO
+  GIORNALIERO
+  SETTIMANALE
+}
+
+model Notifica {
+  id                      Int              @id @default(autoincrement())
+  societaId               Int              @map("societa_id")
+  utenteDestinatarioId    Int?             @map("utente_destinatario_id")
+  tipo                    NotificaTipo     @map("tipo")
+  priorita                NotificaPriorita @map("priorita")
+  titolo                  String           @map("titolo") @db.VarChar(255)
+  messaggio               String           @map("messaggio") @db.Text
+  entityType              String?          @map("entity_type") @db.VarChar(50)
+  entityId                Int?             @map("entity_id")
+  canale                  NotificaCanale   @map("canale")
+  stato                   NotificaStato    @default(NON_LETTA) @map("stato")
+  scheduledAt             DateTime?        @map("scheduled_at")
+  sentAt                  DateTime?        @map("sent_at")
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+
+  societa                 Societa          @relation(fields: [societaId], references: [id])
+  utenteDestinatario      Utente?          @relation("NotificheUtente", fields: [utenteDestinatarioId], references: [id])
+
+  @@index([societaId, stato])
+  @@index([utenteDestinatarioId, stato])
+  @@index([scheduledAt])
+  @@map("notifiche")
+}
+
+model PreferenzaNotifica {
+  id              Int              @id @default(autoincrement())
+  utenteId        Int              @map("utente_id")
+  tipoEvento      String           @map("tipo_evento") @db.VarChar(50)
+  canale          String           @map("canale") @db.VarChar(20)
+  abilitato       Boolean          @default(true) @map("abilitato")
+  digestFrequency DigestFrequency  @default(IMMEDIATO) @map("digest_frequency")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  utente          Utente           @relation(fields: [utenteId], references: [id])
+
+  @@unique([utenteId, tipoEvento, canale])
+  @@map("preferenze_notifica")
 }
 
 // ─── Dichiarazioni Fiscali ───

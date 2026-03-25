@@ -19,7 +19,7 @@ export async function GET() {
       );
     }
 
-    const config = await prisma.configurazioneProvider.findUnique({
+    const config = await prisma.configurazioneProviderFe.findUnique({
       where: { societaId },
     });
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const config = await prisma.configurazioneProvider.upsert({
+    const config = await prisma.configurazioneProviderFe.upsert({
       where: { societaId },
       create: {
         societaId,

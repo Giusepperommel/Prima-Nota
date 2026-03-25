@@ -75,12 +75,12 @@ async function main() {
     }
 
     // Create default provider configuration if none exists
-    const existingProvider = await prisma.configurazioneProvider.findUnique({
+    const existingProvider = await prisma.configurazioneProviderFe.findUnique({
       where: { societaId: s.id },
     });
 
     if (!existingProvider) {
-      await prisma.configurazioneProvider.create({
+      await prisma.configurazioneProviderFe.create({
         data: {
           societaId: s.id,
           provider: "MANUALE",
