@@ -84,8 +84,8 @@ export async function POST(request: Request) {
       }
 
       // Verifica unicita' email nel modello Socio
-      const existingEmail = await prisma.socio.findUnique({
-        where: { email },
+      const existingEmail = await prisma.socio.findFirst({
+        where: { email, societaId },
       });
 
       if (existingEmail) {

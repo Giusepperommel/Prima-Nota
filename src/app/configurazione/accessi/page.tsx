@@ -19,8 +19,8 @@ export default async function AccessiPage() {
 
   const serializedUtenti = utenti.map((ua) => ({
     id: ua.utente.id,
-    nome: ua.utente.nome,
-    cognome: ua.utente.cognome,
+    nome: ua.utente.nome || '',
+    cognome: ua.utente.cognome || '',
     email: ua.utente.email,
   }));
 

@@ -21,7 +21,7 @@ export function generaCespiteAcquisto(
   const causale = "FA_CESPITE";
 
   // Determine cespite type from extra field
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const sottotipoCespite = op.sottotipoCespite as TipoCespiteMapping | undefined;
 
   let contoIdAsset: number | null = null;

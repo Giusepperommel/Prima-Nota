@@ -277,7 +277,7 @@ export function mapDatiGeneraliDocumento(
       {
         TipoCassa: DEFAULT_TIPO_CASSA_INPS,
         AlCassa: (rit.aliquotaCassa ?? 4).toFixed(2),
-        ImportoContributoCassa: rit.cassaPrevidenza.toFixed(2),
+        ImportoContributoCassa: (rit.cassaPrevidenza ?? 0).toFixed(2),
         AliquotaIVA: operazione.aliquotaIva.toFixed(2),
       },
     ];

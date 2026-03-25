@@ -48,7 +48,7 @@ export function generaCompensoAmministratore(
   const importoRitenuta = operazione.importoRitenuta ?? 0;
 
   // INPS fields (extended, not in base OperazioneContabile)
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const contributoInpsTotale = (typeof op.contributoInpsTotale === "number") ? op.contributoInpsTotale : 0;
   const contributoInpsAzienda = (typeof op.contributoInpsAzienda === "number") ? op.contributoInpsAzienda : 0;
 

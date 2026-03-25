@@ -212,7 +212,7 @@ describe("buildFatturaXml", () => {
   it("omits optional elements when not present", () => {
     const inv = makeStandardInvoice();
     // Remove optional DatiPagamento
-    delete (inv.FatturaElettronicaBody as Record<string, unknown>).DatiPagamento;
+    delete (inv.FatturaElettronicaBody as unknown as Record<string, unknown>).DatiPagamento;
     const xmlNoPag = buildFatturaXml(inv);
     expect(xmlNoPag).not.toContain("<DatiPagamento>");
   });

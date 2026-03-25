@@ -40,7 +40,7 @@ export function generaPagamentoImposte(
   const causale = "F24";
 
   // Determine sottotipo from extra field
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const sottotipoImposta = op.sottotipoImposta as SottotipoImposta | undefined;
 
   // Resolve the debit account based on sottotipo

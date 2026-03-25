@@ -20,7 +20,7 @@ export function generaAmmortamento(
   const causale = "AM";
 
   // Determine cespite type from extra field
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const sottotipoCespite = op.sottotipoCespite as TipoCespiteMapping | undefined;
 
   let contoIdAmm: number | null = null;

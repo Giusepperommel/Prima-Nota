@@ -38,7 +38,7 @@ export function generaChiusuraEsercizio(
   const warnings: string[] = [];
 
   // Extract contiEconomici from operazione extra data
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const contiEconomici = (op.contiEconomici as ContoEconomicoInput[]) ?? [];
 
   if (contiEconomici.length === 0) {

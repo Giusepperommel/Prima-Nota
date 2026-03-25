@@ -80,7 +80,7 @@ export function generaDividendi(
     const importoUtile = operazione.importoTotale;
 
     // Extra fields for split
-    const op = operazione as Record<string, unknown>;
+    const op = operazione as unknown as Record<string, unknown>;
     const quotaRiservaLegale = (typeof op.quotaRiservaLegale === "number")
       ? op.quotaRiservaLegale
       : Math.round(importoUtile * 0.05 * 100) / 100; // default 5%

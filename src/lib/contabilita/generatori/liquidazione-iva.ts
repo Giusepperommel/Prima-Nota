@@ -33,7 +33,7 @@ export function generaLiquidazioneIva(
   const descrizione = operazione.descrizione +
     (anagraficaDenominazione ? ` — ${anagraficaDenominazione}` : "");
 
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const totaleIvaVendite = typeof op.totaleIvaVendite === "number" ? op.totaleIvaVendite : null;
   const totaleIvaAcquisti = typeof op.totaleIvaAcquisti === "number" ? op.totaleIvaAcquisti : null;
 

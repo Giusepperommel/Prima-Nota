@@ -21,7 +21,7 @@ export function generaOperazioneGenerica(
     (anagraficaDenominazione ? ` — ${anagraficaDenominazione}` : "");
 
   // Movimenti espliciti from extra field
-  const op = operazione as Record<string, unknown>;
+  const op = operazione as unknown as Record<string, unknown>;
   const movimentiEspliciti = Array.isArray(op.movimenti)
     ? (op.movimenti as MovimentoGenerato[])
     : [];
