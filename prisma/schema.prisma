@@ -241,6 +241,12 @@ model Operazione {
   // Rateo/risconto
   rateoRiscontoId        Int?                   @map("rateo_risconto_id")
 
+  // Import automatico (SP1)
+  chiaveImport      String?   @map("chiave_import") @db.VarChar(255)
+  sorgente          String?   @map("sorgente") @db.VarChar(50)
+  aiConfidence      Float?    @map("ai_confidence")
+  aiSuggestionId    Int?      @map("ai_suggestion_id")
+
   societa      Societa                  @relation(fields: [societaId], references: [id])
   categoria    CategoriaSpesa?          @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
   createdBy    Utente                   @relation(fields: [createdByUserId], references: [id])
@@ -262,6 +268,7 @@ model Operazione {
   @@index([categoriaId])
   @@index([createdByUserId])
   @@index([operazioneRicorrenteId])
+  @@index([societaId, chiaveImport])
   @@unique([societaId, protocolloIva])
   @@map("operazioni")
 }
