@@ -81,6 +81,9 @@ model Societa {
   anomalie               Anomalia[]
   healthScores           HealthScore[]
 
+  // SP3: Copilota Adempimenti
+  scadenzeFiscali        ScadenzaFiscale[]
+
   @@map("societa")
 }
 
@@ -1848,4 +1851,71 @@ model HealthScore {
   @@unique([societaId, anno, mese])
   @@index([societaId])
   @@map("health_scores")
+}
+
+// ─── Copilota Adempimenti ─────────────────────────────────────────────────────
+
+enum ScadenzaFiscaleTipo {
+  F24_IVA
+  F24_RITENUTE
+  F24_ACCONTO_IRES
+  F24_ACCONTO_IRPEF
+  LIPE
+  CU
+  DICHIARAZIONE_IVA
+  DICHIARAZIONE_770
+  REDDITI
+  IRAP
+  BILANCIO_DEPOSITO
+  DIRITTO_CCIAA
+  ACCONTO_IVA
+  CONSERVAZIONE
+}
+
+enum ScadenzaFiscaleStato {
+  NON_INIZIATA
+  IN_PREPARAZIONE
+  PRONTA
+  COMPLETATA
+  SCADUTA
+}
+
+model ScadenzaFiscale {
+  id                        Int                  @id @default(autoincrement())
+  societaId                 Int                  @map("societa_id")
+  tipo                      ScadenzaFiscaleTipo  @map("tipo")
+  anno                      Int                  @map("anno")
+  periodo                   Int?                 @map("periodo")
+  scadenza                  DateTime             @map("scadenza") @db.Date
+  stato                     ScadenzaFiscaleStato @default(NON_INIZIATA) @map("stato")
+  percentualeCompletamento  Int                  @default(0) @map("percentuale_completamento")
+  entityGenerataId          Int?                 @map("entity_generata_id")
+  entityGenerataTipo        String?              @map("entity_generata_tipo") @db.VarChar(50)
+  bloccataDa                String?              @map("bloccata_da") @db.VarChar(500)
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  updatedAt                 DateTime             @updatedAt @map("updated_at")
+
+  societa                   Societa              @relation(fields: [societaId], references: [id])
+  checklist                 ChecklistAdempimento[]
+
+  @@unique([societaId, tipo, anno, periodo])
+  @@index([societaId, scadenza])
+  @@index([stato])
+  @@map("scadenze_fiscali")
+}
+
+model ChecklistAdempimento {
+  id                    Int      @id @default(autoincrement())
+  scadenzaFiscaleId     Int      @map("scadenza_fiscale_id")
+  ordine                Int      @map("ordine")
+  descrizione           String   @map("descrizione") @db.VarChar(255)
+  verificaAutomatica    Boolean  @default(false) @map("verifica_automatica")
+  queryVerifica         String?  @map("query_verifica") @db.VarChar(100)
+  completata            Boolean  @default(false) @map("completata")
+  completataAt          DateTime? @map("completata_at")
+
+  scadenzaFiscale       ScadenzaFiscale @relation(fields: [scadenzaFiscaleId], references: [id], onDelete: Cascade)
+
+  @@index([scadenzaFiscaleId])
+  @@map("checklist_adempimenti")
 }
