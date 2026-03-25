@@ -290,6 +290,8 @@ model PreferenzaNotifica {
   canale          String           @map("canale") @db.VarChar(20)
   abilitato       Boolean          @default(true) @map("abilitato")
   digestFrequency DigestFrequency  @default(IMMEDIATO) @map("digest_frequency")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   utente          Utente           @relation(fields: [utenteId], references: [id])
 
@@ -965,6 +967,7 @@ model DomandaCliente {
   opzioni                 Json     @map("opzioni")  // [{label, value, azione?}]
   rispostaSelezionata     String?  @map("risposta_selezionata") @db.VarChar(100)
   azioneEseguita          Boolean  @default(false) @map("azione_eseguita")
+  createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
   richiestaDocumento      RichiestaDocumento @relation(fields: [richiestaDocumentoId], references: [id], onDelete: Cascade)
