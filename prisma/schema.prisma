@@ -77,6 +77,10 @@ model Societa {
   aiSuggestions          AiSuggestion[]
   notificheAutomazione   Notifica[]
 
+  // SP2: Controlli Proattivi
+  anomalie               Anomalia[]
+  healthScores           HealthScore[]
+
   @@map("societa")
 }
 
@@ -1774,4 +1778,74 @@ enum TipoPartitario {
   CLIENTE
   FORNITORE
   @@map("tipo_partitario")
+}
+
+// ─── Controlli Proattivi ──────────────────────────────────────────────────────
+
+enum AnomaliaTipo {
+  QUADRATURA
+  DUPLICATO
+  COMPLIANCE
+  DOCUMENTALE
+  SCADENZA
+  CATEGORIA_ANOMALA
+  REGIME_IVA_SOSPETTO
+  INCOERENZA_SEMANTICA
+}
+
+enum AnomaliaSorgente {
+  REGOLA
+  PATTERN
+  AI
+}
+
+enum AnomaliaStato {
+  APERTA
+  RISOLTA
+  IGNORATA
+  FALSO_POSITIVO
+}
+
+model Anomalia {
+  id            Int                @id @default(autoincrement())
+  societaId     Int                @map("societa_id")
+  tipo          AnomaliaTipo       @map("tipo")
+  sorgente      AnomaliaSorgente   @map("sorgente")
+  priorita      NotificaPriorita   @map("priorita")
+  titolo        String             @map("titolo") @db.VarChar(255)
+  descrizione   String             @map("descrizione") @db.Text
+  entityType    String?            @map("entity_type") @db.VarChar(50)
+  entityId      Int?               @map("entity_id")
+  stato         AnomaliaStato      @default(APERTA) @map("stato")
+  risoltaDa     Int?               @map("risolta_da")
+  risoltaAt     DateTime?          @map("risolta_at")
+  metadati      Json?              @map("metadati")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  societa       Societa            @relation(fields: [societaId], references: [id])
+
+  @@index([societaId, stato])
+  @@index([entityType, entityId])
+  @@map("anomalie")
+}
+
+model HealthScore {
+  id                  Int      @id @default(autoincrement())
+  societaId           Int      @map("societa_id")
+  anno                Int      @map("anno")
+  mese                Int      @map("mese")
+  areaContabilita     Int      @map("area_contabilita")
+  areaIva             Int      @map("area_iva")
+  areaScadenze        Int      @map("area_scadenze")
+  areaDocumentale     Int      @map("area_documentale")
+  areaBanca           Int      @map("area_banca")
+  scoreComplessivo    Int      @map("score_complessivo")
+  calcolatoAt         DateTime @map("calcolato_at")
+
+  societa             Societa  @relation(fields: [societaId], references: [id])
+
+  @@unique([societaId, anno, mese])
+  @@index([societaId])
+  @@map("health_scores")
 }
