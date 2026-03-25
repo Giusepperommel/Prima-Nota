@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         operazioneRicorrente: {
           select: { id: true, tipoContratto: true },
         },
+        fornitore: { select: { id: true, denominazione: true } },
       },
       orderBy: { dataOperazione: "asc" },
     });
@@ -36,6 +37,11 @@ export async function GET(request: NextRequest) {
       tipoOperazione: op.tipoOperazione,
       operazioneRicorrenteId: op.operazioneRicorrenteId,
       tipoContratto: op.operazioneRicorrente?.tipoContratto ?? null,
+      sorgente: op.sorgente ?? null,
+      aiConfidence: op.aiConfidence ?? null,
+      fornitore: op.fornitore
+        ? { id: op.fornitore.id, denominazione: op.fornitore.denominazione }
+        : null,
     }));
 
     return NextResponse.json(serialized);
