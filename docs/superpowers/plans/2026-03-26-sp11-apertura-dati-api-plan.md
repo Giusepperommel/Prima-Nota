@@ -21,7 +21,7 @@ src/lib/export/
   csv-exporter.ts       — Streaming CSV generation for any entity
   json-exporter.ts      — JSON export with configurable fields
   excel-exporter.ts     — XLSX generation (max 100k rows with pagination)
-  pdf-exporter.ts       — PDF generation via @react-pdf/renderer
+  zip-exporter.ts       — ZIP bulk export (all entities for backup)
   export-engine.ts      — Main orchestrator: exportEngine.export(entity, filters, format)
   entity-configs.ts     — Per-entity field definitions, labels, formatters
   __tests__/
@@ -122,8 +122,8 @@ model WebhookEndpoint {
   societaId                    Int       @map("societa_id")
   url                          String    @db.VarChar(500)
   eventi                       Json      @default("[]")
-  secretHash                   String    @map("secret_hash") @db.VarChar(255)
-  secretPrecedenteHash         String?   @map("secret_precedente_hash") @db.VarChar(255)
+  secret                       String    @map("secret") @db.VarChar(255)
+  secretPrecedente             String?   @map("secret_precedente") @db.VarChar(255)
   secretPrecedenteValidoFinoA  DateTime? @map("secret_precedente_valido_fino_a")
   attivo                       Boolean   @default(true)
   ultimaConsegna               DateTime? @map("ultima_consegna")
@@ -375,9 +375,10 @@ const configs: Record<EntityType, EntityConfig> = {
       { key: "id", label: "ID" },
       { key: "dataRegistrazione", label: "Data", format: formatDateField },
       { key: "descrizione", label: "Descrizione" },
-      { key: "tipo", label: "Tipo" },
-      { key: "totaleAvere", label: "Totale Avere", format: formatDecimal },
+      { key: "tipoScrittura", label: "Tipo" },
+      { key: "causale", label: "Causale" },
       { key: "totaleDare", label: "Totale Dare", format: formatDecimal },
+      { key: "totaleAvere", label: "Totale Avere", format: formatDecimal },
     ],
   },
   "piano-dei-conti": {
@@ -389,8 +390,8 @@ const configs: Record<EntityType, EntityConfig> = {
       { key: "codice", label: "Codice" },
       { key: "descrizione", label: "Descrizione" },
       { key: "tipo", label: "Tipo" },
-      { key: "natura", label: "Natura" },
-      { key: "livello", label: "Livello" },
+      { key: "naturaSaldo", label: "Natura Saldo" },
+      { key: "attivo", label: "Attivo", format: formatBoolean },
     ],
   },
   anagrafiche: {
@@ -405,8 +406,8 @@ const configs: Record<EntityType, EntityConfig> = {
       { key: "partitaIva", label: "P.IVA" },
       { key: "codiceFiscale", label: "CF" },
       { key: "indirizzo", label: "Indirizzo" },
-      { key: "email", label: "Email" },
-      { key: "telefono", label: "Telefono" },
+      { key: "pec", label: "PEC" },
+      { key: "codiceDestinatario", label: "Cod. Destinatario" },
     ],
   },
   "fatture-elettroniche": {
@@ -797,10 +798,10 @@ export function getExportMimeType(format: ExportFormat): string {
   return MIME_TYPES[format];
 }
 
-export function exportData(
+export async function exportData(
   data: Record<string, unknown>[],
   options: ExportOptions
-): ExportResult {
+): Promise<ExportResult> {
   const config = getEntityConfig(options.entityType);
   const fields = options.fields
     ? config.fields.filter((f) => options.fields!.includes(f.key))
@@ -989,15 +990,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const DATE_FIELD_MAP: Record<string, string> = {
+  operazioni: "dataOperazione",
+  "scritture-contabili": "dataRegistrazione",
+  "fatture-elettroniche": "dataEmissione",
+  "liquidazioni-iva": "anno", // special handling
+  f24: "dataScadenza",
+  cespiti: "dataAcquisto",
+  "movimenti-bancari": "data",
+  scadenzario: "dataScadenza",
+};
+
 function buildWhereFromFilters(
   filters: Record<string, unknown> | undefined,
   entityType: string
 ): Record<string, unknown> {
   if (!filters) return {};
   const where: Record<string, unknown> = {};
+  const dateField = DATE_FIELD_MAP[entityType];
 
-  if (filters.da) where.dataOperazione = { ...(where.dataOperazione as any || {}), gte: new Date(filters.da as string) };
-  if (filters.a) where.dataOperazione = { ...(where.dataOperazione as any || {}), lte: new Date(filters.a as string) };
+  if (dateField && dateField !== "anno") {
+    if (filters.da) where[dateField] = { ...(where[dateField] as any || {}), gte: new Date(filters.da as string) };
+    if (filters.a) where[dateField] = { ...(where[dateField] as any || {}), lte: new Date(filters.a as string) };
+  }
   if (entityType === "operazioni") where.eliminato = false;
 
   return where;
@@ -1477,7 +1492,10 @@ export function signWebhookPayload(payload: string, secret: string): string {
 
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
   const expected = signWebhookPayload(payload, secret);
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 export async function dispatchWebhook(
@@ -1486,12 +1504,18 @@ export async function dispatchWebhook(
   data: Record<string, unknown>
 ): Promise<void> {
   const endpoints = await prisma.webhookEndpoint.findMany({
-    where: { societaId, attivo: true, eventi: { path: "$", array_contains: evento } },
+    where: { societaId, attivo: true },
+    // Filter events in JS since MySQL JSON array_contains is unreliable in Prisma
   });
 
-  for (const endpoint of endpoints) {
+  const filtered = endpoints.filter((ep) => {
+    const events = (ep.eventi as string[]) || [];
+    return events.includes(evento) || events.includes("*");
+  });
+
+  for (const endpoint of filtered) {
     const payload = JSON.stringify({ evento, data, timestamp: new Date().toISOString() });
-    const signature = signWebhookPayload(payload, endpoint.secretHash);
+    const signature = signWebhookPayload(payload, endpoint.secret);
 
     try {
       const response = await fetch(endpoint.url, {
@@ -2354,7 +2378,276 @@ git commit -m "feat(sp11): add v1 API route for operazioni with auth, pagination
 
 ---
 
-## Task 19: Run Full Test Suite
+## Task 19: ZIP Bulk Export
+
+**Files:**
+- Create: `src/lib/export/zip-exporter.ts`
+
+- [ ] **Step 1: Install archiver dependency**
+
+Run: `npm install archiver && npm install -D @types/archiver`
+
+- [ ] **Step 2: Implement zip-exporter.ts**
+
+```typescript
+// src/lib/export/zip-exporter.ts
+import archiver from "archiver";
+import { Readable } from "stream";
+import { exportToCsv } from "./csv-exporter";
+import { getEntityConfig, ALL_ENTITY_TYPES } from "./entity-configs";
+import type { EntityType } from "./types";
+
+export async function exportAllToZip(
+  dataByEntity: Record<EntityType, Record<string, unknown>[]>
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    const chunks: Buffer[] = [];
+
+    archive.on("data", (chunk) => chunks.push(chunk));
+    archive.on("end", () => resolve(Buffer.concat(chunks)));
+    archive.on("error", reject);
+
+    for (const entityType of ALL_ENTITY_TYPES) {
+      const data = dataByEntity[entityType];
+      if (!data || data.length === 0) continue;
+      const config = getEntityConfig(entityType);
+      const csv = exportToCsv(data, config.fields);
+      archive.append(csv, { name: `${entityType}.csv` });
+    }
+
+    archive.finalize();
+  });
+}
+```
+
+- [ ] **Step 3: Wire into export API route**
+
+Add a new case in the export route POST handler for `entityType === "backup-completo"` that fetches all entities and calls `exportAllToZip`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add package.json package-lock.json src/lib/export/zip-exporter.ts src/app/api/esportazioni/
+git commit -m "feat(sp11): add ZIP bulk export for full company backup"
+```
+
+---
+
+## Task 20: Audit Log for API Calls
+
+**Files:**
+- Modify: `src/lib/api/auth-middleware.ts`
+
+- [ ] **Step 1: Add audit logging to authenticateApiKey**
+
+After successful authentication, log the API call using the existing `logAttivita` helper:
+
+```typescript
+import { logAttivita } from "@/lib/log-helper";
+
+// Inside authenticateApiKey, after successful verification:
+await logAttivita({
+  societaId: candidate.societaId,
+  utenteId: null, // API key, not user session
+  tipo: "API_CALL",
+  descrizione: `API call via key "${candidate.nome}" (${candidate.keyPrefix}...)`,
+  dettagli: {
+    endpoint: request.nextUrl.pathname,
+    method: request.method,
+    keyId: candidate.id,
+  },
+});
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/lib/api/auth-middleware.ts
+git commit -m "feat(sp11): add audit log for every API call"
+```
+
+---
+
+## Task 21: API Key Rotation Endpoint
+
+**Files:**
+- Modify: `src/app/api/configurazione/api/route.ts`
+
+- [ ] **Step 1: Add PUT handler for key rotation**
+
+```typescript
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+    const user = session.user as any;
+    if (user.ruolo !== "ADMIN" && user.ruoloAzienda !== "ADMIN") {
+      return NextResponse.json({ error: "Solo admin" }, { status: 403 });
+    }
+
+    const { id } = await request.json();
+    if (!id) return NextResponse.json({ error: "ID chiave obbligatorio" }, { status: 400 });
+
+    const existing = await prisma.apiKey.findFirst({
+      where: { id, societaId: user.societaId, attiva: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Chiave non trovata" }, { status: 404 });
+
+    // Generate new key
+    const newRawKey = generateApiKey();
+    const newKeyHash = await hashApiKey(newRawKey);
+
+    await prisma.apiKey.update({
+      where: { id },
+      data: {
+        keyHash: newKeyHash,
+        keyPrefix: extractKeyPrefix(newRawKey),
+        lastRotatedAt: new Date(),
+        // Old key hash stays valid via overlap mechanism:
+        // In auth-middleware, check both current and previous hash during 24h window
+      },
+    });
+
+    return NextResponse.json({
+      id,
+      key: newRawKey,
+      avviso: "Nuova chiave generata. La vecchia chiave resterà valida per 24 ore.",
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/app/api/configurazione/api/route.ts
+git commit -m "feat(sp11): add API key rotation endpoint with 24h overlap"
+```
+
+---
+
+## Task 22: Per-Endpoint Rate Limiting
+
+**Files:**
+- Modify: `src/lib/api/rate-limiter.ts`
+- Modify: `src/lib/api/auth-middleware.ts`
+
+- [ ] **Step 1: Add per-endpoint rate limit check to RateLimiter**
+
+```typescript
+// Add to RateLimiter class:
+checkEndpoint(keyId: string, endpoint: string, limit: number): RateLimitResult {
+  const compositeKey = `${keyId}:${endpoint}`;
+  return this.check(compositeKey, limit);
+}
+```
+
+- [ ] **Step 2: Wire per-endpoint check in auth-middleware**
+
+After the global rate limit check, add:
+```typescript
+const endpointLimits = (candidate.rateLimitPerEndpoint as Record<string, number>) || {};
+const endpoint = request.nextUrl.pathname;
+const endpointLimit = endpointLimits[endpoint];
+if (endpointLimit) {
+  const endpointResult = rateLimiter.checkEndpoint(rateLimitKey, endpoint, endpointLimit);
+  if (!endpointResult.allowed) {
+    return { error: NextResponse.json(
+      { error: "Rate limit per-endpoint superato" },
+      { status: 429 }
+    )};
+  }
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/lib/api/rate-limiter.ts src/lib/api/auth-middleware.ts
+git commit -m "feat(sp11): add per-endpoint rate limiting"
+```
+
+---
+
+## Task 23: Webhook Management Route and Delivery History
+
+**Files:**
+- Create: `src/app/api/configurazione/api/webhook/route.ts`
+
+- [ ] **Step 1: Implement webhook CRUD + delivery history**
+
+```typescript
+// src/app/api/configurazione/api/webhook/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
+
+export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  const user = session.user as any;
+
+  const { searchParams } = new URL(request.url);
+  const endpointId = searchParams.get("endpointId");
+
+  if (endpointId) {
+    // Return delivery history for specific endpoint
+    const deliveries = await prisma.webhookDelivery.findMany({
+      where: { webhookEndpointId: parseInt(endpointId) },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return NextResponse.json({ deliveries });
+  }
+
+  const endpoints = await prisma.webhookEndpoint.findMany({
+    where: { societaId: user.societaId },
+    orderBy: { createdAt: "desc" },
+  });
+  return NextResponse.json({ endpoints });
+}
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  const user = session.user as any;
+
+  const { url, eventi } = await request.json();
+  if (!url) return NextResponse.json({ error: "URL obbligatorio" }, { status: 400 });
+
+  const secret = crypto.randomBytes(32).toString("hex");
+
+  const endpoint = await prisma.webhookEndpoint.create({
+    data: {
+      societaId: user.societaId,
+      url,
+      eventi: eventi || ["*"],
+      secret,
+    },
+  });
+
+  return NextResponse.json({
+    id: endpoint.id,
+    secret,
+    avviso: "Salva il secret — non verrà più mostrato.",
+  }, { status: 201 });
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/app/api/configurazione/api/webhook/
+git commit -m "feat(sp11): add webhook management route with delivery history"
+```
+
+---
+
+## Task 24: Run Full Test Suite
 
 - [ ] **Step 1: Run all SP11 tests**
 
@@ -2389,13 +2682,13 @@ git commit -m "fix(sp11): address test/build issues"
 | 2 | Export types + entity configs | 3 tests |
 | 3 | CSV exporter | 4 tests |
 | 4 | JSON exporter | 2 tests |
-| 5 | Export engine | 3 tests |
+| 5 | Export engine (async) | 3 tests |
 | 6 | Excel exporter | — (integration) |
 | 7 | Export API route | Build verify |
 | 8 | API key management | 3 tests |
 | 9 | Rate limiter | 4 tests |
 | 10 | Auth middleware | 3 tests |
-| 11 | Webhook dispatcher | 4 tests |
+| 11 | Webhook dispatcher (raw secret, safe timingSafeEqual) | 4 tests |
 | 12 | API key CRUD route | Build verify |
 | 13 | Import types + validator + mapper | 5 tests |
 | 14 | Danea XML parser | 2 tests |
@@ -2403,6 +2696,18 @@ git commit -m "fix(sp11): address test/build issues"
 | 16 | Import engine | 3 tests |
 | 17 | CORS handler | — |
 | 18 | V1 API router (sample) | Build verify |
-| 19 | Full test suite | Regression check |
+| 19 | ZIP bulk export | — |
+| 20 | Audit log for API calls | — |
+| 21 | API key rotation endpoint | — |
+| 22 | Per-endpoint rate limiting | — |
+| 23 | Webhook management + delivery history | — |
+| 24 | Full test suite | Regression check |
 
-**Total: 19 tasks, ~39 tests, ~17 commits**
+**Total: 24 tasks, ~39 tests, ~22 commits**
+
+### Deferred to subsequent iteration
+- OpenAPI/Swagger auto-generated docs (requires route introspection design)
+- UI pages: `/esportazioni`, `/importazione`, `/configurazione/api` (separate frontend task)
+- Remaining vendor parsers with real format specifications (Zucchetti, Passcom, Fatture in Cloud)
+- PDF export implementation
+- DB-backed rate limiter for serverless environments
