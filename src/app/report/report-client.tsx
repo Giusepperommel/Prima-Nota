@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { pdf } from "@react-pdf/renderer";
+import { ReportList } from "@/components/bi/report-list";
+import { ReportDetail } from "@/components/bi/report-detail";
 import {
   Card,
   CardContent,
@@ -156,6 +158,9 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
   const [ivaLoading, setIvaLoading] = useState(false);
   const [ivaError, setIvaError] = useState<string | null>(null);
   const [ivaPdfLoading, setIvaPdfLoading] = useState(false);
+
+  // BI Report state
+  const [selectedBiReportId, setSelectedBiReportId] = useState<number | null>(null);
 
   // Fetch rendiconto
   const fetchRendiconto = useCallback(async () => {
@@ -383,6 +388,7 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
           <TabsTrigger value="stima-societa">Stima Fiscale Societa</TabsTrigger>
           <TabsTrigger value="stima-socio">Stima Fiscale Socio</TabsTrigger>
           <TabsTrigger value="iva">Riepilogo IVA</TabsTrigger>
+          <TabsTrigger value="bi">Report BI</TabsTrigger>
         </TabsList>
       </div>
 
@@ -773,6 +779,17 @@ export function ReportClient({ ruolo, socioId, soci }: Props) {
             )}
           </CardContent>
         </Card>
+      </TabsContent>
+
+      {/* ================================================================= */}
+      {/* TAB: Report BI                                                    */}
+      {/* ================================================================= */}
+      <TabsContent value="bi">
+        {selectedBiReportId ? (
+          <ReportDetail reportId={selectedBiReportId} onBack={() => setSelectedBiReportId(null)} />
+        ) : (
+          <ReportList onSelectReport={setSelectedBiReportId} />
+        )}
       </TabsContent>
     </Tabs>
   );
