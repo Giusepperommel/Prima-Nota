@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { DashboardContent } from "./dashboard-content";
+import { MessageSquare, FileText, Calculator } from "lucide-react";
 
 type DashboardData = {
   pendingRequests: number;
@@ -61,6 +64,12 @@ function formatCurrency(amount: number) {
     currency: "EUR",
   }).format(amount);
 }
+
+const NAV_LINKS = [
+  { href: "/portale/messaggi", label: "Messaggi", icon: MessageSquare },
+  { href: "/portale/prima-nota", label: "Prima Nota", icon: FileText },
+  { href: "/portale/fiscale", label: "Fiscale", icon: Calculator },
+];
 
 export default function PortaleDashboardPage() {
   const router = useRouter();
@@ -194,16 +203,33 @@ export default function PortaleDashboardPage() {
             <h1 className="text-xl font-bold text-gray-900">Portale Clienti</h1>
             <p className="text-sm text-gray-500">Benvenuto, {nome}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            Esci
-          </button>
+          <div className="flex items-center gap-4">
+            <nav className="hidden sm:flex items-center gap-1">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Esci
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        {/* KPI Dashboard Section */}
+        <DashboardContent />
+
         {/* Summary bar */}
         {dashboard && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -374,6 +400,20 @@ export default function PortaleDashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Mobile Navigation */}
+        <nav className="sm:hidden grid grid-cols-3 gap-2">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex flex-col items-center gap-1 p-3 bg-white rounded-lg border text-gray-600 hover:text-gray-900 hover:border-blue-300 transition-colors"
+            >
+              <link.icon className="h-5 w-5" />
+              <span className="text-xs">{link.label}</span>
+            </Link>
+          ))}
+        </nav>
       </main>
     </div>
   );
