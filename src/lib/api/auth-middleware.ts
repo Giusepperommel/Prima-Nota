@@ -110,6 +110,23 @@ export async function authenticateApiKey(
     return { success: false, response };
   }
 
+  // Per-endpoint rate limiting
+  const endpointLimits = (apiKey.rateLimitPerEndpoint as Record<string, number>) || {};
+  const endpoint = request.nextUrl.pathname;
+  const endpointLimit = endpointLimits[endpoint];
+  if (endpointLimit) {
+    const endpointResult = rateLimiter.checkEndpoint(String(apiKey.id), endpoint, endpointLimit);
+    if (!endpointResult.allowed) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          { error: "Rate limit per-endpoint superato" },
+          { status: 429 }
+        ),
+      };
+    }
+  }
+
   const scopes = (apiKey.scopes as string[]) as ApiScope[];
 
   // Audit log for API calls (fire-and-forget)

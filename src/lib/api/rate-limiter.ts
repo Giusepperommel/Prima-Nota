@@ -55,4 +55,15 @@ export class RateLimiter {
       resetAt,
     };
   }
+
+  /**
+   * Rate limiting per-endpoint: combina keyId e endpoint come chiave composita.
+   * @param keyId Identificativo della chiave API
+   * @param endpoint Percorso dell'endpoint (es. /api/esportazioni)
+   * @param limit Numero massimo di richieste nella finestra per questo endpoint
+   */
+  checkEndpoint(keyId: string, endpoint: string, limit: number): RateLimitResult {
+    const compositeKey = `${keyId}:${endpoint}`;
+    return this.check(compositeKey, limit);
+  }
 }
