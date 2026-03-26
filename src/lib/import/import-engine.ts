@@ -59,7 +59,7 @@ export function mapDaneaDocType(code: string): string {
 
 type MappingKey = `${ImportSource}:${ImportEntityType}`;
 
-const defaultMappings: Record<MappingKey, ImportField[]> = {
+const defaultMappings: Partial<Record<MappingKey, ImportField[]>> = {
   "danea:anagrafiche": [
     { sourceKey: "CustomerName", targetKey: "denominazione", required: true },
     { sourceKey: "CustomerFiscalCode", targetKey: "codiceFiscale" },
