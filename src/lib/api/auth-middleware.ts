@@ -112,6 +112,19 @@ export async function authenticateApiKey(
 
   const scopes = (apiKey.scopes as string[]) as ApiScope[];
 
+  // Audit log for API calls (fire-and-forget)
+  // The LogAttivita model doesn't support API_CALL actions yet,
+  // so we log to console with structured data for observability.
+  console.log("[API_AUDIT]", JSON.stringify({
+    timestamp: new Date().toISOString(),
+    societaId: apiKey.societaId,
+    keyId: apiKey.id,
+    keyNome: apiKey.nome,
+    keyPrefix: apiKey.keyPrefix,
+    endpoint: request.nextUrl.pathname,
+    method: request.method,
+  }));
+
   return {
     success: true,
     payload: {
