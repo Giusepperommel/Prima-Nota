@@ -91,6 +91,12 @@ model Societa {
   reportCliente          ReportCliente[]
   documentiCondivisi     DocumentoCondiviso[]
 
+  // SP11: Apertura Dati e API Pubblica
+  apiKeys              ApiKey[]
+  webhookEndpoints     WebhookEndpoint[]
+  importJobs           ImportJob[]
+  exportJobs           ExportJob[]
+
   @@map("societa")
 }
 
@@ -149,6 +155,10 @@ model Utente {
   // SP0: Architettura fondazionale
   notificheRicevute      Notifica[]            @relation("NotificheUtente")
   preferenzeNotifica     PreferenzaNotifica[]
+
+  // SP11: Apertura Dati e API Pubblica
+  importJobs  ImportJob[]
+  exportJobs  ExportJob[]
 
   @@map("utenti")
 }
@@ -2089,4 +2099,114 @@ model DocumentoCondiviso {
   @@index([societaId])
   @@index([accessoClienteId])
   @@map("documenti_condivisi")
+}
+
+// ============================================================
+// SP11: Apertura Dati e API Pubblica
+// ============================================================
+
+model ApiKey {
+  id                   Int       @id @default(autoincrement())
+  societaId            Int       @map("societa_id")
+  nome                 String    @db.VarChar(100)
+  keyHash              String    @map("key_hash") @db.VarChar(255)
+  keyPrefix            String    @map("key_prefix") @db.VarChar(10)
+  scopes               Json      @default("[]")
+  rateLimitPerHour     Int       @default(1000) @map("rate_limit_per_hour")
+  rateLimitPerEndpoint Json?     @map("rate_limit_per_endpoint")
+  attiva               Boolean   @default(true)
+  ultimoUtilizzo       DateTime? @map("ultimo_utilizzo")
+  lastRotatedAt        DateTime? @map("last_rotated_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  expiresAt            DateTime? @map("expires_at")
+
+  societa Societa @relation(fields: [societaId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model WebhookEndpoint {
+  id                           Int       @id @default(autoincrement())
+  societaId                    Int       @map("societa_id")
+  url                          String    @db.VarChar(500)
+  eventi                       Json      @default("[]")
+  secret                       String    @map("secret") @db.VarChar(255)
+  secretPrecedente             String?   @map("secret_precedente") @db.VarChar(255)
+  secretPrecedenteValidoFinoA  DateTime? @map("secret_precedente_valido_fino_a")
+  attivo                       Boolean   @default(true)
+  ultimaConsegna               DateTime? @map("ultima_consegna")
+  consecutiviFalliti           Int       @default(0) @map("consecutivi_falliti")
+  createdAt                    DateTime  @default(now()) @map("created_at")
+
+  societa    Societa            @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id                  Int       @id @default(autoincrement())
+  webhookEndpointId   Int       @map("webhook_endpoint_id")
+  evento              String    @db.VarChar(100)
+  payload             Json
+  statoHttp           Int?      @map("stato_http")
+  risposta            String?   @db.Text
+  tentativo           Int       @default(1)
+  prossimoTentativoAt DateTime? @map("prossimo_tentativo_at")
+  stato               StatoDelivery @default(PENDING)
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  webhookEndpoint WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+}
+
+model ImportJob {
+  id                Int       @id @default(autoincrement())
+  societaId         Int       @map("societa_id")
+  utenteId          Int       @map("utente_id")
+  softwareOrigine   String    @map("software_origine") @db.VarChar(50)
+  stato             StatoJob  @default(PENDING)
+  fileOriginale     String?   @map("file_originale") @db.Text
+  mappingCampi      Json?     @map("mapping_campi")
+  righeProcessate   Int       @default(0) @map("righe_processate")
+  righeErrore       Int       @default(0) @map("righe_errore")
+  errori            Json?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  completatoAt      DateTime? @map("completato_at")
+
+  societa Societa @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  utente  Utente  @relation(fields: [utenteId], references: [id])
+
+  @@map("import_jobs")
+}
+
+model ExportJob {
+  id          Int       @id @default(autoincrement())
+  societaId   Int       @map("societa_id")
+  utenteId    Int       @map("utente_id")
+  tipo        String    @db.VarChar(50)
+  formato     String    @db.VarChar(10)
+  filtri      Json?
+  stato       StatoJob  @default(PENDING)
+  fileUrl     String?   @map("file_url") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  societa Societa @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  utente  Utente  @relation(fields: [utenteId], references: [id])
+
+  @@map("export_jobs")
+}
+
+enum StatoDelivery {
+  PENDING
+  CONSEGNATO
+  FALLITO
+}
+
+enum StatoJob {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
 }
