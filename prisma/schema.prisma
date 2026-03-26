@@ -97,6 +97,11 @@ model Societa {
   importJobs           ImportJob[]
   exportJobs           ExportJob[]
 
+  // SP12: Intelligenza Proattiva
+  regoleAlert          RegolaAlert[]
+  alertGenerati        AlertGenerato[]
+  todoGenerati         TodoGenerato[]
+
   @@map("societa")
 }
 
@@ -159,6 +164,10 @@ model Utente {
   // SP11: Apertura Dati e API Pubblica
   importJobs  ImportJob[]
   exportJobs  ExportJob[]
+
+  // SP12: Intelligenza Proattiva
+  alertRicevuti  AlertGenerato[]
+  todoAssegnati  TodoGenerato[]
 
   @@map("utenti")
 }
@@ -2209,4 +2218,113 @@ enum StatoJob {
   IN_PROGRESS
   COMPLETED
   FAILED
+}
+
+enum GravitaAlert {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum StatoAlert {
+  NUOVO
+  VISTO
+  SNOOZED
+  RISOLTO
+}
+
+enum CategoriaAlert {
+  SCADENZE
+  ANOMALIE_CONTABILI
+  CASH_FLOW
+  COMPLIANCE
+  CONFRONTO
+  RICONCILIAZIONE
+}
+
+enum StatoTodo {
+  DA_FARE
+  IN_CORSO
+  COMPLETATA
+  SALTATA
+}
+
+enum FonteTodo {
+  SCADENZA
+  ANOMALIA
+  BOZZA
+  RICONCILIAZIONE
+  FATTURA
+  PORTALE
+  ALTRO
+}
+
+model RegolaAlert {
+  id                 Int              @id @default(autoincrement())
+  societaId          Int?             @map("societa_id")
+  categoria          CategoriaAlert
+  codice             String           @db.VarChar(50)
+  descrizione        String           @db.VarChar(255)
+  sogliaValore       Float?           @map("soglia_valore")
+  sogliaGiorni       Int?             @map("soglia_giorni")
+  gravita            GravitaAlert     @default(WARNING)
+  attiva             Boolean          @default(true)
+  canali             Json             @default("[\"IN_APP\"]")
+  ruoliDestinatari   Json             @default("[\"ADMIN\"]") @map("ruoli_destinatari")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  societa            Societa?         @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  alertGenerati      AlertGenerato[]
+
+  @@unique([societaId, codice])
+  @@index([categoria, attiva])
+  @@map("regole_alert")
+}
+
+model AlertGenerato {
+  id                    Int           @id @default(autoincrement())
+  societaId             Int           @map("societa_id")
+  regolaId              Int           @map("regola_id")
+  utenteDestinatarioId  Int           @map("utente_destinatario_id")
+  tipo                  CategoriaAlert
+  messaggio             String        @db.Text
+  gravita               GravitaAlert
+  datiContesto          Json?         @map("dati_contesto")
+  linkAzione            String?       @map("link_azione") @db.VarChar(500)
+  stato                 StatoAlert    @default(NUOVO)
+  snoozeFinoA           DateTime?     @map("snooze_fino_a")
+  risoltoAt             DateTime?     @map("risolto_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  societa               Societa       @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  regola                RegolaAlert   @relation(fields: [regolaId], references: [id], onDelete: Cascade)
+  utente                Utente        @relation(fields: [utenteDestinatarioId], references: [id])
+
+  @@index([societaId, stato])
+  @@index([utenteDestinatarioId, stato])
+  @@index([regolaId, createdAt])
+  @@map("alert_generati")
+}
+
+model TodoGenerato {
+  id              Int        @id @default(autoincrement())
+  societaId       Int        @map("societa_id")
+  utenteId        Int        @map("utente_id")
+  data            DateTime   @db.Date
+  titolo          String     @db.VarChar(255)
+  descrizione     String?    @db.Text
+  priorita        Int        @default(3)
+  linkAzione      String?    @map("link_azione") @db.VarChar(500)
+  fonte           FonteTodo
+  stato           StatoTodo  @default(DA_FARE)
+  completataAt    DateTime?  @map("completata_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  societa         Societa    @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  utente          Utente     @relation(fields: [utenteId], references: [id])
+
+  @@index([societaId, utenteId, data])
+  @@index([stato])
+  @@map("todo_generati")
 }
