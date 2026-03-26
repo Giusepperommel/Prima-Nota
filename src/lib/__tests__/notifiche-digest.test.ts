@@ -3,7 +3,7 @@ import { buildDigestHtml, groupNotificheByPriorita } from "../notifiche/digest";
 import type { NotificaPriorita, NotificaTipo, NotificaCanale, NotificaStato } from "@prisma/client";
 
 const makeNotifica = (titolo: string, priorita: NotificaPriorita, tipo: NotificaTipo = "SCADENZA") => ({
-  id: 1, societaId: 1, utenteDestinatarioId: 1, tipo, priorita, titolo,
+  id: 1, societaId: 1, utenteDestinatarioId: 1, clienteDestinatarioId: null, tipo, priorita, titolo,
   messaggio: `Dettaglio: ${titolo}`, entityType: null, entityId: null,
   canale: "IN_APP" as NotificaCanale, stato: "NON_LETTA" as NotificaStato,
   scheduledAt: null, sentAt: null, createdAt: new Date(), updatedAt: new Date(),

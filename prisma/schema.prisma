@@ -84,6 +84,13 @@ model Societa {
   // SP3: Copilota Adempimenti
   scadenzeFiscali        ScadenzaFiscale[]
 
+  // SP4: Comunicazione Cliente
+  configurazionePortale  ConfigurazionePortale?
+  accessiCliente         AccessoCliente[]
+  richiesteDocumento     RichiestaDocumento[]
+  reportCliente          ReportCliente[]
+  documentiCondivisi     DocumentoCondiviso[]
+
   @@map("societa")
 }
 
@@ -1517,11 +1524,15 @@ model Notifica {
   createdAt               DateTime         @default(now()) @map("created_at")
   updatedAt               DateTime         @updatedAt @map("updated_at")
 
+  clienteDestinatarioId   Int?             @map("cliente_destinatario_id")
+
   societa                 Societa          @relation(fields: [societaId], references: [id])
   utenteDestinatario      Utente?          @relation("NotificheUtente", fields: [utenteDestinatarioId], references: [id])
+  clienteDestinatario     AccessoCliente?  @relation("NotificheCliente", fields: [clienteDestinatarioId], references: [id])
 
   @@index([societaId, stato])
   @@index([utenteDestinatarioId, stato])
+  @@index([clienteDestinatarioId, stato])
   @@index([scheduledAt])
   @@map("notifiche")
 }
@@ -1918,4 +1929,164 @@ model ChecklistAdempimento {
 
   @@index([scadenzaFiscaleId])
   @@map("checklist_adempimenti")
+}
+
+// ─── Comunicazione Cliente (SP4) ─────────────────────────────────────────────
+
+enum RuoloCliente {
+  TITOLARE
+  DELEGATO
+}
+
+enum RichiestaDocumentoTipo {
+  FATTURE_MANCANTI
+  CONFERMA_DATI
+  DOMANDA
+  GENERICO
+}
+
+enum RichiestaDocumentoStato {
+  INVIATA
+  VISTA
+  RISPOSTA
+  SCADUTA
+}
+
+enum ReportClienteTipo {
+  IVA_TRIMESTRALE
+  ANDAMENTO
+  PRE_SCADENZA
+  ANNUALE
+}
+
+enum ReportClienteStato {
+  GENERATO
+  APPROVATO
+  INVIATO
+}
+
+enum DocumentoCondivisoTipo {
+  BILANCIO
+  CU
+  F24
+  REPORT
+  ALTRO
+}
+
+model ConfigurazionePortale {
+  id                        Int      @id @default(autoincrement())
+  societaId                 Int      @unique @map("societa_id")
+  portaleAttivo             Boolean  @default(false) @map("portale_attivo")
+  clientePuoCaricareFatture Boolean  @default(true) @map("cliente_puo_caricare_fatture")
+  clienteVedeSituazioneIva  Boolean  @default(true) @map("cliente_vede_situazione_iva")
+  clienteVedeSaldo          Boolean  @default(false) @map("cliente_vede_saldo")
+  clienteVedeScadenze       Boolean  @default(true) @map("cliente_vede_scadenze")
+  reportAutomatici          Boolean  @default(false) @map("report_automatici")
+  invioEmailAutomatico      Boolean  @default(false) @map("invio_email_automatico")
+  firmaEmail                String?  @map("firma_email") @db.VarChar(500)
+  logoUrl                   String?  @map("logo_url") @db.VarChar(500)
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  societa                   Societa  @relation(fields: [societaId], references: [id])
+
+  @@map("configurazione_portale")
+}
+
+model AccessoCliente {
+  id              Int            @id @default(autoincrement())
+  societaId       Int            @map("societa_id")
+  nome            String         @map("nome") @db.VarChar(100)
+  email           String         @map("email") @db.VarChar(255)
+  passwordHash    String         @map("password_hash") @db.VarChar(255)
+  ruolo           RuoloCliente   @map("ruolo")
+  ultimoAccesso   DateTime?      @map("ultimo_accesso")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  societa         Societa        @relation(fields: [societaId], references: [id])
+  richieste       RichiestaDocumento[]
+  documenti       DocumentoCondiviso[]
+  notifiche       Notifica[]     @relation("NotificheCliente")
+
+  @@unique([societaId, email])
+  @@map("accessi_cliente")
+}
+
+model RichiestaDocumento {
+  id                        Int                      @id @default(autoincrement())
+  societaId                 Int                      @map("societa_id")
+  accessoClienteId          Int                      @map("accesso_cliente_id")
+  tipo                      RichiestaDocumentoTipo   @map("tipo")
+  titolo                    String                   @map("titolo") @db.VarChar(255)
+  messaggio                 String                   @map("messaggio") @db.Text
+  scadenza                  DateTime?                @map("scadenza") @db.Date
+  stato                     RichiestaDocumentoStato  @default(INVIATA) @map("stato")
+  risposta                  String?                  @map("risposta") @db.Text
+  rispostaAt                DateTime?                @map("risposta_at")
+  applicataAutomaticamente  Boolean                  @default(false) @map("applicata_automaticamente")
+  entityType                String?                  @map("entity_type") @db.VarChar(50)
+  entityId                  Int?                     @map("entity_id")
+  createdAt                 DateTime                 @default(now()) @map("created_at")
+  updatedAt                 DateTime                 @updatedAt @map("updated_at")
+
+  societa                   Societa                  @relation(fields: [societaId], references: [id])
+  accessoCliente            AccessoCliente           @relation(fields: [accessoClienteId], references: [id])
+  domande                   DomandaCliente[]
+
+  @@index([societaId, stato])
+  @@index([accessoClienteId])
+  @@map("richieste_documento")
+}
+
+model DomandaCliente {
+  id                      Int      @id @default(autoincrement())
+  richiestaDocumentoId    Int      @map("richiesta_documento_id")
+  testo                   String   @map("testo") @db.VarChar(500)
+  opzioni                 Json     @map("opzioni")
+  rispostaSelezionata     String?  @map("risposta_selezionata") @db.VarChar(100)
+  azioneEseguita          Boolean  @default(false) @map("azione_eseguita")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  richiestaDocumento      RichiestaDocumento @relation(fields: [richiestaDocumentoId], references: [id], onDelete: Cascade)
+
+  @@index([richiestaDocumentoId])
+  @@map("domande_cliente")
+}
+
+model ReportCliente {
+  id                  Int                  @id @default(autoincrement())
+  societaId           Int                  @map("societa_id")
+  tipo                ReportClienteTipo    @map("tipo")
+  periodo             String               @map("periodo") @db.VarChar(20)
+  contenutoGenerato   String               @map("contenuto_generato") @db.LongText
+  contenutoApprovato  String?              @map("contenuto_approvato") @db.LongText
+  stato               ReportClienteStato   @default(GENERATO) @map("stato")
+  inviatoVia          NotificaCanale?      @map("inviato_via")
+  inviatoAt           DateTime?            @map("inviato_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  societa             Societa              @relation(fields: [societaId], references: [id])
+
+  @@index([societaId, stato])
+  @@map("report_cliente")
+}
+
+model DocumentoCondiviso {
+  id                Int                   @id @default(autoincrement())
+  societaId         Int                   @map("societa_id")
+  accessoClienteId  Int                   @map("accesso_cliente_id")
+  nome              String                @map("nome") @db.VarChar(255)
+  tipo              DocumentoCondivisoTipo @map("tipo")
+  fileUrl           String                @map("file_url") @db.VarChar(500)
+  condivisoAt       DateTime              @default(now()) @map("condiviso_at")
+
+  societa           Societa               @relation(fields: [societaId], references: [id])
+  accessoCliente    AccessoCliente        @relation(fields: [accessoClienteId], references: [id])
+
+  @@index([societaId])
+  @@index([accessoClienteId])
+  @@map("documenti_condivisi")
 }
