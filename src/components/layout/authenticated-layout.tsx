@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Separator } from "@/components/ui/separator";
+import { AlertBell } from "@/components/intelligence/alert-bell";
 
 type Props = {
   children: React.ReactNode;
@@ -25,6 +26,9 @@ export function AuthenticatedLayout({ children, user, pageTitle }: Props) {
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 !h-4" />
             {pageTitle && <h1 className="text-sm font-medium">{pageTitle}</h1>}
+            <div className="ml-auto">
+              <AlertBell />
+            </div>
           </header>
           <main className="flex-1 p-3 sm:p-6 overflow-x-hidden">
             {children}
