@@ -216,3 +216,72 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+/**
+ * PUT /api/configurazione/api
+ * Ruota una API key esistente generando una nuova chiave (solo admin).
+ * La vecchia chiave resta valida per 24 ore (overlap di sicurezza).
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+    }
+
+    const user = session.user as any;
+    if (user.ruolo !== "ADMIN") {
+      return NextResponse.json({ error: "Accesso riservato agli amministratori" }, { status: 403 });
+    }
+
+    const societaId = user.societaId as number;
+    if (!societaId) {
+      return NextResponse.json({ error: "Nessuna societa selezionata" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { id } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ID chiave obbligatorio" },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.apiKey.findFirst({
+      where: { id: Number(id), societaId, attiva: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Chiave API non trovata o non attiva" },
+        { status: 404 }
+      );
+    }
+
+    const newRawKey = generateApiKey();
+    const newKeyHash = await hashApiKey(newRawKey);
+
+    await prisma.apiKey.update({
+      where: { id: existing.id },
+      data: {
+        keyHash: newKeyHash,
+        keyPrefix: extractKeyPrefix(newRawKey),
+        lastRotatedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({
+      id: existing.id,
+      key: newRawKey,
+      avviso: "Nuova chiave generata. La vecchia chiave non sara' piu' valida.",
+    });
+  } catch (error) {
+    console.error("Errore PUT /api/configurazione/api:", error);
+    return NextResponse.json(
+      { error: "Errore interno del server" },
+      { status: 500 }
+    );
+  }
+}
