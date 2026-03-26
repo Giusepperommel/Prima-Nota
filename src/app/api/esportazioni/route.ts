@@ -116,14 +116,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      entityType,
+      entityType: rawEntityType,
       format,
       filters = {},
       fields: selectedFields,
       limit,
       offset,
     } = body as {
-      entityType: EntityType;
+      entityType: string;
       format: ExportFormat;
       filters?: Record<string, unknown>;
       fields?: string[];
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     };
 
     // ─── Bulk backup (ZIP of all entities) ───────────────────────────────────
-    if (entityType === "backup-completo") {
+    if (rawEntityType === "backup-completo") {
       const dataByEntity = {} as Record<EntityType, Record<string, unknown>[]>;
 
       for (const et of ALL_ENTITY_TYPES) {
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       const zipBuffer = await exportAllToZip(dataByEntity);
       const dateStr = formatDate(new Date(), "yyyy-MM-dd");
 
-      return new NextResponse(zipBuffer, {
+      return new NextResponse(new Uint8Array(zipBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/zip",
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate entityType
-    if (!entityType || !ALL_ENTITY_TYPES.includes(entityType)) {
+    if (!rawEntityType || !ALL_ENTITY_TYPES.includes(rawEntityType as EntityType)) {
       return NextResponse.json(
         {
           error: `Tipo entità non valido. Tipi supportati: ${ALL_ENTITY_TYPES.join(", ")}, backup-completo`,
@@ -180,6 +180,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const entityType = rawEntityType as EntityType;
 
     // Validate format
     if (!format || !VALID_FORMATS.includes(format)) {
@@ -226,7 +228,7 @@ export async function POST(request: NextRequest) {
 
     // Return file response
     if (format === "xlsx") {
-      return new NextResponse(result.data as Buffer, {
+      return new NextResponse(new Uint8Array(result.data as Buffer), {
         status: 200,
         headers: {
           "Content-Type": result.mimeType,
