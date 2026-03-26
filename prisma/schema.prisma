@@ -102,6 +102,13 @@ model Societa {
   alertGenerati        AlertGenerato[]
   todoGenerati         TodoGenerato[]
 
+  // SP13: Reportistica e BI
+  kpiDefinizioni      KpiDefinizione[]
+  kpiValori           KpiValore[]
+  budget              Budget[]
+  reportTemplates     ReportTemplate[]
+  reportGeneratiBI    ReportGeneratoBI[]
+
   @@map("societa")
 }
 
@@ -930,6 +937,7 @@ model PianoDeiConti {
   operazioni Operazione[]
   movimentiContabili  MovimentoContabile[]
   categorieSpesaDefault CategoriaSpesa[] @relation("ContoDefaultCategoria")
+  budgetRighe         BudgetRiga[]
 
   @@unique([societaId, codice])
   @@map("piano_dei_conti")
@@ -2327,4 +2335,140 @@ model TodoGenerato {
   @@index([societaId, utenteId, data])
   @@index([stato])
   @@map("todo_generati")
+}
+
+// ─── SP13: Reportistica e BI ────────────────────────────────────────────────
+
+enum CategoriaKpi {
+  ECONOMICO
+  FINANZIARIO
+  FISCALE
+  OPERATIVO
+  CRESCITA
+}
+
+enum PeriodoTipo {
+  MESE
+  TRIMESTRE
+  ANNO
+}
+
+enum StatoBudget {
+  BOZZA
+  APPROVATO
+}
+
+enum StatoReport {
+  PENDING
+  GENERATO
+  ERRORE
+}
+
+model KpiDefinizione {
+  id                 Int            @id @default(autoincrement())
+  societaId          Int?           @map("societa_id")
+  codice             String         @db.VarChar(50)
+  nome               String         @db.VarChar(100)
+  categoria          CategoriaKpi
+  formula            Json
+  contiRiferimento   Json?          @map("conti_riferimento")
+  sogliaSemaforo     Json?          @map("soglia_semaforo")
+  attivo             Boolean        @default(true)
+  ordine             Int            @default(0)
+  createdAt          DateTime       @default(now()) @map("created_at")
+
+  societa            Societa?       @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  valori             KpiValore[]
+
+  @@unique([societaId, codice])
+  @@index([categoria, attivo])
+  @@map("kpi_definizioni")
+}
+
+model KpiValore {
+  id              Int          @id @default(autoincrement())
+  societaId       Int          @map("societa_id")
+  kpiId           Int          @map("kpi_id")
+  periodo         String       @db.VarChar(10)
+  periodoTipo     PeriodoTipo  @map("periodo_tipo")
+  valore          Float
+  valorePrec      Float?       @map("valore_prec")
+  variazione      Float?
+  trend           String?      @db.VarChar(10)
+  calcolatoAt     DateTime     @default(now()) @map("calcolato_at")
+
+  societa         Societa      @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  kpi             KpiDefinizione @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@unique([societaId, kpiId, periodo, periodoTipo])
+  @@index([societaId, periodoTipo])
+  @@map("kpi_valori")
+}
+
+model Budget {
+  id              Int          @id @default(autoincrement())
+  societaId       Int          @map("societa_id")
+  anno            Int
+  nome            String       @db.VarChar(100)
+  stato           StatoBudget  @default(BOZZA)
+  approvatoDa     Int?         @map("approvato_da")
+  approvatoAt     DateTime?    @map("approvato_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  societa         Societa      @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  righe           BudgetRiga[]
+
+  @@unique([societaId, anno, nome])
+  @@map("budget")
+}
+
+model BudgetRiga {
+  id              Int          @id @default(autoincrement())
+  budgetId        Int          @map("budget_id")
+  contoId         Int          @map("conto_id")
+  mese            Int
+  importo         Decimal      @db.Decimal(12, 2)
+
+  budget          Budget       @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  conto           PianoDeiConti @relation(fields: [contoId], references: [id])
+
+  @@unique([budgetId, contoId, mese])
+  @@map("budget_righe")
+}
+
+model ReportTemplate {
+  id              Int          @id @default(autoincrement())
+  societaId       Int?         @map("societa_id")
+  nome            String       @db.VarChar(100)
+  tipo            String       @db.VarChar(50)
+  sezioni         Json
+  formato         String       @default("PDF") @db.VarChar(10)
+  schedulazione   String?      @db.VarChar(50)
+  destinatari     Json?
+  attivo          Boolean      @default(true)
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  societa         Societa?     @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  reportGenerati  ReportGeneratoBI[]
+
+  @@map("report_templates")
+}
+
+model ReportGeneratoBI {
+  id              Int          @id @default(autoincrement())
+  societaId       Int          @map("societa_id")
+  templateId      Int          @map("template_id")
+  periodo         String       @db.VarChar(20)
+  dati            Json
+  narrativaAI     String?      @map("narrativa_ai") @db.Text
+  fileUrl         String?      @map("file_url") @db.Text
+  stato           StatoReport  @default(PENDING)
+  generatoAt      DateTime     @default(now()) @map("generato_at")
+
+  societa         Societa      @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  template        ReportTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([societaId, generatoAt])
+  @@map("report_generati_bi")
 }
