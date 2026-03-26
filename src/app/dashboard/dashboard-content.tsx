@@ -30,6 +30,8 @@ import {
   Area,
   ReferenceLine,
 } from "recharts";
+import { KpiGrid } from "@/components/bi/kpi-grid";
+import { TodoWidget } from "@/components/intelligence/todo-widget";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -671,6 +673,17 @@ export function DashboardContent({ ruolo, nome }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Indicatori Chiave (BI KPI) ────────────────────────────────── */}
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Indicatori Chiave</h2>
+        <KpiGrid filterCodes={["RICAVI", "COSTI", "MARGINE_LORDO", "EBITDA"]} />
+      </section>
+
+      {/* ── Da fare oggi ──────────────────────────────────────────────── */}
+      <section>
+        <TodoWidget />
+      </section>
 
       {/* ── Trend Chart ──────────────────────────────────────────────── */}
       <Card>
