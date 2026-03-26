@@ -109,6 +109,11 @@ model Societa {
   reportTemplates     ReportTemplate[]
   reportGeneratiBI    ReportGeneratoBI[]
 
+  // SP14: Portale Clienti Full
+  threadPortale       ThreadPortale[]
+  messaggiPortale     MessaggioPortale[]
+  operazioniPortale   OperazionePortale[]
+
   @@map("societa")
 }
 
@@ -303,6 +308,7 @@ model Operazione {
   fatturaElettronica  FatturaElettronica?
   movimentiBancari    MovimentoBancario[]
   scadenzePartitario  ScadenzaPartitario[]
+  operazioniPortale   OperazionePortale[]
 
   @@index([societaId, dataOperazione])
   @@index([categoriaId])
@@ -2035,6 +2041,10 @@ model AccessoCliente {
   richieste       RichiestaDocumento[]
   documenti       DocumentoCondiviso[]
   notifiche       Notifica[]     @relation("NotificheCliente")
+  threadPortale       ThreadPortale[]
+  messaggiPortale     MessaggioPortale[]
+  operazioniPortale   OperazionePortale[]
+  permessi            PermessoPortale[]
 
   @@unique([societaId, email])
   @@map("accessi_cliente")
@@ -2112,6 +2122,7 @@ model DocumentoCondiviso {
 
   societa           Societa               @relation(fields: [societaId], references: [id])
   accessoCliente    AccessoCliente        @relation(fields: [accessoClienteId], references: [id])
+  allegatiMessaggio   AllegatoMessaggio[]
 
   @@index([societaId])
   @@index([accessoClienteId])
@@ -2471,4 +2482,145 @@ model ReportGeneratoBI {
 
   @@index([societaId, generatoAt])
   @@map("report_generati_bi")
+}
+
+// ============================================================
+// SP14: Portale Clienti Full
+// ============================================================
+
+enum MittenteTipoPortale {
+  CLIENTE
+  COMMERCIALISTA
+}
+
+enum ContestoTipoPortale {
+  DOCUMENTO
+  SCADENZA
+  OPERAZIONE
+  ALERT
+  LIBERO
+}
+
+enum StatoThread {
+  APERTO
+  CHIUSO
+}
+
+enum StatoOperazionePortale {
+  BOZZA
+  VALIDATA
+  RIFIUTATA
+}
+
+enum TipoOperazionePortale {
+  INCASSO
+  PAGAMENTO
+  FATTURA
+}
+
+enum SezionePortale {
+  KPI
+  PRIMA_NOTA
+  DOCUMENTI
+  CHAT
+  IVA
+  SCADENZARIO
+  FATTURE
+  F24
+  BILANCIO
+  REPORT
+}
+
+model ThreadPortale {
+  id                  Int                  @id @default(autoincrement())
+  societaId           Int                  @map("societa_id")
+  accessoClienteId    Int                  @map("accesso_cliente_id")
+  oggetto             String               @db.VarChar(255)
+  contestoTipo        ContestoTipoPortale? @map("contesto_tipo")
+  contestoId          Int?                 @map("contesto_id")
+  stato               StatoThread          @default(APERTO)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  ultimoMessaggioAt   DateTime?            @map("ultimo_messaggio_at")
+
+  societa             Societa              @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  accessoCliente      AccessoCliente       @relation(fields: [accessoClienteId], references: [id])
+  messaggi            MessaggioPortale[]
+
+  @@index([societaId, accessoClienteId])
+  @@index([societaId, stato])
+  @@map("thread_portale")
+}
+
+model MessaggioPortale {
+  id                  Int                  @id @default(autoincrement())
+  societaId           Int                  @map("societa_id")
+  threadId            Int                  @map("thread_id")
+  accessoClienteId    Int                  @map("accesso_cliente_id")
+  mittenteTipo        MittenteTipoPortale  @map("mittente_tipo")
+  mittenteId          Int                  @map("mittente_id")
+  testo               String               @db.Text
+  letto               Boolean              @default(false)
+  lettoAt             DateTime?            @map("letto_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+
+  societa             Societa              @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  thread              ThreadPortale        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  accessoCliente      AccessoCliente       @relation(fields: [accessoClienteId], references: [id])
+  allegati            AllegatoMessaggio[]
+
+  @@index([threadId, createdAt])
+  @@index([societaId, letto])
+  @@map("messaggi_portale")
+}
+
+model AllegatoMessaggio {
+  id                  Int                  @id @default(autoincrement())
+  messaggioId         Int                  @map("messaggio_id")
+  nome                String               @db.VarChar(255)
+  mimeType            String               @map("mime_type") @db.VarChar(100)
+  dimensione          Int
+  fileUrl             String               @map("file_url") @db.Text
+  documentoCondivisoId Int?                @map("documento_condiviso_id")
+  createdAt           DateTime             @default(now()) @map("created_at")
+
+  messaggio           MessaggioPortale     @relation(fields: [messaggioId], references: [id], onDelete: Cascade)
+  documentoCondiviso  DocumentoCondiviso?  @relation(fields: [documentoCondivisoId], references: [id])
+
+  @@map("allegati_messaggio")
+}
+
+model OperazionePortale {
+  id                  Int                       @id @default(autoincrement())
+  societaId           Int                       @map("societa_id")
+  accessoClienteId    Int                       @map("accesso_cliente_id")
+  tipo                TipoOperazionePortale
+  dati                Json
+  documentoAllegato   String?                   @map("documento_allegato") @db.Text
+  stato               StatoOperazionePortale    @default(BOZZA)
+  operazioneId        Int?                      @map("operazione_id")
+  noteCommercialista  String?                   @map("note_commercialista") @db.Text
+  validataAt          DateTime?                 @map("validata_at")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+
+  societa             Societa                   @relation(fields: [societaId], references: [id], onDelete: Cascade)
+  accessoCliente      AccessoCliente            @relation(fields: [accessoClienteId], references: [id])
+  operazione          Operazione?               @relation(fields: [operazioneId], references: [id])
+
+  @@index([societaId, stato])
+  @@index([accessoClienteId])
+  @@map("operazioni_portale")
+}
+
+model PermessoPortale {
+  id                  Int               @id @default(autoincrement())
+  accessoClienteId    Int               @map("accesso_cliente_id")
+  sezione             SezionePortale
+  lettura             Boolean           @default(true)
+  scrittura           Boolean           @default(false)
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  accessoCliente      AccessoCliente    @relation(fields: [accessoClienteId], references: [id], onDelete: Cascade)
+
+  @@unique([accessoClienteId, sezione])
+  @@map("permessi_portale")
 }
