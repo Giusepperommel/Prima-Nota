@@ -6,7 +6,9 @@ import {
   getEntityConfig,
   ALL_ENTITY_TYPES,
 } from "@/lib/export/entity-configs";
+import { exportAllToZip } from "@/lib/export/zip-exporter";
 import type { EntityType, ExportFormat } from "@/lib/export/types";
+import { format as formatDate } from "date-fns";
 
 // ─── Date field mapping per entity (for date range filters) ─────────────────
 
@@ -129,11 +131,51 @@ export async function POST(request: NextRequest) {
       offset?: number;
     };
 
+    // ─── Bulk backup (ZIP of all entities) ───────────────────────────────────
+    if (entityType === "backup-completo") {
+      const dataByEntity = {} as Record<EntityType, Record<string, unknown>[]>;
+
+      for (const et of ALL_ENTITY_TYPES) {
+        const cfg = getEntityConfig(et);
+        const prismaModel = (prisma as any)[cfg.prismaModel];
+        if (!prismaModel) continue;
+
+        const where: Record<string, unknown> = { societaId };
+        if (et === "operazioni" || et === "registri-iva") {
+          where.eliminato = false;
+          where.bozza = false;
+        }
+        if (et === "scritture-contabili") {
+          where.eliminato = false;
+        }
+        if (et === "registri-iva") {
+          where.registroIva = { not: null };
+        }
+
+        const raw = await prismaModel.findMany({
+          where,
+          orderBy: cfg.defaultOrderBy,
+        });
+        dataByEntity[et] = JSON.parse(JSON.stringify(raw));
+      }
+
+      const zipBuffer = await exportAllToZip(dataByEntity);
+      const dateStr = formatDate(new Date(), "yyyy-MM-dd");
+
+      return new NextResponse(zipBuffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="backup-completo_${dateStr}.zip"`,
+        },
+      });
+    }
+
     // Validate entityType
     if (!entityType || !ALL_ENTITY_TYPES.includes(entityType)) {
       return NextResponse.json(
         {
-          error: `Tipo entità non valido. Tipi supportati: ${ALL_ENTITY_TYPES.join(", ")}`,
+          error: `Tipo entità non valido. Tipi supportati: ${ALL_ENTITY_TYPES.join(", ")}, backup-completo`,
         },
         { status: 400 }
       );
