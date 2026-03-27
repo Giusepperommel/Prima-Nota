@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { TipoOperazionePortale, StatoOperazionePortale } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type { CreateOperazioneInput, IncassoData, PagamentoData, FatturaData } from "./types";
 
 interface ValidationResult {
@@ -37,26 +39,27 @@ export async function createPortalOperation(input: CreateOperazioneInput): Promi
     data: {
       societaId: input.societaId,
       accessoClienteId: input.accessoClienteId,
-      tipo: input.tipo as any,
-      dati: input.dati as any,
+      tipo: input.tipo as TipoOperazionePortale,
+      dati: input.dati as unknown as Prisma.InputJsonValue,
       documentoAllegato: input.documentoAllegato,
     },
   });
 
   // Try OCR extraction for FATTURA operations (non-blocking)
-  if (input.tipo === "FATTURA" && input.dati && (input.dati as any).fileUrl) {
+  const fatturaData = input.tipo === "FATTURA" ? (input.dati as FatturaData) : null;
+  if (fatturaData?.fileUrl) {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const ocrRes = await fetch(`${baseUrl}/api/ocr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileUrl: (input.dati as any).fileUrl }),
+        body: JSON.stringify({ fileUrl: fatturaData.fileUrl }),
       });
       if (ocrRes.ok) {
         const ocrData = await ocrRes.json();
         await prisma.operazionePortale.update({
           where: { id: op.id },
-          data: { dati: { ...(input.dati as any), ocrEstratto: ocrData } },
+          data: { dati: { ...fatturaData, ocrEstratto: ocrData } as unknown as Prisma.InputJsonValue },
         });
       }
     } catch {
@@ -76,7 +79,7 @@ export async function validatePortalOperation(
   await prisma.operazionePortale.update({
     where: { id: operazioneId },
     data: {
-      stato: azione as any,
+      stato: azione as StatoOperazionePortale,
       noteCommercialista,
       validataAt: azione === "VALIDATA" ? new Date() : null,
     },

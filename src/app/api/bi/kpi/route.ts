@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
 
     const kpis = await calculateAndCacheKpis(user.societaId, anno, periodo, periodoTipo);
     return NextResponse.json({ kpis, anno, periodo, periodoTipo });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Errore interno del server";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

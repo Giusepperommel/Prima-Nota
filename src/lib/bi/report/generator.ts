@@ -1,5 +1,6 @@
 // src/lib/bi/report/generator.ts
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { calculateAllKpis } from "../kpi/engine";
 import { comparePeriods } from "../comparativa/periodo";
 import { getReportTemplate } from "./templates";
@@ -102,7 +103,7 @@ export async function generateAndPersistReport(
       data: {
         nome: template.nome,
         tipo: template.tipo,
-        sezioni: template.sezioni as any,
+        sezioni: template.sezioni as unknown as Prisma.InputJsonValue,
         destinatari: template.destinatariDefault,
       },
     });
@@ -115,7 +116,7 @@ export async function generateAndPersistReport(
       societaId,
       templateId: dbTemplate.id,
       periodo: data.periodo,
-      dati: data as any,
+      dati: data as unknown as Prisma.InputJsonValue,
       stato: "GENERATO",
     },
   });

@@ -1,5 +1,6 @@
 // src/lib/bi/kpi/engine.ts
 import { prisma } from "@/lib/prisma";
+import { CategoriaKpi, PeriodoTipo } from "@prisma/client";
 import type { KpiCalculator } from "./types";
 import type { KpiResult, PeriodRange } from "../types";
 import { buildPeriodRange } from "../utils";
@@ -86,7 +87,7 @@ export async function calculateAndCacheKpis(
           societaId,
           kpiId: kpiDef.id,
           periodo: periodLabel,
-          periodoTipo: periodoTipo as any,
+          periodoTipo: periodoTipo as PeriodoTipo,
         },
       },
       update: {
@@ -100,7 +101,7 @@ export async function calculateAndCacheKpis(
         societaId,
         kpiId: kpiDef.id,
         periodo: periodLabel,
-        periodoTipo: periodoTipo as any,
+        periodoTipo: periodoTipo as PeriodoTipo,
         valore: result.valore,
         valorePrec: result.valorePrec,
         variazione: result.variazione,
@@ -112,13 +113,13 @@ export async function calculateAndCacheKpis(
   return results;
 }
 
-function mapCategoria(cat: string): any {
-  const map: Record<string, string> = {
-    ECONOMICO: "ECONOMICO",
-    FINANZIARIO: "FINANZIARIO",
-    FISCALE: "FISCALE",
-    OPERATIVO: "OPERATIVO",
-    CRESCITA: "CRESCITA",
+function mapCategoria(cat: string): CategoriaKpi {
+  const map: Record<string, CategoriaKpi> = {
+    ECONOMICO: CategoriaKpi.ECONOMICO,
+    FINANZIARIO: CategoriaKpi.FINANZIARIO,
+    FISCALE: CategoriaKpi.FISCALE,
+    OPERATIVO: CategoriaKpi.OPERATIVO,
+    CRESCITA: CategoriaKpi.CRESCITA,
   };
-  return map[cat] || "ECONOMICO";
+  return map[cat] || CategoriaKpi.ECONOMICO;
 }
