@@ -33,6 +33,10 @@ import {
   Archive,
   Bell,
   Globe,
+  Download,
+  Upload,
+  Key,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,6 +68,13 @@ const mainNavItems: NavItem[] = [
   { title: "Nuova Operazione", href: "/operazioni/nuova", icon: Plus },
   { title: "Cespiti", href: "/operazioni/cespiti", icon: Landmark },
   { title: "Report", href: "/report", icon: BarChart3 },
+  { title: "Business Intelligence", href: "/bi", icon: BarChart3 },
+  { title: "Notifiche", href: "/notifiche", icon: Bell },
+];
+
+const dataNavItems: NavItem[] = [
+  { title: "Esportazioni", href: "/esportazioni", icon: Download },
+  { title: "Importazione", href: "/importazione", icon: Upload },
 ];
 
 const bilancioNavItems: NavItem[] = [
@@ -96,6 +107,8 @@ const adminNavItems: NavItem[] = [
   { title: "Conservazione", href: "/configurazione/conservazione", icon: Archive },
   { title: "Alert", href: "/configurazione/alert", icon: Bell },
   { title: "Portale", href: "/configurazione/portale", icon: Globe },
+  { title: "Config API", href: "/configurazione/api", icon: Key },
+  { title: "Budget", href: "/bi/budget", icon: Wallet },
 ];
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
@@ -140,6 +153,24 @@ export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: stri
                       // Don't highlight "Operazioni" when on /operazioni/cespiti
                       !(item.href === "/operazioni" && pathname.startsWith("/operazioni/cespiti")))
                   }>
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Dati</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {dataNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
                     <Link href={item.href}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
