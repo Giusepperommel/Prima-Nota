@@ -6,6 +6,7 @@ import { anomalieRules } from "./rules/anomalie";
 import { cashFlowRules } from "./rules/cash-flow";
 import { complianceRules } from "./rules/compliance";
 import { riconciliazioneRules } from "./rules/riconciliazione";
+import { confrontoRules } from "./rules/confronto";
 
 const SEVERITY_ORDER: Record<AlertRuleResult["gravita"], number> = {
   INFO: 0,
@@ -23,6 +24,7 @@ export function getAllAlertRules(): AlertRuleConfig[] {
     ...cashFlowRules,
     ...complianceRules,
     ...riconciliazioneRules,
+    ...confrontoRules,
   ];
 }
 
