@@ -43,6 +43,28 @@ export async function createPortalOperation(input: CreateOperazioneInput): Promi
     },
   });
 
+  // Try OCR extraction for FATTURA operations (non-blocking)
+  if (input.tipo === "FATTURA" && input.dati && (input.dati as any).fileUrl) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const ocrRes = await fetch(`${baseUrl}/api/ocr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileUrl: (input.dati as any).fileUrl }),
+      });
+      if (ocrRes.ok) {
+        const ocrData = await ocrRes.json();
+        await prisma.operazionePortale.update({
+          where: { id: op.id },
+          data: { dati: { ...(input.dati as any), ocrEstratto: ocrData } },
+        });
+      }
+    } catch {
+      // OCR is optional — log and continue
+      console.warn(`[PortalOp] OCR extraction failed for operation ${op.id}`);
+    }
+  }
+
   return op.id;
 }
 
