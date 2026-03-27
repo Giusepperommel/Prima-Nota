@@ -8,6 +8,7 @@ describe("import-engine", () => {
   });
 
   it("throws for unknown source", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input
     expect(() => getParserForSource("unknown" as any)).toThrow();
   });
 

@@ -97,8 +97,8 @@ export async function importaFattureXml(
           fornitoreId,
           codiceContoId: classificazione.codiceContoId,
           tipoRipartizione: "COMUNE",
-          importoDeducibile: fattura.importoTotale * ((defaultCategoria as any)?.percentualeDeducibilita ?? 100) / 100,
-          percentualeDeducibilita: (defaultCategoria as any)?.percentualeDeducibilita ?? 100,
+          importoDeducibile: fattura.importoTotale * (Number(defaultCategoria?.percentualeDeducibilita ?? 100)) / 100,
+          percentualeDeducibilita: Number(defaultCategoria?.percentualeDeducibilita ?? 100),
           bozza: true,
           chiaveImport,
           sorgente: "XML_IMPORT",
@@ -123,9 +123,9 @@ export async function importaFattureXml(
       detail.bozzaId = operazione.id;
       result.importate++;
       result.bozzeCreate++;
-    } catch (error: any) {
+    } catch (error: unknown) {
       detail.stato = "ERRORE";
-      detail.errore = error?.message ?? "Errore sconosciuto";
+      detail.errore = error instanceof Error ? error.message : "Errore sconosciuto";
       result.errori++;
     }
 

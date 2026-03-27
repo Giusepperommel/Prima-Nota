@@ -4,9 +4,9 @@ interface OpenApiSpec {
   openapi: string;
   info: { title: string; version: string; description: string };
   servers: { url: string; description: string }[];
-  paths: Record<string, any>;
-  components: { securitySchemes: Record<string, any>; schemas: Record<string, any> };
-  security: any[];
+  paths: Record<string, unknown>;
+  components: { securitySchemes: Record<string, unknown>; schemas: Record<string, unknown> };
+  security: Record<string, unknown>[];
 }
 
 export function generateOpenApiSpec(): OpenApiSpec {

@@ -48,8 +48,8 @@ export async function sendEmail(input: EmailPayload): Promise<EmailResult> {
       return { success: false, error: result.error.message };
     }
     return { success: true, messageId: result.data?.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Email] Exception:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }

@@ -65,9 +65,10 @@ export async function classificaFattura(
       categorie,
     });
 
+    const suggestion = aiResult.suggestion as Record<string, unknown>;
     return {
-      categoriaId: (aiResult.suggestion as any).categoriaId ?? null,
-      codiceContoId: (aiResult.suggestion as any).contoId ?? null,
+      categoriaId: (typeof suggestion.categoriaId === "number" ? suggestion.categoriaId : null),
+      codiceContoId: (typeof suggestion.contoId === "number" ? suggestion.contoId : null),
       tipoOperazione: "COSTO",
       fornitoreId: null,
       fornitoreNuovo: true,

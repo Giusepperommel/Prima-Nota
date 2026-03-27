@@ -20,6 +20,7 @@ describe("entity-configs", () => {
   });
 
   it("throws for unknown entity type", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input
     expect(() => getEntityConfig("unknown" as any)).toThrow(
       "Tipo entità sconosciuto"
     );

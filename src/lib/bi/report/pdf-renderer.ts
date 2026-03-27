@@ -1,8 +1,56 @@
 // src/lib/bi/report/pdf-renderer.ts
+import type ReactPDF from "@react-pdf/renderer";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import React from "react";
 import type { GeneratedReportData } from "./generator";
+
+// ---------------------------------------------------------------------------
+// Minimal interfaces for section data
+// ---------------------------------------------------------------------------
+interface KpiDatum {
+  nome?: string;
+  codice?: string;
+  titolo?: string;
+  valore?: number | null;
+  unita?: string;
+  variazione?: number | null;
+}
+
+interface TextDatum {
+  narrativaAI?: string;
+  testo?: string;
+}
+
+interface ComparisonRow {
+  label: string;
+  valoreCorrente: number;
+  valorePrecedente: number;
+  delta: number;
+  deltaPerc: number | null;
+}
+
+interface ComparisonDatum {
+  righe?: ComparisonRow[];
+  periodoCorrente?: string;
+  periodoPrecedente?: string;
+  sommario?: {
+    deltaRicavi: number;
+    deltaCosti: number;
+    deltaMargine: number;
+  };
+}
+
+interface AlertDatum {
+  gravita?: string;
+  messaggio?: string;
+  tipo?: string;
+}
+
+interface HealthScoreDatum {
+  punteggio?: number | null;
+  score?: number | null;
+}
 
 // ---------------------------------------------------------------------------
 // Color palette
@@ -134,11 +182,11 @@ function severityLabel(gravita: string): string {
 // Sections
 // ---------------------------------------------------------------------------
 
-function KpiSection({ titolo, dati }: { titolo: string; dati: any[] }) {
+function KpiSection({ titolo, dati }: { titolo: string; dati: KpiDatum[] }) {
   if (!Array.isArray(dati) || dati.length === 0) return null;
   return React.createElement(View, { style: styles.section },
     React.createElement(Text, { style: styles.sectionTitle }, titolo),
-    ...dati.map((kpi: any, i: number) =>
+    ...dati.map((kpi: KpiDatum, i: number) =>
       React.createElement(View, { key: i, style: styles.row },
         React.createElement(Text, { style: styles.label }, kpi.nome || kpi.codice || String(kpi.titolo || "")),
         React.createElement(Text, { style: styles.value },
@@ -160,23 +208,17 @@ function KpiSection({ titolo, dati }: { titolo: string; dati: any[] }) {
   );
 }
 
-function TextSection({ titolo, dati }: { titolo: string; dati: any }) {
+function TextSection({ titolo, dati }: { titolo: string; dati: TextDatum | null }) {
   return React.createElement(View, { style: styles.section },
     React.createElement(Text, { style: styles.sectionTitle }, titolo),
     React.createElement(Text, { style: { fontSize: 10, lineHeight: 1.5 } }, dati?.narrativaAI || dati?.testo || "")
   );
 }
 
-function ComparisonSection({ titolo, dati }: { titolo: string; dati: any }) {
+function ComparisonSection({ titolo, dati }: { titolo: string; dati: ComparisonDatum | null }) {
   if (!dati || !dati.righe || !Array.isArray(dati.righe) || dati.righe.length === 0) return null;
 
-  const righe: Array<{
-    label: string;
-    valoreCorrente: number;
-    valorePrecedente: number;
-    delta: number;
-    deltaPerc: number | null;
-  }> = dati.righe;
+  const righe: ComparisonRow[] = dati.righe;
 
   return React.createElement(View, { style: styles.section },
     React.createElement(Text, { style: styles.sectionTitle }, titolo),
@@ -225,12 +267,12 @@ function ComparisonSection({ titolo, dati }: { titolo: string; dati: any }) {
   );
 }
 
-function AlertSection({ titolo, dati }: { titolo: string; dati: any[] }) {
+function AlertSection({ titolo, dati }: { titolo: string; dati: AlertDatum[] }) {
   if (!Array.isArray(dati) || dati.length === 0) return null;
 
   return React.createElement(View, { style: styles.section },
     React.createElement(Text, { style: styles.sectionTitle }, titolo),
-    ...dati.map((alert: any, i: number) => {
+    ...dati.map((alert: AlertDatum, i: number) => {
       const bgColor = severityColor(alert.gravita || "INFO");
       return React.createElement(View, { key: i, style: styles.alertRow },
         // Severity badge
@@ -246,7 +288,7 @@ function AlertSection({ titolo, dati }: { titolo: string; dati: any[] }) {
   );
 }
 
-function HealthScoreSection({ titolo, dati }: { titolo: string; dati: any }) {
+function HealthScoreSection({ titolo, dati }: { titolo: string; dati: HealthScoreDatum | null }) {
   if (!dati) return null;
   const score = dati.punteggio ?? dati.score ?? null;
   if (score == null) return null;
@@ -288,29 +330,29 @@ function ReportDocument({ data, societaNome }: { data: GeneratedReportData; soci
       ...data.sezioni.map((sezione, i) => {
         switch (sezione.tipo) {
           case "text":
-            return React.createElement(TextSection, { key: i, titolo: sezione.titolo, dati: sezione.dati });
+            return React.createElement(TextSection, { key: i, titolo: sezione.titolo, dati: sezione.dati as TextDatum | null });
           case "comparison":
-            return React.createElement(ComparisonSection, { key: i, titolo: sezione.titolo, dati: sezione.dati });
+            return React.createElement(ComparisonSection, { key: i, titolo: sezione.titolo, dati: sezione.dati as ComparisonDatum | null });
           case "alert_summary":
-            return React.createElement(AlertSection, { key: i, titolo: sezione.titolo, dati: Array.isArray(sezione.dati) ? sezione.dati : [] });
+            return React.createElement(AlertSection, { key: i, titolo: sezione.titolo, dati: Array.isArray(sezione.dati) ? (sezione.dati as AlertDatum[]) : [] });
           case "health_score":
-            return React.createElement(HealthScoreSection, { key: i, titolo: sezione.titolo, dati: sezione.dati });
+            return React.createElement(HealthScoreSection, { key: i, titolo: sezione.titolo, dati: sezione.dati as HealthScoreDatum | null });
           case "kpi_summary":
           case "kpi_table":
           default:
-            return React.createElement(KpiSection, { key: i, titolo: sezione.titolo, dati: Array.isArray(sezione.dati) ? sezione.dati : [] });
+            return React.createElement(KpiSection, { key: i, titolo: sezione.titolo, dati: Array.isArray(sezione.dati) ? (sezione.dati as KpiDatum[]) : [] });
         }
       }),
       // Footer with page numbers
-      React.createElement(View, { style: styles.footer, fixed: true } as any,
+      React.createElement(View, { style: styles.footer, fixed: true },
         React.createElement(Text, { style: styles.footerText },
           `Prima Nota — Report generato il ${new Date().toLocaleDateString("it-IT")}`
         ),
         React.createElement(Text, {
           style: styles.footerText,
-          render: ({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+          render: ({ pageNumber, totalPages }) =>
             `Pagina ${pageNumber} di ${totalPages}`,
-        } as any)
+        })
       )
     )
   );
@@ -322,6 +364,6 @@ function ReportDocument({ data, societaNome }: { data: GeneratedReportData; soci
 
 export async function renderReportToPdf(data: GeneratedReportData, societaNome: string): Promise<Buffer> {
   const doc = React.createElement(ReportDocument, { data, societaNome });
-  const buffer = await renderToBuffer(doc as any);
+  const buffer = await renderToBuffer(doc as React.ReactElement<ReactPDF.DocumentProps>);
   return Buffer.from(buffer);
 }

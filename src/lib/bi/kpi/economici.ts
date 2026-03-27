@@ -12,7 +12,7 @@ async function sumOperazioniByTipo(
   const operazioni = await prisma.operazione.findMany({
     where: {
       societaId,
-      tipoOperazione: tipoOperazione as any,
+      tipoOperazione: tipoOperazione as import("@prisma/client").TipoOperazione,
       dataOperazione: { gte: periodo.da, lte: periodo.a },
       eliminato: false,
       bozza: false,
