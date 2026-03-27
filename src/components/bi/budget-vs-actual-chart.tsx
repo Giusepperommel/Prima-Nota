@@ -27,7 +27,7 @@ export function BudgetVsActualChart({ data, height = 350 }: BudgetVsActualChartP
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-            <Tooltip formatter={(value: number) => [`€ ${value.toLocaleString("it-IT")}`, ""]} />
+            <Tooltip formatter={(value) => [`€ ${Number(value).toLocaleString("it-IT")}`, ""]} />
             <Legend iconType="square" iconSize={10} />
             <ReferenceLine y={0} stroke="#666" />
             <Bar dataKey="budget" name="Budget" fill="#94a3b8" radius={[4, 4, 0, 0]} />

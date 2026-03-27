@@ -34,7 +34,7 @@ export function TrendChart({ title, data, series, height = 300 }: TrendChartProp
             <XAxis dataKey="label" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
             <Tooltip
-              formatter={(value: number) => [`€ ${value.toLocaleString("it-IT")}`, ""]}
+              formatter={(value) => [`€ ${Number(value).toLocaleString("it-IT")}`, ""]}
               labelStyle={{ fontWeight: "bold" }}
             />
             <Legend iconType="circle" iconSize={8} />
