@@ -2570,6 +2570,7 @@ model MessaggioPortale {
 
   @@index([threadId, createdAt])
   @@index([societaId, letto])
+  @@index([testo], type: Fulltext)
   @@map("messaggi_portale")
 }
 
