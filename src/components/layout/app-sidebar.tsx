@@ -31,6 +31,8 @@ import {
   Banknote,
   BookMarked,
   Archive,
+  Bell,
+  Globe,
 } from "lucide-react";
 import {
   Sidebar,
@@ -92,6 +94,8 @@ const adminNavItems: NavItem[] = [
   { title: "Accessi", href: "/configurazione/accessi", icon: ShieldCheck },
   { title: "Fatturazione", href: "/configurazione/fatturazione", icon: Receipt },
   { title: "Conservazione", href: "/configurazione/conservazione", icon: Archive },
+  { title: "Alert", href: "/configurazione/alert", icon: Bell },
+  { title: "Portale", href: "/configurazione/portale", icon: Globe },
 ];
 
 export function AppSidebar({ ruolo, nome, cognome }: { ruolo: string; nome: string; cognome: string }) {
