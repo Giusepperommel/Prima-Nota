@@ -1,6 +1,9 @@
 import type { ImportSource, ImportEntityType, ImportField, ParsedRow } from "./import-types";
 import { parseDaneaXml } from "./parsers/danea";
 import { parseTeamSystemCsv } from "./parsers/teamsystem";
+import { parseZucchettiCsv } from "./parsers/zucchetti";
+import { parsePasscomCsv } from "./parsers/passcom";
+import { parseFattureInCloudCsv } from "./parsers/fatture-in-cloud";
 
 // ─── Parser types ──────────────────────────────────────────────────────────
 
@@ -13,9 +16,9 @@ type Parser = XmlParser | CsvParser;
 const parserRegistry: Record<ImportSource, Parser> = {
   danea: parseDaneaXml,
   teamsystem: parseTeamSystemCsv,
-  zucchetti: parseTeamSystemCsv,   // Zucchetti uses similar CSV format
-  passcom: parseTeamSystemCsv,     // Passcom uses similar CSV format
-  "fatture-in-cloud": parseTeamSystemCsv, // FIC exports CSV
+  zucchetti: parseZucchettiCsv,
+  passcom: parsePasscomCsv,
+  "fatture-in-cloud": parseFattureInCloudCsv,
 };
 
 /**
